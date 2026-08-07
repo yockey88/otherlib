@@ -5,6 +5,7 @@
 #define OTHER_EDITOR_UI_RENDER_PIPELINE_UI_RENDER_PIPELINE_WIDGETS_HPP
 
 #include "renderer/renderer.hpp"
+#include "data-structures/std_container.hpp"
 
 #include "driver/systems/asset_system.hpp"
 
@@ -21,8 +22,8 @@ namespace other {
         filepath path;
       };
 
-      std::vector<render_pipeline_data> rebuild_render_pipeline_list(const renderer& r, const asset_system& assets);
-      int32_t draw_render_pipeline_list(const std::vector<render_pipeline_data>& entries, int32_t selected_index, int32_t pending_select_index, bool current_dirty = false);
+      ostd::vector<render_pipeline_data> rebuild_render_pipeline_list(const renderer& r, const asset_system& assets);
+      int32_t draw_render_pipeline_list(const ostd::vector<render_pipeline_data>& entries, int32_t selected_index, int32_t pending_select_index, bool current_dirty = false);
 
       bool begin_pipeline_properties(const std::string_view title, natural_t id);
       void end_pipeline_properties();

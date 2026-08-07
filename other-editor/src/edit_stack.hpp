@@ -4,6 +4,8 @@
 #ifndef OTHER_EDITOR_EDIT_STACK_HPP
 #define OTHER_EDITOR_EDIT_STACK_HPP
 
+#include "data-structures/std_container.hpp"
+
 namespace other {
 
   struct edit {
@@ -27,8 +29,8 @@ namespace other {
     inline bool can_redo() const { return !edit_future.empty(); }
 
    private:
-    std::vector<edit> edit_history;
-    std::vector<edit> edit_future;
+    ostd::vector<edit> edit_history;
+    ostd::vector<edit> edit_future;
   };
 
 }  // namespace other

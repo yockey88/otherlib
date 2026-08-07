@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_FIELD_EDITOR_REGISTRY_HPP
 
 #include <functional>
+#include "data-structures/std_container.hpp"
 
 #include "serialization/reflection.hpp"
 
@@ -48,8 +49,8 @@ namespace other {
         field_editor_fn fn;
       };
 
-      std::unordered_map<type_key, entry> by_type;
-      std::unordered_map<value_type, field_editor_fn> by_value_type;
+      ostd::unordered_map<type_key, entry> by_type;
+      ostd::unordered_map<value_type, field_editor_fn> by_value_type;
     };
 
   }  // namespace ui

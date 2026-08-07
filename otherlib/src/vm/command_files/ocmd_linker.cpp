@@ -38,7 +38,7 @@ namespace other {
     diagnostics->emit(d);                                       \
   }
 
-  std::vector<uint8_t> ocmd_linker::link(scope<symbol_resolver> resolver, diagnostic_engine* diag) {
+  ostd::vector<uint8_t> ocmd_linker::link(scope<symbol_resolver> resolver, diagnostic_engine* diag) {
     OTHER_ASSERT(resolver != nullptr, "Symbol resolver scope cannot be null");
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
     PROFILE_SECTION("ocmd_linker::link");
@@ -144,7 +144,7 @@ namespace other {
     EMIT_TRACE(" - Code Section: offset={:#04x}, size={} bytes, instructions={}", header.prog_header.code_section_offset, end_of_code_section, header.prog_header.num_instructions);
     EMIT_TRACE(" - Data Section: offset={:#04x}, size={} bytes", header.prog_header.data_section_offset, data_size);
 
-    std::vector<uint8_t> final_binary;
+    ostd::vector<uint8_t> final_binary;
     final_binary.reserve(sizeof(ocmd_file_header) + linked_binary.size());
 
     const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);

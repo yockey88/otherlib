@@ -150,10 +150,10 @@ namespace other {
         natural_t pin_id;
       };
       struct editor_node {
-        std::vector<resource_pin> input_textures;
-        std::vector<resource_pin> input_buffers;
-        std::vector<resource_pin> output_textures;
-        std::vector<resource_pin> output_buffers;
+        ostd::vector<resource_pin> input_textures;
+        ostd::vector<resource_pin> input_buffers;
+        ostd::vector<resource_pin> output_textures;
+        ostd::vector<resource_pin> output_buffers;
       };
       struct graph {
         ostd::map<natural_t, editor_node> nodes;
@@ -172,20 +172,20 @@ namespace other {
         auto input_buffers = p.inputs |
           std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::BUFFER; }) |
           std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<pipeline_resource_reference*>>();
         auto output_buffers = p.outputs |
           std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::BUFFER; }) |
           std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<pipeline_resource_reference*>>();
 
         auto input_textures = p.inputs |
           std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::TEXTURE; }) |
           std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<pipeline_resource_reference*>>();
         auto output_textures = p.outputs |
           std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::TEXTURE; }) |
           std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<pipeline_resource_reference*>>();
 
         for (auto& input : input_buffers) {
           natural_t p = working_editor.begin_input_pin(input->resource_name);

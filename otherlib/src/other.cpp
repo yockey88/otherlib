@@ -5,6 +5,8 @@
 
 #include <iostream>
 
+#include <Windows.h>
+
 #include <spdlog/common.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
@@ -71,7 +73,17 @@ namespace other {
     return res;
   }
 
+  /// hardware faults die stackless — print one like asserts do
+  ///  (stderr direct: faults can land after logger shutdown)
+  static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
+    const uint32_t code = info != nullptr && info->ExceptionRecord != nullptr ? info->ExceptionRecord->ExceptionCode : 0;
+    std::cerr << "Unhandled SEH exception 0x" << std::hex << code << std::dec << "\nstacktrace =\n"
+              << OTHER_STACKTRACE << std::endl;
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
   exit_code other_environment_program_entry_point(const command_line& cmd, const config_table& cfg, const std::string_view prof) {
+    SetUnhandledExceptionFilter(&report_unhandled_seh);
     exit_code res = invoke_other_main(cmd, cfg, prof);
     CORE_LOG_INFO("Other Environment exit with code: {}", res);
     return res;

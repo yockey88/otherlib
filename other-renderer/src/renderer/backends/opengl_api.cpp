@@ -18,6 +18,7 @@
 #include "core/profiler.hpp"
 
 #include "gpu_resource/framebuffer.hpp"
+#include "renderer/backends/gl_profiler.hpp"
 #include "renderer/draw_command.hpp"
 
 namespace other {
@@ -115,6 +116,7 @@ namespace other {
     glDepthFunc(GL_LESS);
 
     SDL_GL_MakeCurrent(window_mgr->get_main_window(), gl_ctx(get_gpu_context()));
+    PROFILE_GPU_CONTEXT();
   }
 
   void opengl_api::on_shutdown(scope<window_manager>& window_mgr) {
@@ -129,6 +131,7 @@ namespace other {
     in_process_resources.clear();
     shader_resources.clear();
     shader_uniforms.clear();
+    shader_block_bindings.clear();
     texture_resources.clear();
     buffer_resources.clear();
     mesh_resources.clear();
@@ -213,6 +216,7 @@ namespace other {
     PROFILE_SECTION("opengl_api::on_end_frame");
     SDL_GL_MakeCurrent(native_window(), gl_ctx(get_gpu_context()));
     SDL_GL_SwapWindow(native_window());
+    PROFILE_GPU_COLLECT();
     glPopDebugGroup();
   }
 
@@ -398,6 +402,7 @@ namespace other {
 
   void opengl_api::end_ui_frame_backend_draw_data() {
     PROFILE_SECTION("opengl_api::end_ui_frame_backend_draw_data");
+    PROFILE_GPU_SECTION("opengl_api::end_ui_frame_backend_draw_data");
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glPopDebugGroup();
   }
@@ -558,6 +563,7 @@ namespace other {
 
   void opengl_api::dispatch_shader(const resource_handle& handle, const glm::ivec3& group_dims, shader::compute_barrier_type barrier_type) {
     PROFILE_SECTION("opengl_api::dispatch_shader");
+    PROFILE_GPU_SECTION("opengl_api::dispatch_shader");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot dispatch shader.");
       return;
@@ -690,6 +696,7 @@ namespace other {
 
   void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) {
     PROFILE_SECTION("opengl_api::upload_texture");
+    PROFILE_GPU_SECTION("opengl_api::upload_texture");
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("GPU resource for texture ID {} not found. Can't upload texture", handle.id);
@@ -815,6 +822,7 @@ namespace other {
 
   void opengl_api::blit_texture(const blit_data& src, const blit_data& dest, const glm::ivec3& size) {
     PROFILE_SECTION("opengl_api::blit_texture");
+    PROFILE_GPU_SECTION("opengl_api::blit_texture");
     auto src_itr = gpu_resources.find(src.handle.id);
     if (src_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Source texture resource with ID {} not found. Can't blit texture", src.handle.id);
@@ -869,14 +877,8 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) {
+  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
     PROFILE_SECTION("opengl_api::bind_shader_buffer_resource");
-    auto buf_itr = buffer_resources.find(handle.id);
-    if (buf_itr == buffer_resources.end()) {
-      CORE_LOG_ERROR("Buffer resource with ID {} not found in buffer resources.", handle.id);
-      return;
-    }
-
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -884,60 +886,56 @@ namespace other {
     }
     uint32_t buffer_id = gpu_itr->second;
 
-    gpu_itr = gpu_resources.find(shader_handle.id);
-    if (gpu_itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader_handle.id);
-      return;
-    }
-    uint32_t shader_id = gpu_itr->second;
-
-    /// buffer data
-    glBindBuffer(get_gl_buffer_type(buffer_type), buffer_id);
-    glBufferData(get_gl_buffer_type(buffer_type), size, data, get_gl_buffer_usage(buf_itr->second.get_usage()));
-
-    /// check if shdader binding is hooked up and if not bind it
-    ///     this is expensive so we should cache the binding points
-    if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
-      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
-      if (block_index != 0xffffffff) {
-        glUniformBlockBinding(shader_id, block_index, binding_point);
-      }
-    } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      GLuint block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name.data());
-      if (block_index != 0xffffffff) {
-        glShaderStorageBlockBinding(shader_id, block_index, binding_point);
-      }
-    }
-
+    ensure_block_binding(shader_handle, name, binding_point, buffer_type);
     glBindBufferBase(get_gl_buffer_type(buffer_type), binding_point, buffer_id);
-    glBindBuffer(get_gl_buffer_type(buffer_type), 0);
+    CHECKGL();
   }
 
   void opengl_api::set_shader_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
     PROFILE_SECTION("opengl_api::set_shader_block_binding");
+    ensure_block_binding(shader_handle, name, binding_point, buffer_type);
+  }
+
+  void opengl_api::ensure_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
+    auto key = block_binding_key{ shader_handle.id, FNV(name), buffer_type };
+    auto cached = shader_block_bindings.find(key);
+    if (cached != shader_block_bindings.end() && (cached->second.block_index == GL_INVALID_INDEX || cached->second.binding_point == binding_point)) {
+      return;
+    }
+
     auto gpu_itr = gpu_resources.find(shader_handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader_handle.id);
       return;
     }
-
     uint32_t shader_id = gpu_itr->second;
-    if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
-      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
-      if (block_index != GL_INVALID_INDEX) {
-        glUniformBlockBinding(shader_id, block_index, binding_point);
+
+    uint32_t block_index = GL_INVALID_INDEX;
+    if (cached != shader_block_bindings.end()) {
+      block_index = cached->second.block_index;
+    } else {
+      std::string name_str{ name };
+      if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
+        block_index = glGetUniformBlockIndex(shader_id, name_str.c_str());
+      } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
+        block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name_str.c_str());
       }
-    } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      GLuint block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name.data());
-      if (block_index != GL_INVALID_INDEX) {
+    }
+
+    if (block_index != GL_INVALID_INDEX) {
+      if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
+        glUniformBlockBinding(shader_id, block_index, binding_point);
+      } else {
         glShaderStorageBlockBinding(shader_id, block_index, binding_point);
       }
     }
+    shader_block_bindings.insert_or_assign(key, block_binding{ block_index, binding_point });
     CHECKGL();
   }
 
   void opengl_api::buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) {
     PROFILE_SECTION("opengl_api::buffer_data");
+    PROFILE_GPU_SECTION("opengl_api::buffer_data");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -1044,6 +1042,7 @@ namespace other {
 
   void opengl_api::draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count, mesh::attribute_type index_type) {
     PROFILE_SECTION("opengl_api::draw_mesh");
+    PROFILE_GPU_SECTION("opengl_api::draw_mesh");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -1066,6 +1065,7 @@ namespace other {
 
   void opengl_api::draw_mesh_instanced(const resource_handle& handle, const draw_call& call) {
     PROFILE_SECTION("opengl_api::draw_mesh_instanced");
+    PROFILE_GPU_SECTION("opengl_api::draw_mesh_instanced");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -1263,12 +1263,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int8_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1280,12 +1274,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint8_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1299,12 +1287,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int16_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1316,12 +1298,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint16_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1335,12 +1311,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1352,12 +1322,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint32_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1371,12 +1335,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1388,12 +1346,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1407,12 +1359,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1424,12 +1370,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1443,12 +1383,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1461,12 +1395,6 @@ namespace other {
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
-
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
       return;
@@ -1478,12 +1406,6 @@ namespace other {
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
-
-    auto itr = gpu_resources.find(shader.id);
-    if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
-      return;
-    }
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
@@ -1869,6 +1791,9 @@ namespace other {
     } else {
       CORE_LOG_ERROR("GPU resource with ID {} not found.", handle.id);
     }
+
+    std::erase_if(shader_uniforms, [&](const auto& entry) { return entry.first.resource_id == handle.id; });
+    std::erase_if(shader_block_bindings, [&](const auto& entry) { return entry.first.shader_id == handle.id; });
 
     resource_types.erase(handle.id);
     CHECKGL();
@@ -2311,6 +2236,7 @@ namespace other {
 
   void opengl_api::resolve_msaa_framebuffer(natural_t fb_id) {
     PROFILE_SECTION("opengl_api::resolve_msaa_framebuffer");
+    PROFILE_GPU_SECTION("opengl_api::resolve_msaa_framebuffer");
     const framebuffer& fb = framebuffer_resources.at(fb_id);
     const uint32_t msaa = framebuffer_msaa_fbos.at(fb_id);
     const uint32_t resolve = (uint32_t)get_resource_handle(fb_id);
@@ -2377,14 +2303,14 @@ namespace other {
     std::string name_str{ name };
     GLint location = glGetUniformLocation(shader_id, name_str.c_str());
     CHECKGL();
-    if (location == -1) {
-      return -1;
-    }
 
-    auto [itr, inserted] = shader_uniforms.emplace(key, location);
+    /// memoize -1 too, else absent names re-query gl every frame
+    auto [itr, inserted] = shader_uniforms.emplace(key, static_cast<uint32_t>(location));
     OTHER_ASSERT(inserted, "Failed to insert uniform '{}' for shader with ID {} into cache.", name, shader.id);
-    CORE_LOG_DEBUG("Found uniform '{}' in shader with ID {} at location {}", name, shader.id, location);
-    return location;
+    if (location != -1) {
+      CORE_LOG_DEBUG("Found uniform '{}' in shader with ID {} at location {}", name, shader.id, location);
+    }
+    return static_cast<uint32_t>(location);
   }
 
   namespace {

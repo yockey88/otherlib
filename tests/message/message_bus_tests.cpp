@@ -101,4 +101,89 @@ namespace other {
     );
   }
 
+  TEST_F(thread_tests, channel_try_pop_is_non_blocking_and_fifo) {
+    ref<channel_queue<message>> queue = make_ref<channel_queue<message>>();
+    auto [producer, consumer] = channel<message>::make_channel(queue);
+
+    ASSERT_FALSE(consumer->try_pop().has_value());
+
+    message first = {};
+    first.category = 0xBEEF;
+    message second = {};
+    second.category = 0xCAFE;
+    producer->push(std::move(first));
+    producer->push(std::move(second));
+
+    opt<message> a = consumer->try_pop();
+    opt<message> b = consumer->try_pop();
+    ASSERT_TRUE(a.has_value());
+    ASSERT_TRUE(b.has_value());
+    EXPECT_EQ(a->category, 0xBEEF);
+    EXPECT_EQ(b->category, 0xCAFE);
+    ASSERT_FALSE(consumer->try_pop().has_value());
+  }
+
+  TEST_F(thread_tests, message_bus_try_receive_drains_all_pending_fifo) {
+    std::barrier sync_point(2);
+
+    message_bus bus;
+
+    std::thread t1 = std::thread{ [&]() {
+      bus.register_thread();
+      sync_point.arrive_and_wait();
+
+      for (uint16_t i = 0; i < 3; ++i) {
+        message msg = {};
+        msg.category = 0xBEEF;
+        msg.id = i;
+        bus.send_message(std::move(msg));
+      }
+      sync_point.arrive_and_wait();
+    } };
+
+    std::thread t2 = std::thread{ [&]() {
+      bus.register_thread();
+      sync_point.arrive_and_wait();
+
+      /// all three sent before this barrier releases
+      sync_point.arrive_and_wait();
+
+      for (uint16_t i = 0; i < 3; ++i) {
+        opt<message> msg = bus.try_receive_message();
+        ASSERT_TRUE(msg.has_value());
+        EXPECT_EQ(msg->category, 0xBEEF);
+        EXPECT_EQ(msg->id, i);
+      }
+      ASSERT_FALSE(bus.try_receive_message().has_value());
+    } };
+
+    t1.join();
+    t2.join();
+  }
+
+  TEST_F(thread_tests, channel_await_without_timeout_blocks_until_push) {
+    ref<channel_queue<message>> queue = make_ref<channel_queue<message>>();
+    auto [producer, consumer] = channel<message>::make_channel(queue);
+
+    /// no-timeout await must block on an empty queue (popping blind was UB), then wake
+    std::thread pusher{ [&]() {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      message msg = {};
+      msg.category = 0xBEEF;
+      msg.id = 0xF00D;
+      producer->push(std::move(msg));
+    } };
+
+    const auto start = std::chrono::steady_clock::now();
+    opt<message> received = consumer->await_message();
+    const auto waited = std::chrono::steady_clock::now() - start;
+
+    pusher.join();
+
+    ASSERT_TRUE(received.has_value());
+    EXPECT_EQ(received->category, 0xBEEF);
+    EXPECT_EQ(received->id, 0xF00D);
+    EXPECT_GE(waited, std::chrono::milliseconds(30));
+  }
+
 }  // namespace other

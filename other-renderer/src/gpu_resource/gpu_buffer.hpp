@@ -62,6 +62,8 @@ namespace other {
    private:
     size_t current_size = 0;
     uint32_t binding_point = 0;
+    /// cpu store changed since last upload; binds skip re-upload when clear
+    bool dirty = true;
     opt<std::string> binding_name;
     opt<resource_handle> shader_resource_handle;
 

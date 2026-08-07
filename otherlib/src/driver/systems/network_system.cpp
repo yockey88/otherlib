@@ -5,6 +5,7 @@
 
 #include <cctype>
 #include <cstdint>
+#include <thread>
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
@@ -20,39 +21,31 @@
 
 namespace other {
 
+  void signal_catcher::catch_signal(std::error_code ec, int signum) {
+    if (ec && ec == asio::error::operation_aborted) {
+      CORE_LOG_TRACE("Signal wait aborted");
+      return;
+    }
+
+    if (!ec) {
+      network_system_ptr->catch_signal(signum);
+    } else {
+      CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
+      CORE_LOG_ERROR("Shutting down because signal handling is compromised.");
+      network_system_ptr->get_driver().request_shutdown();
+    }
+  }
+
   void network_system::initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::initialize");
     net_context = make_scope<network_context>();
     OTHER_ASSERT(net_context != nullptr, "Failed to create network context.");
 
-    /// \todo move this somewhere more permanent?
-    struct signal_catcher {
-      signal_catcher(network_system* network_system_ptr)
-          : network_system_ptr(network_system_ptr) {}
-      void catch_signal(std::error_code ec, int signum) {
-        if (ec && ec == asio::error::operation_aborted) {
-          CORE_LOG_TRACE("Signal wait aborted");
-          return;
-        }
+    net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &signal_handler));
 
-        if (!ec) {
-          network_system_ptr->catch_signal(signum);
-        } else {
-          CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
-          CORE_LOG_ERROR("Shutting down because signal handling is compromised.");
-          network_system_ptr->get_driver().request_shutdown();
-        }
-      }
-
-      network_system* network_system_ptr = nullptr;
-    };
-
-    static signal_catcher catcher{ this };
-    net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
-
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    network_disabled = get_driver().get_config_value<bool>("networking.force-disable", false);
+    if (!network_disabled) {
       net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
 
       net_context->net_thread->launch();
@@ -96,16 +89,11 @@ namespace other {
       }
     }
 
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    if (!network_disabled) {
       PROFILE_SECTION("network_system::tick--network_thread_messages");
 
-      opt<message> msg_opt = std::nullopt;
-      {
-        PROFILE_SECTION("network_system::tick--await_message");
-        msg_opt = net_context->net_thread_message_bus.receive_message();
-      }
-      if (msg_opt.has_value()) {
+      /// non-blocking drain; a blocking receive costs a ~1ms condvar floor per frame
+      while (opt<message> msg_opt = net_context->net_thread_message_bus.try_receive_message()) {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }
     }
@@ -117,8 +105,7 @@ namespace other {
     PROFILE_SECTION("network_system::shutdown");
     message_handlers.clear();
 
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    if (!network_disabled) {
       net_context->net_thread->wait_for_shutdown_complete();
       net_context->net_thread = nullptr;
       net_context->registered_transport_providers.clear();
@@ -128,11 +115,35 @@ namespace other {
     ack_list.clear();
   }
 
+  void network_system::wait_for_pump_quiescence(uint64_t recorded_epoch) {
+    ASSERT_MAIN_THREAD();
+    if (net_context == nullptr || net_context->net_thread == nullptr) {
+      return;
+    }
+    PROFILE_SECTION("network_system::wait_for_pump_quiescence");
+
+    /// epoch > recorded+1: every iteration that could hold the pointer has finished
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+    while (net_context->net_thread->is_running() &&
+           net_context->net_thread->reclamation_epoch() <= recorded_epoch + 1) {
+      if (std::chrono::steady_clock::now() > deadline) {
+        CORE_LOG_WARN("Timed out waiting for network pump quiescence, destroying anyway.");
+        break;
+      }
+      std::this_thread::yield();
+    }
+  }
+
   natural_t network_system::register_transport_provider(scope<transport_provider> provider) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(provider != nullptr, "Cannot register null transport provider.");
     PROFILE_SECTION("network_system::register_transport_provider");
+
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring transport provider '{}': networking is disabled (no network thread).", provider->name());
+      return 0;
+    }
 
     natural_t id = provider->hash();
     if (net_context->registered_transport_providers.find(id) != net_context->registered_transport_providers.end()) {
@@ -154,6 +165,11 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink.");
     PROFILE_SECTION("network_system::register_transport_listener");
+
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring packet sink for transport [{}]: networking is disabled (no network thread).", transport_name);
+      return 0;
+    }
 
     natural_t id = net_context->generate_packet_sink_id();
     OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
@@ -183,7 +199,10 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
+    /// tombstone, wait out the pump, destroy before the owner module can unload
     net_context->net_thread->unregister_provider(itr->second.get());
+    wait_for_pump_quiescence(net_context->net_thread->reclamation_epoch());
+    itr->second->shutdown();
     net_context->registered_transport_providers.erase(itr);
   }
 
@@ -199,7 +218,13 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering packet sink [{}]", sink_id);
-    net_context->net_thread->unregister_packet_sink(sink_id);
+    /// strip every provider's fan-out (stale entry = UAF once traffic flows),
+    ///  then wait out the pump before destroying
+    for (auto& [provider_id, provider] : net_context->registered_transport_providers) {
+      provider->unregister_packet_sink(itr->second.get());
+    }
+    const uint64_t epoch = net_context->net_thread != nullptr ? net_context->net_thread->reclamation_epoch() : 0;
+    wait_for_pump_quiescence(epoch);
     net_context->registered_packet_sinks.erase(itr);
   }
 
@@ -400,12 +425,6 @@ namespace other {
 
     send_to_network_thread(kernel, std::move(ack_msg));
     return ack_id;
-  }
-
-  void network_system::cancel_acknowledgment(natural_t ack_id) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("network_system::cancel_acknowledgment");
-    ack_list.cancel_ack(ack_id);
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {

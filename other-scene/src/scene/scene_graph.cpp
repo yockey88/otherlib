@@ -7,13 +7,6 @@
 
 namespace other {
 
-  scene_graph::scene_graph(std::vector<scene>& scenes) {
-    PROFILE_SECTION("scene_graph::scene_graph");
-    for (auto& s : scenes) {
-      g.add_node(std::move(s));
-    }
-  }
-
   scene_graph::~scene_graph() {
     PROFILE_SECTION("scene_graph::~scene_graph");
     g.clear();

@@ -77,7 +77,7 @@ namespace other {
 
     MOCK_METHOD(void, bind_buffer_resource, (const resource_handle& handle, gpu_buffer::buf_type type), (override));
     MOCK_METHOD(void, unbind_buffer_resource, (const resource_handle& handle), (override));
-    MOCK_METHOD(void, bind_shader_buffer_resource, (const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size), (override));
+    MOCK_METHOD(void, bind_shader_buffer_resource, (const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type), (override));
     MOCK_METHOD(void, set_shader_block_binding, (const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type), (override));
     MOCK_METHOD(void, buffer_data, (const resource_handle& handle, uint32_t binding_point, const void* data, size_t size), (override));
     MOCK_METHOD(void, buffer_range, (const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data), (override));

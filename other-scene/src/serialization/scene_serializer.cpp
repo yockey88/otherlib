@@ -395,7 +395,7 @@ namespace other {
       if (!in.is_open()) {
         return scene_parse_result::fail(std::format("failed to open scene file '{}'", path.string()));
       }
-      std::vector<char> contents{ std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>() };
+      ostd::vector<char> contents{ std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>() };
 
       const std::string extension = path.extension().string();
       if (extension == kSceneTomlExtension) {

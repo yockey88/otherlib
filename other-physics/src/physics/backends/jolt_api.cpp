@@ -119,7 +119,7 @@ namespace other {
       events.push_back(ev);
     }
 
-    void drain_into(std::vector<contact_event>& out) {
+    void drain_into(ostd::vector<contact_event>& out) {
       std::lock_guard lock(mutex);
       out.insert(out.end(), events.begin(), events.end());
       events.clear();
@@ -186,11 +186,11 @@ namespace other {
     virtual void DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor, float inHeight) override {
     }
 
-    std::vector<physics_api::line> debug_lines;
-    std::vector<glm::vec4> debug_line_colors;
+    ostd::vector<physics_api::line> debug_lines;
+    ostd::vector<glm::vec4> debug_line_colors;
 
-    std::vector<physics_api::triangle> debug_triangles;
-    std::vector<glm::vec4> debug_triangle_colors;
+    ostd::vector<physics_api::triangle> debug_triangles;
+    ostd::vector<glm::vec4> debug_triangle_colors;
   };
 
   static void trace_impl(const char* inFMT, ...) {

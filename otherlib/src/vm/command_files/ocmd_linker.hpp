@@ -20,7 +20,7 @@ namespace other {
         : code(code) {}
     ~ocmd_linker() = default;
 
-    std::vector<uint8_t> link(scope<symbol_resolver> resolver, diagnostic_engine* diag);
+    ostd::vector<uint8_t> link(scope<symbol_resolver> resolver, diagnostic_engine* diag);
 
     constexpr static inline size_t kHeaderAddressOffset = sizeof(ocmd_file_header);
     inline uint16_t normalize_address(size_t address) const {
@@ -35,7 +35,7 @@ namespace other {
       std::string name;
       uint16_t local_address;
     };
-    std::vector<symbol_address> compiler_symbol_local_addresses;
+    ostd::vector<symbol_address> compiler_symbol_local_addresses;
 
     inline uint16_t get_code_section_offset() const {
       return sizeof(ocmd_file_header);

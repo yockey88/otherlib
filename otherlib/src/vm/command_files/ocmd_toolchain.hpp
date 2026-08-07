@@ -5,6 +5,7 @@
 #define OTHERLIB_VM_COMMAND_FILES_OCMD_TOOLCHAIN_HPP
 
 #include "vm/command_files/ocmd_headers.hpp"
+#include "data-structures/std_container.hpp"
 #include "vm/vm_version.hpp"
 
 namespace other {
@@ -13,7 +14,7 @@ namespace other {
 
   class ocmd_toolchain {
    public:
-    std::vector<uint8_t> assemble_oasm_source(other_command_device* device, const filepath& path);
+    ostd::vector<uint8_t> assemble_oasm_source(other_command_device* device, const filepath& path);
   };
 
 }  // namespace other

@@ -110,7 +110,7 @@ namespace other {
     ostd::vector<main_menu_bar_menu> main_menu_bar_menus;
 
     natural_t window_registry_id = 0;
-    std::unordered_map<natural_t, driver_window> custom_windows;
+    ostd::unordered_map<natural_t, driver_window> custom_windows;
 
     scope<ui::component_widget_registry> component_reg = nullptr;
 

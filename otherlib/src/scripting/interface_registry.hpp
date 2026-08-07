@@ -87,9 +87,9 @@ namespace other {
     inline natural_t generate_interface_binding_id() { return ++interface_binding_count; }
     inline natural_t generate_callback_id() { return ++callback_id_counter; }
 
-    std::map<natural_t, environment_interface> interfaces;
-    std::map<natural_t, bound_interface> bound_interfaces;
-    std::map<natural_t, bound_callback> bound_callbacks;
+    ostd::map<natural_t, environment_interface> interfaces;
+    ostd::map<natural_t, bound_interface> bound_interfaces;
+    ostd::map<natural_t, bound_callback> bound_callbacks;
 
     bool has_interface_method(const std::string_view interface_name, const std::string_view method_name) const;
 

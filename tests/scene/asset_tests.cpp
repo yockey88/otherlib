@@ -114,49 +114,21 @@ namespace other {
 
   namespace {
 
-    void set_up_mock_rendering_api_and_expect_mesh_creation(event_system& events) {
-      static mesh test_mesh;
-      static gpu_buffer test_vertex_buffer(resource_handle(1, resource_type::BUFFER));
-      static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
+    /// the driver's asset_system registers these at boot; the bare handler in these
+    ///  tests fires them on every pipeline completion regardless
+    void register_asset_events(event_system& events) {
+      for (asset::type type : { asset::TEXTURE, asset::MODEL_SOURCE, asset::ANIMATION, asset::SCRIPT_PROJECT,
+                                asset::SCRIPT_SOURCE, asset::SCRIPT_FILE, asset::SCRIPT, asset::AUDIO,
+                                asset::SCENE, asset::INPUT_MAP, asset::RENDERING_PIPELINE, asset::MATERIAL }) {
+        events.register_event(get_asset_event_name(type, "asset-loaded"));
+        events.register_event(get_asset_event_name(type, "asset-unloaded"));
+        events.register_event(get_asset_event_name(type, "asset-load-failed"));
+        events.register_event(get_asset_event_name(type, "asset-unload-failed"));
+      }
+    }
 
-      using ::testing::_;
-      /// first we have to override the rendering subsystem api to avoid nullptr dereference
-      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
-      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
-      // EXPECT_CALL(*mock_api, initialize_ui_context()).Times(1);
-      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
-      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
-
-      /// the meaningful load/unload assertions are registry state (get_model_source presence),
-      ///  not gpu call counts — exact counts break on every upload refactor. only the two
-      ///  structural creates stay counted.
-      EXPECT_CALL(*mock_api, create_mesh_resource(_, _))
-        .Times(1)
-        .WillOnce(testing::Return(&test_mesh));
-      EXPECT_CALL(*mock_api, destroy_mesh_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, bind_mesh_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, unbind_mesh_resource(_))
-        .Times(testing::AnyNumber());
-
-      EXPECT_CALL(*mock_api, create_buffer_resource(_, _))
-        .Times(2)
-        .WillOnce(testing::Return(&test_vertex_buffer))
-        .WillOnce(testing::Return(&test_index_buffer));
-      EXPECT_CALL(*mock_api, destroy_buffer_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, bind_buffer_resource(_, _))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, unbind_buffer_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(_, _))
-        .Times(testing::AnyNumber());
-
-      EXPECT_CALL(*mock_api, buffer_data(_, _, _, _))
-        .Times(testing::AnyNumber());
-
-      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+    void initialize_test_filesystem(event_system& events) {
+      register_asset_events(events);
 
       auto* fs = subsystem<file_system>::get();
       OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
@@ -165,11 +137,54 @@ namespace other {
         driver_mounts::kAssetMount,
         driver_mounts::kSceneMount,
         driver_mounts::kScriptMount,
-        driver_mounts::kAssetMount,
-        driver_mounts::kSceneMount,
-        driver_mounts::kScriptMount,
       };
       fs->initialize_directory_structure(kDefaultMounts);
+    }
+
+    /// mock setup for tests uploading a known number of model sources (each upload = one
+    ///  mesh create + a vertex/index buffer pair, in that order). every resource is a
+    ///  FRESH object carrying its minted handle, like the real backend: mesh_key batching,
+    ///  destroy_model, and the per-object reference counts all depend on per-resource
+    ///  identity (a shared static aliases the counts and trips the decrement assert)
+    void set_up_mock_rendering_api_for_model_uploads(event_system& events, int model_count) {
+      using ::testing::_;
+      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
+      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
+      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
+      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
+
+      EXPECT_CALL(*mock_api, create_mesh_resource(_, _))
+        .Times(model_count)
+        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> mesh* {
+          static std::deque<mesh> meshes;  /// stable addresses; callers hold the pointer
+          return &meshes.emplace_back(handle);
+        }));
+      EXPECT_CALL(*mock_api, destroy_mesh_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, bind_mesh_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, unbind_mesh_resource(_))
+        .Times(testing::AnyNumber());
+
+      EXPECT_CALL(*mock_api, create_buffer_resource(_, _))
+        .Times(2 * model_count)
+        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> gpu_buffer* {
+          static std::deque<gpu_buffer> buffers;  /// stable addresses; callers hold the pointer
+          return &buffers.emplace_back(handle);
+        }));
+      EXPECT_CALL(*mock_api, destroy_buffer_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, bind_buffer_resource(_, _))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, unbind_buffer_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(_, _))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, buffer_data(_, _, _, _))
+        .Times(testing::AnyNumber());
+
+      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+      initialize_test_filesystem(events);
     }
 
     void shutdown_mock_rendering_api() {
@@ -203,7 +218,7 @@ worker_count = {}
 
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
 
-    set_up_mock_rendering_api_and_expect_mesh_creation(events);
+    set_up_mock_rendering_api_for_model_uploads(events, 1);
 
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_EQ(std::filesystem::exists(test_file_path), true)
@@ -313,16 +328,7 @@ worker_count = {}
       EXPECT_CALL(*mock_api, destroy_texture_resource(_)).Times(1);
 
       subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
-
-      auto* fs = subsystem<file_system>::get();
-      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
-      fs->initialize_file_events(events);
-      constexpr std::array kDefaultMounts = {
-        driver_mounts::kAssetMount,
-        driver_mounts::kSceneMount,
-        driver_mounts::kScriptMount,
-      };
-      fs->initialize_directory_structure(kDefaultMounts);
+      initialize_test_filesystem(events);
     }
 
     void set_up_mock_rendering_api_and_expect_no_resource_creation(event_system& events) {
@@ -333,16 +339,7 @@ worker_count = {}
       EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
 
       subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
-
-      auto* fs = subsystem<file_system>::get();
-      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
-      fs->initialize_file_events(events);
-      constexpr std::array kDefaultMounts = {
-        driver_mounts::kAssetMount,
-        driver_mounts::kSceneMount,
-        driver_mounts::kScriptMount,
-      };
-      fs->initialize_directory_structure(kDefaultMounts);
+      initialize_test_filesystem(events);
     }
 
     void pump_until(asio::io_context& io_context, job_system& jobs, asset_handler& handler, auto&& done) {
@@ -565,8 +562,11 @@ worker_count = {}
     audio_config audio_cfg{};
     audio_cfg.force_pump_mode = true;
     ASSERT_TRUE(env->initialize(audio_cfg));
+    /// full destroy, not just shutdown(): the minimal profile never owns audio, and
+    ///  clip_revisions is high-water by design — only a fresh instance keeps the
+    ///  revision assertions below valid under --gtest_repeat
     struct env_guard {
-      ~env_guard() { subsystem<audio_environment>::get()->shutdown(); }
+      ~env_guard() { subsystem<audio_environment>::shutdown(); }
     } ___env_guard;
 
     const filepath audio_dir = std::filesystem::temp_directory_path() / "other-audio-asset-tests";
@@ -634,7 +634,7 @@ worker_count = {}
     jobs.initialize(cfg);
 
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
-    set_up_mock_rendering_api_and_expect_mesh_creation(events);
+    set_up_mock_rendering_api_for_model_uploads(events, 1);
 
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_TRUE(std::filesystem::exists(test_file_path));
@@ -669,61 +669,6 @@ worker_count = {}
   };
 
   namespace {
-
-    /// mock setup for tests uploading a known number of model sources (each upload = one
-    ///  mesh create + a vertex/index buffer pair, in that order). every resource is a
-    ///  FRESH object carrying its minted handle, like the real backend: mesh_key batching,
-    ///  destroy_model, and the per-object reference counts all depend on per-resource
-    ///  identity (a shared static aliases the counts and trips the decrement assert)
-    void set_up_mock_rendering_api_for_model_uploads(event_system& events, int model_count) {
-      using ::testing::_;
-      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
-      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
-      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
-      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
-
-      EXPECT_CALL(*mock_api, create_mesh_resource(_, _))
-        .Times(model_count)
-        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> mesh* {
-          static std::deque<mesh> meshes;  /// stable addresses; callers hold the pointer
-          return &meshes.emplace_back(handle);
-        }));
-      EXPECT_CALL(*mock_api, destroy_mesh_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, bind_mesh_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, unbind_mesh_resource(_))
-        .Times(testing::AnyNumber());
-
-      EXPECT_CALL(*mock_api, create_buffer_resource(_, _))
-        .Times(2 * model_count)
-        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> gpu_buffer* {
-          static std::deque<gpu_buffer> buffers;  /// stable addresses; callers hold the pointer
-          return &buffers.emplace_back(handle);
-        }));
-      EXPECT_CALL(*mock_api, destroy_buffer_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, bind_buffer_resource(_, _))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, unbind_buffer_resource(_))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(_, _))
-        .Times(testing::AnyNumber());
-      EXPECT_CALL(*mock_api, buffer_data(_, _, _, _))
-        .Times(testing::AnyNumber());
-
-      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
-
-      auto* fs = subsystem<file_system>::get();
-      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
-      fs->initialize_file_events(events);
-      constexpr std::array kDefaultMounts = {
-        driver_mounts::kAssetMount,
-        driver_mounts::kSceneMount,
-        driver_mounts::kScriptMount,
-      };
-      fs->initialize_directory_structure(kDefaultMounts);
-    }
 
     const gpu::bone_matrix_buffer* find_draw_buffer(const render_data& data, resource_handle source_handle) {
       for (size_t i = 0; i < data.mesh_keys.size(); ++i) {

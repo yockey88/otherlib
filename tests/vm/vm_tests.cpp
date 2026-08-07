@@ -60,7 +60,7 @@ namespace other {
       ss << std::format("{:#04x} ", opcode);
     }
 
-    std::vector<uint8_t> linked_binary;
+    ostd::vector<uint8_t> linked_binary;
     linked_binary.reserve(sizeof(ocmd_file_header) + bytes.size());
 
     const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);
@@ -82,7 +82,7 @@ namespace other {
   TEST_F(vm_tests, vm_program1) {
     std::string program1_src = detail::get_test_program1_source();
     CORE_LOG_DEBUG("Program Source:{}", program1_src);
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
 
     diagnostic_engine diag;
     {

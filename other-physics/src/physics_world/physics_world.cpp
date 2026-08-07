@@ -238,7 +238,7 @@ namespace other {
 
     physics_shape_desc build_desc = desc;
     if (build_desc.shape_kind == PHYSICS_SHAPE_TRIANGLE_MESH && body->body_type != physics_body::STATIC) {
-      CORE_LOG_WARN("Physics body {} is not static, downgrading triangle-mesh collider to a convex hull.", body->id);
+      CORE_LOG_DEBUG("Physics body {} is not static, downgrading triangle-mesh collider to a convex hull.", body->id);
       build_desc.shape_kind = PHYSICS_SHAPE_CONVEX_HULL;
     }
     if (build_desc.fit_render_bounds) {

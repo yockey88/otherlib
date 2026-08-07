@@ -63,9 +63,11 @@ namespace other {
     resolve_listener(active_scene, env, dt);
 
     if (active_scene == nullptr) {
-      /// scene gone (unload/teardown): every bound voice's owner went with it
+      /// scene gone: stop only live voices — shutdown clip unloads may have killed some
       for (const auto& [id, voice] : state.bound) {
-        env->stop_voice(voice);
+        if (env->voice_alive(voice)) {
+          env->stop_voice(voice);
+        }
       }
       state.bound.clear();
       return;

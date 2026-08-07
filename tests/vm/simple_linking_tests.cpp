@@ -41,7 +41,7 @@ namespace other {
       return expected_bytes;
     }
 
-    void verify_bytes(const std::vector<uint8_t>& actual, const std::vector<uint8_t>& expected) {
+    void verify_bytes(std::span<const uint8_t> actual, std::span<const uint8_t> expected) {
       std::span actual_view = std::span{ actual };
       std::span expected_view = std::span{ expected };
 
@@ -74,7 +74,7 @@ namespace other {
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
+    const ostd::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     const std::vector<uint8_t> code_bytes{
       0x00, 0x00, 0x00, 0x24,  // ret
@@ -104,7 +104,7 @@ namespace other {
     ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
+    const ostd::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     const std::vector<uint8_t> code_bytes{
       // $main
@@ -146,7 +146,7 @@ namespace other {
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
 
     auto resolver = make_scope<default_symbol_resolver>();
-    std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);
+    ostd::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);
     std::vector<uint8_t> code_bytes{
       // $main
       0x2C, 0x00, 0x01, 0x11,  // load r1 from [0x0030] (data.number)
@@ -179,7 +179,7 @@ namespace other {
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
+    const ostd::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     const std::vector<uint8_t> code_bytes{
       0x0A, 0x00, 0x01, 0x12,  // set r1, 10

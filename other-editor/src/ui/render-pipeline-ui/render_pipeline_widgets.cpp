@@ -18,9 +18,9 @@ namespace other {
   namespace ui {
     namespace inspector {
 
-      std::vector<render_pipeline_data> rebuild_render_pipeline_list(const renderer& r, const asset_system& assets) {
+      ostd::vector<render_pipeline_data> rebuild_render_pipeline_list(const renderer& r, const asset_system& assets) {
         PROFILE_SECTION("rebuild_render_pipeline_list");
-        std::vector<render_pipeline_data> entries;
+        ostd::vector<render_pipeline_data> entries;
 
         for (const std::string& name : r.get_pipeline_names()) {
           entries.push_back({
@@ -50,7 +50,7 @@ namespace other {
         return entries;
       }
 
-      int32_t draw_render_pipeline_list(const std::vector<render_pipeline_data>& entries, int32_t selected_index, int32_t pending_select_index, bool current_dirty) {
+      int32_t draw_render_pipeline_list(const ostd::vector<render_pipeline_data>& entries, int32_t selected_index, int32_t pending_select_index, bool current_dirty) {
         PROFILE_SECTION("draw_render_pipeline_list");
         static constexpr glm::vec4 kLiveDot = colors::hex_col_to_rgba(IM_COL32(90, 200, 120, 255));
         static constexpr glm::vec4 kDiskDot = colors::hex_col_to_rgba(IM_COL32(140, 140, 140, 255));

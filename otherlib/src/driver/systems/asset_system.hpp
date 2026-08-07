@@ -65,6 +65,11 @@ namespace other {
    private:
     scope<asset_handler> asset_mgr = nullptr;
 
+    /// watching is opt-in (editor); runtimes assume static assets
+    bool watch_assets = false;
+    double watch_interval = 0.25;
+    double watch_accumulator = 0.0;
+
     void mount_mounts(driver_kernel* kernel);
     void push_watch_filters();
 

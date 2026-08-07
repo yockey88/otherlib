@@ -7,6 +7,7 @@
  *  modified .cs, added .cs, deleted .cs, manifest self-edit, and excluded-path noise.
  **/
 #include <fstream>
+#include <thread>
 
 #include <asio/asio.hpp>
 #include <gtest/gtest.h>
@@ -78,9 +79,19 @@ namespace other {
         extra_items);
     }
 
+    /// a freshly deleted file can hold its name hostage for a few ms on windows
+    ///  (delete-pending under an external scanner's handle); a silent write loss here
+    ///  surfaces later as a bogus missing-asset edge — retry briefly, then insist
     static void write_file(const filepath& path, std::string_view contents) {
       std::ofstream out(path);
+      for (int attempt = 0; !out.is_open() && attempt < 40; ++attempt) {
+        std::this_thread::sleep_for(milliseconds(5));
+        out.open(path);
+      }
+      OTHER_ASSERT(out.is_open(), "failed to open '{}' for write", path.string());
       out << contents;
+      out.flush();
+      OTHER_ASSERT(out.good(), "failed to write '{}'", path.string());
     }
 
     natural_t stable_of(const filepath& abs) const { return stable_id_for(virtualize(abs)); }

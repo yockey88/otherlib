@@ -13,10 +13,10 @@
 namespace other {
   namespace {
 
-    std::vector<std::string> split_dotted_path(std::string_view dotted_path) {
+    ostd::vector<std::string> split_dotted_path(std::string_view dotted_path) {
       OTHER_ASSERT(!dotted_path.empty(), "empty toml table path");
       OTHER_ASSERT(dotted_path.front() != '.' && dotted_path.back() != '.', "malformed toml table path '{}'", dotted_path);
-      std::vector<std::string> segments;
+      ostd::vector<std::string> segments;
       size_t start = 0;
       while (start <= dotted_path.size()) {
         const size_t dot = dotted_path.find('.', start);
@@ -157,7 +157,7 @@ namespace other {
   toml_writer& toml_writer::table(std::string_view dotted_path) {
     OTHER_ASSERT(!finalized, "toml_writer used after finalize");
     PROFILE_SECTION("toml_writer::table");
-    const std::vector<std::string> segments = split_dotted_path(dotted_path);
+    const ostd::vector<std::string> segments = split_dotted_path(dotted_path);
 
     /// walk the mirror, descending through the last element of any table-array segment;
     ///  intermediate tables are created implicitly, the final table must not already be
@@ -198,7 +198,7 @@ namespace other {
   toml_writer& toml_writer::table_array(std::string_view dotted_path) {
     OTHER_ASSERT(!finalized, "toml_writer used after finalize");
     PROFILE_SECTION("toml_writer::table_array");
-    const std::vector<std::string> segments = split_dotted_path(dotted_path);
+    const ostd::vector<std::string> segments = split_dotted_path(dotted_path);
 
     toml::table* node = &mirror;
     for (size_t i = 0; i + 1 < segments.size(); ++i) {

@@ -49,7 +49,7 @@ namespace other {
   }
 
   SDL_Window* window_manager::get_window(SDL_WindowID window_id) {
-    PROFILE_SECTION("window_manager::get-window");
+    PROFILE_SECTION_VERBOSE("window_manager::get-window");
     auto itr = windows.find(window_id);
     if (itr != windows.end()) {
       return itr->second;
@@ -59,7 +59,7 @@ namespace other {
   }
 
   SDL_Window* window_manager::get_main_window() const {
-    PROFILE_SECTION("window_manager::get-main-window");
+    PROFILE_SECTION_VERBOSE("window_manager::get-main-window");
     if (main_window == nullptr) {
       CORE_LOG_ERROR("Main window is not set.");
       return nullptr;

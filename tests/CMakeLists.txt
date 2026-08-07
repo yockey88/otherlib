@@ -40,6 +40,7 @@ target_sources(other_tests
     
     ${CMAKE_CURRENT_SOURCE_DIR}/thread/thread_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/message/message_bus_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/message/message_serialization_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/script_environment_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/callback_tests.cpp
@@ -70,6 +71,8 @@ target_sources(other_tests
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network/network_thread_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_provider_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/slot_registry_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/acknowledgement_list_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network_thread_test_runner.cpp
 

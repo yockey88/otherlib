@@ -21,11 +21,15 @@ namespace other {
     void register_thread();
 
     opt<message> receive_message(microseconds timeout = microseconds(10));
+    /// non-blocking variant of receive_message
+    opt<message> try_receive_message();
     void send_message(message&& msg);
 
     bool has_message();
 
    private:
+    uint8_t current_thread_index();
+
     struct thread_data {
       scope<message_channel> tx_channel = nullptr;
       scope<message_channel> rx_channel = nullptr;

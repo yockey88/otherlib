@@ -2,6 +2,7 @@
  * \file peer-mesg/packet_sink.cpp
  **/
 #include "peer_mesh/packet_sink.hpp"
+#include "data-structures/std_container.hpp"
 
 #include "core/profiler.hpp"
 #include "thread/thread_safety.hpp"
@@ -25,7 +26,7 @@ namespace other {
         .priority = job::priority::HIGH,
         .thread_affinity = job::affinity::MAIN_THREAD,
       },
-      [this, id = from_peer_id, d = std::vector<uint8_t>(data.begin(), data.end())]() {
+      [this, id = from_peer_id, d = ostd::vector<uint8_t>(data.begin(), data.end())]() {
         ASSERT_MAIN_THREAD();
         PROFILE_SECTION("packet_sink::on_rx_data");
         on_rx_data(id, d);

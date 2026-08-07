@@ -24,6 +24,7 @@ namespace other {
 
    private:
     source_map sources;
+    /// std: vm::diagnostics is a static-storage instance (no arena at static init/deinit)
     std::map<natural_t, diagnostic_sink*> sinks;
   };
 

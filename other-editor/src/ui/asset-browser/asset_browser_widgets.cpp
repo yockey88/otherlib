@@ -77,7 +77,7 @@ namespace other {
         }
       }
 
-      int draw_breadcrumbs(const std::vector<breadcrumb_segment>& segments) {
+      int draw_breadcrumbs(const ostd::vector<breadcrumb_segment>& segments) {
         using namespace colors::asset_browser;
         int clicked = -1;
         ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -145,7 +145,7 @@ namespace other {
         return changed;
       }
 
-      bool draw_filter_bar(std::vector<filter_pill_desc>& filters, int visible_asset_count) {
+      bool draw_filter_bar(ostd::vector<filter_pill_desc>& filters, int visible_asset_count) {
         using namespace colors::asset_browser;
         bool changed = false;
         ImDrawList* dl = ImGui::GetWindowDrawList();

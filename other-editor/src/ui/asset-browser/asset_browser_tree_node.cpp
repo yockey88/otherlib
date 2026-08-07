@@ -19,7 +19,7 @@ namespace other {
 
     namespace {
 
-      void build_subtree(std::vector<abw::dir_tree_node>& nodes, const ref<directory>& dir, const std::string& base_path, int depth) {
+      void build_subtree(ostd::vector<abw::dir_tree_node>& nodes, const ref<directory>& dir, const std::string& base_path, int depth) {
         auto children = dir->child_directories();
         for (const auto& child : children) {
           std::string child_path = base_path + "/" + child->name();

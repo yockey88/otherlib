@@ -9,8 +9,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include "cli/tools/dev_common.hpp"
 #include "core/profiler.hpp"
+
+#include "cli/tools/dev_common.hpp"
 
 namespace other {
   namespace cli {
@@ -23,14 +24,17 @@ namespace other {
   source tree build. Build the suites first with: build --tests
 
   options:
-    -c, --config <config>    build config to test (default: first config with a test build)
-    -f, --filter <pattern>   forwarded to --gtest_filter to run a subset of suites
-        --xml <path>         gtest xml report path
-                             (default: other_test_results.windows.<debug|release>.xml)
-        --no-shuffle         run tests in declaration order instead of shuffled
-        --soak               run the soak harness and validate logs/soak-report.json
-        --env-root <path>    explicit source tree root
-        --dry-run            print the launch instead of running it)";
+    -s,  --seed <seed>        seed for gtest shuffle (default: random)
+    -n,  --num-runs <count>   run the tests multiple times (default: 1)
+    -c,  --config <config>    build config to test (default: first config with a test build)
+    -f,  --filter <pattern>   forwarded to --gtest_filter to run a subset of suites
+         --xml <path>         gtest xml report path
+                              (default: other_test_results.windows.<debug|release>.xml)
+    -bf, --break-on-failure   stop on first test failure (default: false)
+         --no-shuffle         run tests in declaration order instead of shuffled
+         --soak               run the soak harness and validate logs/soak-report.json
+         --env-root <path>    explicit source tree root
+         --dry-run            print the launch instead of running it)";
 
       tool_result run_soak_harness(tool_context& ctx, const dev_tool_options& options) {
         PROFILE_SECTION("run_soak_harness");
@@ -38,8 +42,8 @@ namespace other {
         const filepath harness = find_built_executable(ctx.env, filepath("tests") / "harness", "other_soak", options.config, resolved_config);
         if (harness.empty()) {
           return tool_result::error(std::format("no{} soak harness build found under 'build/tests/harness' (build one with: build --tests{})",
-            options.config.has_value() ? std::format(" {}", options.config.value()) : "",
-            options.config.has_value() ? std::format(" --config {}", options.config.value()) : ""));
+                                                options.config.has_value() ? std::format(" {}", options.config.value()) : "",
+                                                options.config.has_value() ? std::format(" --config {}", options.config.value()) : ""));
         }
 
         const filepath report_path = ctx.env.root / "logs" / "soak-report.json";
@@ -50,10 +54,10 @@ namespace other {
 
         ctx.print("running soak harness [{}]", resolved_config);
         const tool_result ran = run_attached(ctx,
-          { .executable = harness,
-            .arguments = { (filepath("tests") / "harness" / "soak-config.toml").string() },
-            .working_directory = ctx.env.root },
-          options.dry_run);
+                                             { .executable = harness,
+                                               .arguments = { (filepath("tests") / "harness" / "soak-config.toml").string() },
+                                               .working_directory = ctx.env.root },
+                                             options.dry_run);
         if (options.dry_run) {
           return tool_result::ok("dry run only, nothing launched");
         }
@@ -92,7 +96,10 @@ namespace other {
       dev_tool_options options;
       opt<std::string> filter = std::nullopt;
       opt<std::string> xml_path = std::nullopt;
+      uint32_t num_runs = 1;
+      opt<uint32_t> seed = std::nullopt;
       bool shuffle = true;
+      bool break_on_failure = false;
       bool soak = false;
 
       for (size_t i = 0; i < args.size(); ++i) {
@@ -104,11 +111,22 @@ namespace other {
         }
 
         const std::string& arg = args[i];
-        if (arg == "--filter" || arg == "-f") {
+        if (arg == "-s" || arg == "--seed") {
+          if (i + 1 >= args.size()) {
+            return tool_result::error(std::format("'{}' requires a seed value", arg));
+          }
+          seed = std::stoul(args[++i]);
+        } else if (arg == "--filter" || arg == "-f") {
           if (i + 1 >= args.size()) {
             return tool_result::error(std::format("'{}' requires a gtest filter pattern", arg));
           }
           filter = args[++i];
+
+        } else if (arg == "--num-runs" || arg == "-n") {
+          if (i + 1 >= args.size()) {
+            return tool_result::error(std::format("'{}' requires a run count", arg));
+          }
+          num_runs = std::stoul(args[++i]);
         } else if (arg == "--xml") {
           if (i + 1 >= args.size()) {
             return tool_result::error("'--xml' requires a report path");
@@ -116,6 +134,8 @@ namespace other {
           xml_path = args[++i];
         } else if (arg == "--no-shuffle") {
           shuffle = false;
+        } else if (arg == "-bf" || arg == "--break-on-failure") {
+          break_on_failure = true;
         } else if (arg == "--soak") {
           soak = true;
         } else {
@@ -135,8 +155,8 @@ namespace other {
       const filepath tests = find_built_executable(ctx.env, "tests", "other_tests", options.config, resolved_config);
       if (tests.empty()) {
         return tool_result::error(std::format("no{} test build found under 'build/tests' (build one with: build --tests{})",
-          options.config.has_value() ? std::format(" {}", options.config.value()) : "",
-          options.config.has_value() ? std::format(" --config {}", options.config.value()) : ""));
+                                              options.config.has_value() ? std::format(" {}", options.config.value()) : "",
+                                              options.config.has_value() ? std::format(" --config {}", options.config.value()) : ""));
       }
 
       /// TODO: fix platform specific report paths when a second platform exists
@@ -145,17 +165,24 @@ namespace other {
         std::format("other_test_results.windows.{}.xml", debug_family ? "debug" : "release"));
 
       std::vector<std::string> test_args = { (filepath("resources") / "dev-test-config.toml").string() };
+      if (seed.has_value()) {
+        test_args.push_back(std::format("--gtest_random_seed={}", seed.value()));
+      }
       if (filter.has_value()) {
         test_args.push_back(std::format("--gtest_filter={}", filter.value()));
       }
       if (shuffle) {
         test_args.push_back("--gtest_shuffle");
       }
+      if (break_on_failure) {
+        test_args.push_back("--gtest_break_on_failure");
+      }
+      test_args.push_back(std::format("--gtest_repeat={}", num_runs));
       test_args.push_back(std::format("--gtest_output=xml:{}", report));
 
       ctx.print("running test suites [{}]", resolved_config);
       const tool_result ran = run_attached(ctx,
-        { .executable = tests, .arguments = test_args, .working_directory = ctx.env.root }, options.dry_run);
+                                           { .executable = tests, .arguments = test_args, .working_directory = ctx.env.root }, options.dry_run);
       if (options.dry_run) {
         return tool_result::ok("dry run only, nothing launched");
       }

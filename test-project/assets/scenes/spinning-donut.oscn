@@ -71,7 +71,7 @@ tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics.settings]
 body_type = 2
 [objects.components.physics.settings.shape]
-shape_kind = 5
+shape_kind = 4
 # [objects.components.animation]
 # clip_name = "Scene"
 # playing = true
@@ -99,7 +99,7 @@ tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics.settings]
 body_type = 2
 [objects.components.physics.settings.shape]
-shape_kind = 5
+shape_kind = 4
 # [objects.components.animation]
 # clip_name = "Scene"
 # playing = true
