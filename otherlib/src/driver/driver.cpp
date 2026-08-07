@@ -117,7 +117,7 @@ namespace other {
       MARK_NAMED_FRAME("driver_main_loop");
       update();
       render();
-      // frame_rate_guard.wait();
+      frame_rate_guard.wait();
     } while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED);
   }
 
