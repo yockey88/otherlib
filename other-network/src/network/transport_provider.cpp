@@ -8,6 +8,7 @@
 #include "network/network_thread.hpp"
 
 #include "message/messages.hpp"
+#include "peer_mesh/packet_sink.hpp"
 
 namespace other {
 
@@ -32,6 +33,10 @@ namespace other {
     this->host_thread = host_thread;
     this->net_io = net_io;
 
+    /// fresh lifecycle: a re-initialized provider must not resurrect listeners from a
+    ///  previous life (runs on the registering thread — the registry's single writer)
+    registered_listeners.reset();
+
     on_initialize();
   }
 
@@ -52,7 +57,9 @@ namespace other {
     OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when shutting down transport provider.");
     on_shutdown();
 
-    registered_listeners.clear();
+    /// listener slots are left as-is: shutdown may run on the network thread (which must
+    ///  never write the registry) and the entries die with this object or the next
+    ///  initialize() reset — whichever comes first
 
     net_io = nullptr;
     host_thread = nullptr;
@@ -73,10 +80,7 @@ namespace other {
     CORE_LOG_DEBUG("[TRANSPORT {}] Received data on connection {}: {} bytes", name(), connection_id, data.size());
     on_rx_data(connection_id, data);
 
-    for (auto* listener : registered_listeners) {
-      OTHER_ASSERT(listener != nullptr, "Registered packet sink is null");
-      listener->rx_data(connection_id, data);
-    }
+    registered_listeners.for_each([&](packet_sink& listener) { listener.rx_data(connection_id, data); });
   }
 
   void transport_provider::connection_accepted(natural_t listener_id, const binding_point& endpoint) {
@@ -84,10 +88,7 @@ namespace other {
     CORE_LOG_DEBUG("[TRANSPORT {}] Connection accepted on listener {} from {}:{}", name(), listener_id, endpoint.ip, endpoint.port);
     on_connection_accepted(listener_id, endpoint);
 
-    for (auto* listener : registered_listeners) {
-      OTHER_ASSERT(listener != nullptr, "Registered packet sink is null");
-      listener->connection_opened(listener_id);
-    }
+    registered_listeners.for_each([&](packet_sink& listener) { listener.connection_opened(listener_id); });
   }
 
   void transport_provider::connection_socket_closed(natural_t connection_id) {
@@ -96,10 +97,7 @@ namespace other {
 
     on_connection_socket_closed(connection_id);
 
-    for (auto* listener : registered_listeners) {
-      OTHER_ASSERT(listener != nullptr, "Registered packet sink is null");
-      listener->connection_closed(connection_id);
-    }
+    registered_listeners.for_each([&](packet_sink& listener) { listener.connection_closed(connection_id); });
 
     host_thread_ref().mark_route_recently_closed(connection_id);
   }
@@ -109,10 +107,7 @@ namespace other {
     CORE_LOG_DEBUG("[TRANSPORT {}] connection broken: ID {}", name(), connection_id);
     on_connection_socket_broken(connection_id);
 
-    for (auto* listener : registered_listeners) {
-      OTHER_ASSERT(listener != nullptr, "Registered packet sink is null");
-      listener->connection_closed(connection_id);
-    }
+    registered_listeners.for_each([&](packet_sink& listener) { listener.connection_closed(connection_id); });
 
     host_thread_ref().mark_route_recently_closed(connection_id);
   }

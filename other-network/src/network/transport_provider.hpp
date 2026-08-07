@@ -4,7 +4,6 @@
 #ifndef OTHER_NETWORK_NETWORK_TRANSPORT_PROVIDER_HPP
 #define OTHER_NETWORK_NETWORK_TRANSPORT_PROVIDER_HPP
 
-#include <set>
 #include <string>
 
 #include <asio/asio.hpp>
@@ -12,6 +11,7 @@
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
 #include "core/interfaces.hpp"
+#include "thread/slot_registry.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/io.hpp"
@@ -41,26 +41,34 @@ namespace other {
     void begin_shutdown();
     void shutdown();
 
-    // called from main thread
+    /// registration runs on the main thread only; the network thread iterates the
+    ///  registry wait-free during rx fan-out. unregistering only tombstones the entry —
+    ///  destroying the sink itself must wait for network-thread quiescence
+    ///  (network_system's deferred reclaim owns that)
     inline void register_packet_sink(packet_sink* sink) {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(sink != nullptr, "Cannot register a null packet sink.");
       OTHER_ASSERT(!registered_listeners.contains(sink), "Packet sink is already registered.");
 
       CORE_LOG_TRACE("[TRANSPORT {}] Registering packet sink at address {:p}", name(), static_cast<const void*>(sink));
-      registered_listeners.insert(sink);
+      const bool inserted = registered_listeners.insert(sink);
+      OTHER_ASSERT(inserted, "Packet sink registry full (capacity {})", registered_listeners.capacity());
       on_registered_packet_sink(sink);
     }
     virtual void on_registered_packet_sink(packet_sink* sink) {}
 
-    inline void unregister_packet_sink(packet_sink* sink) {
+    /// tolerant of absence: the owner strips a dying sink from every provider without
+    ///  tracking which ones it was subscribed to. returns whether it was registered here
+    inline bool unregister_packet_sink(packet_sink* sink) {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(sink != nullptr, "Cannot unregister a null packet sink.");
-      OTHER_ASSERT(registered_listeners.contains(sink), "Packet sink is not registered and cannot be unregistered.");
 
+      if (!registered_listeners.erase(sink)) {
+        return false;
+      }
       CORE_LOG_TRACE("[TRANSPORT {}] Unregistering packet sink at address {:p}", name(), static_cast<const void*>(sink));
-      registered_listeners.erase(sink);
       on_unregistered_packet_sink(sink);
+      return true;
     }
     virtual void on_unregistered_packet_sink(packet_sink* sink) {}
 
@@ -105,10 +113,12 @@ namespace other {
     virtual void on_connection_socket_broken(natural_t connection_id) {}
 
    private:
+    constexpr static size_t kMaxPacketSinks = 16;
+
     network_thread* host_thread = nullptr;
     io* net_io = nullptr;
 
-    std::set<packet_sink*> registered_listeners;
+    slot_registry<packet_sink, kMaxPacketSinks> registered_listeners;
   };
 
 }  // namespace other

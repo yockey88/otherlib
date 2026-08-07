@@ -24,96 +24,40 @@ namespace other {
   void network_thread::register_provider(transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot register null provider");
     PROFILE_SECTION("network_thread::register_provider");
-    std::lock_guard lock(providers_mutex);
 
+    /// initialize before publishing so readers never see a half-built provider
     provider->initialize(this, &network_io);
-    providers.push_back(provider);
+    const bool inserted = providers.insert(provider);
+    OTHER_ASSERT(inserted, "Transport provider registry rejected '{}' (full at {} or duplicate)", provider->name(), kMaxTransportProviders);
     CORE_LOG_DEBUG(" - network system registered transport provider '{}' ({:#010x})", provider->name(), provider->hash());
-  }
-
-  void network_thread::register_packet_sink(natural_t id, packet_sink* sink) {
-    OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
-    PROFILE_SECTION("network_thread::register_packet_sink");
-    std::lock_guard lock(sink_mutex);
-    OTHER_ASSERT(std::ranges::find(packet_sinks, id, &target::id) == packet_sinks.end(), "Packet sink ID {} is already registered", id);
-
-    packet_sinks.push_back({ id, sink });
-    CORE_LOG_DEBUG(" - network system registered packet sink [{}] at address {:p}", id, static_cast<const void*>(sink));
   }
 
   void network_thread::unregister_provider(transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot unregister null provider");
     PROFILE_SECTION("network_thread::unregister_provider");
-    std::lock_guard lock(providers_mutex);
 
-    auto itr = std::ranges::find(providers, provider);
-    if (itr == providers.end()) {
+    if (!providers.erase(provider)) {
       CORE_LOG_ERROR("Failed to unregister transport provider '{}': provider not found in registered providers list.", provider->name());
       return;
     }
 
-    provider->shutdown();
-    providers.erase(itr);
+    /// tombstone only — shutdown/destruction happen after the pump provably stops
+    ///  seeing this pointer (network_system's deferred reclaim, gated on reclamation_epoch)
     CORE_LOG_DEBUG(" - network system unregistered transport provider '{}' ({:#010x})", provider->name(), provider->hash());
-  }
-
-  void network_thread::unregister_packet_sink(natural_t id) {
-    PROFILE_SECTION("network_thread::unregister_packet_sink");
-    std::lock_guard lock(sink_mutex);
-    auto itr = std::ranges::find(packet_sinks, id, &target::id);
-    if (itr == packet_sinks.end()) {
-      CORE_LOG_ERROR("Failed to unregister packet sink with ID {}: no such packet sink registered.", id);
-      return;
-    }
-
-    CORE_LOG_DEBUG(" - network system unregistered packet sink [{}] at address {:p}", id, static_cast<const void*>(itr->sink));
-    packet_sinks.erase(itr);
   }
 
   void network_thread::register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink) {
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
     PROFILE_SECTION("network_thread::register_transport_listener");
 
-    CORE_LOG_DEBUG("Registering transport listener for transport hash {:#010x} with packet sink ID {}", transport_hash, id);
-    register_packet_sink(id, sink);
-
-    {
-      std::lock_guard lock(providers_mutex);
-      for (auto* p : providers) {
-        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-        if (p->hash() == transport_hash) {
-          CORE_LOG_DEBUG("Packet Sink [{}] subscribed to tranport '{}'", id, p->name());
-          p->register_packet_sink(sink);
-          return;
-        }
-      }
-    }
-  }
-
-  void network_thread::attach_connection_listener(natural_t connection_id, natural_t sink_id) {
-    PROFILE_SECTION("network_thread::attach_connection_listener");
-    {
-      std::lock_guard lock(sink_mutex);
-      if (std::ranges::find(packet_sinks, sink_id, &target::id) == packet_sinks.end()) {
-        CORE_LOG_ERROR("Failed to attach connection listener: no packet sink found with ID {}", sink_id);
-        return;
-      }
-    }
-
-    auto conn = active_connections.find(connection_id);
-    if (conn == active_connections.end()) {
-      CORE_LOG_ERROR("Failed to attach connection listener: no active connection found with ID {}", connection_id);
+    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == transport_hash; });
+    if (provider == nullptr) {
+      CORE_LOG_ERROR("Packet sink [{}] subscription failed: no transport provider with hash {:#010x}", id, transport_hash);
       return;
     }
 
-    conn->second.sink = std::ranges::find(packet_sinks, sink_id, &target::id)->sink;
-  }
-
-  void network_thread::unregister_transport_listener(natural_t sink_id) {
-  }
-  void network_thread::unregister_connection_listener(natural_t connection_id) {
-  }
-  void network_thread::detach_connection_listener(natural_t connection_id) {
+    CORE_LOG_DEBUG("Packet Sink [{}] subscribed to transport '{}'", id, provider->name());
+    provider->register_packet_sink(sink);
   }
 
   void network_thread::register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle) {
@@ -146,13 +90,8 @@ namespace other {
   void network_thread::on_initialize() {
     PROFILE_SECTION("network_thread::on_initialize");
     bus.register_thread();
-    {
-      std::lock_guard lock(providers_mutex);
-      for (auto* p : providers) {
-        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-        p->initialize(this, &network_io);
-      }
-    }
+    /// providers register after NETWORK_THREAD_READY (register_provider initializes them);
+    ///  nothing can be in the registry yet
   }
 
   void network_thread::on_start() {
@@ -162,14 +101,7 @@ namespace other {
 
   void network_thread::on_shutdown() {
     PROFILE_SECTION("network_thread::on_shutdown");
-    {
-      std::lock_guard lock(providers_mutex);
-      for (auto* p : providers) {
-        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-        p->shutdown();
-      }
-      providers.clear();
-    }
+    providers.for_each([](transport_provider& p) { p.shutdown(); });
 
     message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
     send_to_driver(std::move(shutdown_msg));
@@ -177,6 +109,10 @@ namespace other {
 
   void network_thread::pump_thread() {
     PROFILE_SECTION("network_thread::pump_thread");
+    /// seq_cst against tombstone stores: once a writer samples the epoch after erasing,
+    ///  any iteration that could still hold the erased pointer is <= that sample + 1
+    pump_epoch.fetch_add(1, std::memory_order_seq_cst);
+
     {
       PROFILE_SECTION("network_thread::pump_thread--io_context_poll");
       network_io.context.poll();
@@ -191,13 +127,7 @@ namespace other {
       // we should only actually close these on shutdown
       for (natural_t connection_id : recently_closed_connections) {
         CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
-        {
-          std::lock_guard lock(providers_mutex);
-          for (auto& provider : providers) {
-            OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-            provider->connection_removed(connection_id);
-          }
-        }
+        providers.for_each([&](transport_provider& p) { p.connection_removed(connection_id); });
 
         active_connections.erase(connection_id);
         active_listeners.erase(connection_id);
@@ -211,11 +141,7 @@ namespace other {
 
     {
       PROFILE_SECTION("network_thread::pump_thread--provider_tick");
-      std::lock_guard lock(providers_mutex);
-      for (auto& provider : providers) {
-        OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-        provider->tick();
-      }
+      providers.for_each([](transport_provider& p) { p.tick(); });
     }
 
     {
@@ -304,11 +230,7 @@ namespace other {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
 
-    std::unique_lock l{ providers_mutex };
-    for (auto* provider : providers) {
-      OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-      provider->begin_shutdown();
-    }
+    providers.for_each([](transport_provider& p) { p.begin_shutdown(); });
   }
 
   /// \todo check for duplicate endpoints or other invalid connection parameters
@@ -317,17 +239,7 @@ namespace other {
     PROFILE_SECTION("network_thread::handle_command_listen_connection");
     command_listen_connection request = deserialize_direct<command_listen_connection>(msg.data).first;
 
-    transport_provider* provider = nullptr;
-
-    std::unique_lock l{ providers_mutex };
-    for (auto* p : providers) {
-      OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-      if (p->hash() == request.transport_hash) {
-        provider = p;
-        break;
-      }
-    }
-
+    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == request.transport_hash; });
     if (provider == nullptr) {
       throw invalid_provider_network_error(std::format("No transport provider with {:#010x} to listen @ {}:{}", request.transport_hash, request.endpoint.ip, request.endpoint.port));
     }
@@ -372,7 +284,7 @@ namespace other {
   }
 
   bool network_thread::immediately_acknowledge_message(const message_header& header) {
-    if (header == message_header{ CONTROL, SHUTDOWN_REQUEST }) {
+    if (header == message_header{ COMMAND, SHUTDOWN_REQUEST }) {
       return false;
     }
     return true;

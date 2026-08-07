@@ -56,12 +56,12 @@ namespace other {
       PROFILE_SECTION("channel<T>::await_message");
 
       if (!timeout.has_value()) {
-        std::lock_guard lck(queue->mutex);
+        std::unique_lock lck(queue->mutex);
+        queue->condition.wait(lck, [&]() -> bool { return !queue->queue.empty(); });
         T item = std::move(queue->queue.front());
         queue->queue.pop();
         return std::move(item);
       }
-      OTHER_ASSERT(timeout.has_value(), "Timeout must have a value at this point.");
 
       std::unique_lock lck(queue->mutex);
       queue->condition.wait_for(lck, *timeout, [&]() -> bool { return !queue->queue.empty(); });

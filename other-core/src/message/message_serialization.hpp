@@ -4,12 +4,18 @@
 #ifndef OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 #define OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 
+#include <bit>
+
 #include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
 
 #include "message/message_fields.hpp"
+
+/// the bus/wire codec is defined little-endian, never converted — this engine is
+///  Windows-x64-only and any future big-endian target must add conversion here first
+static_assert(std::endian::native == std::endian::little, "message codec requires a little-endian target");
 
 namespace other {
   namespace attr {
@@ -58,12 +64,13 @@ namespace other {
         if constexpr (is_buffer_type<member_t>) {
           const auto& buffer = member(value);
 
-          if (std::ranges::size(buffer) > std::numeric_limits<uint16_t>::max()) {
-            throw buffer_parsing_error("Buffer size exceeds maximum supported size of " + std::to_string(std::numeric_limits<uint16_t>::max()));
+          /// u32 length prefix: join snapshots and asset payloads routinely exceed 64 KB
+          if (std::ranges::size(buffer) > std::numeric_limits<uint32_t>::max()) {
+            throw buffer_parsing_error("Buffer size exceeds maximum supported size of " + std::to_string(std::numeric_limits<uint32_t>::max()));
           }
 
           CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, std::ranges::size(buffer), get_value_type<T>(), data.size());
-          uint16_t buff_size = static_cast<uint16_t>(std::ranges::size(buffer));
+          uint32_t buff_size = static_cast<uint32_t>(std::ranges::size(buffer));
           append_named_field_to_raw_buffer(name + "_buff_len", buff_size, data);
           data.append_range(buffer);
         }
@@ -106,13 +113,14 @@ namespace other {
         size_t offset = data.size() - remaining_data.size();
 
         if constexpr (is_buffer_type<member_t>) {
-          uint16_t buff_size = parse_named_field_from_raw_buffer<uint16_t>(name + "_buff_len", remaining_data);
-          remaining_data = remaining_data.subspan(sizeof(uint16_t));
+          uint32_t buff_size = parse_named_field_from_raw_buffer<uint32_t>(name + "_buff_len", remaining_data);
+          remaining_data = remaining_data.subspan(sizeof(uint32_t));
           if (buff_size > remaining_data.size()) {
             throw buffer_parsing_error("Buffer size specified in message data for field '" + name + "' exceeds remaining data size");
           }
 
           member(value) = ostd::vector<uint8_t>(remaining_data.data(), remaining_data.data() + buff_size);
+          remaining_data = remaining_data.subspan(buff_size);
           CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, buff_size, get_value_type<T>(), data.size() - remaining_data.size());
         }
         //

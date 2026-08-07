@@ -6,6 +6,7 @@
 
 #include <asio/asio.hpp>
 
+#include "thread/slot_registry.hpp"
 #include "thread/thread.hpp"
 
 #include "network/acknowledgement_list.hpp"
@@ -15,18 +16,16 @@
 
 #include "message/message_bus.hpp"
 #include "message/message_fields.hpp"
-#include "peer_mesh/packet_sink.hpp"
 
 namespace other {
 
   class transport_provider;
+  class packet_sink;
 
   class OTHER_CLASS network_thread : public thread {
    public:
-    struct target {
-      natural_t id = 0;
-      packet_sink* sink = nullptr;
-    };
+    constexpr static size_t kMaxTransportProviders = 8;
+
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
           bus(bus), network_io{} {}
@@ -38,16 +37,19 @@ namespace other {
       return new_id;
     }
 
+    /// registration/unregistration run on one thread (the main thread via network_system);
+    ///  the pump reads the registry wait-free. unregister only tombstones — the provider
+    ///  object may not be destroyed until reclamation_epoch() has advanced past the value
+    ///  sampled after the tombstone (network_system defers destruction on this contract)
     void register_provider(transport_provider* provider);
-    void register_packet_sink(natural_t id, packet_sink* sink);
     void unregister_provider(transport_provider* provider);
-    void unregister_packet_sink(natural_t id);
-
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
-    void attach_connection_listener(natural_t connection_id, natural_t sink_id);
-    void unregister_transport_listener(natural_t sink_id);
-    void unregister_connection_listener(natural_t connection_id);
-    void detach_connection_listener(natural_t connection_id);
+
+    /// monotonic pump-iteration counter; reads within one iteration never span into the next,
+    ///  so epoch > e + 1 proves every read concurrent with a tombstone sampled at e is done
+    inline uint64_t reclamation_epoch() const {
+      return pump_epoch.load(std::memory_order_seq_cst);
+    }
 
     void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
     void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
@@ -74,15 +76,13 @@ namespace other {
     io network_io;
 
     std::atomic<natural_t> connection_id_counter = 1;
+    std::atomic<uint64_t> pump_epoch = 0;
 
     ostd::map<natural_t, connection_route> active_connections;
     ostd::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> recently_closed_connections;
 
-    std::mutex providers_mutex;
-    std::mutex sink_mutex;
-    ostd::vector<transport_provider*> providers;
-    ostd::vector<target> packet_sinks;
+    slot_registry<transport_provider, kMaxTransportProviders> providers;
 
     acknowledgement_list ack_list;
 

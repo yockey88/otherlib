@@ -96,6 +96,8 @@ namespace other {
       }
     }
 
+    sweep_deferred_reclaims(false);
+
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
     if (!force_disable_network) {
       PROFILE_SECTION("network_system::tick--network_thread_messages");
@@ -125,7 +127,35 @@ namespace other {
       net_context = nullptr;
     }
 
+    /// thread is joined (or never existed) — no reader can hold a tombstoned pointer
+    sweep_deferred_reclaims(true);
+
     ack_list.clear();
+  }
+
+  void network_system::sweep_deferred_reclaims(bool force) {
+    if (provider_reclaims.empty() && sink_reclaims.empty()) {
+      return;
+    }
+    PROFILE_SECTION("network_system::sweep_deferred_reclaims");
+
+    const bool thread_gone = net_context == nullptr || net_context->net_thread == nullptr;
+    const uint64_t epoch_now = thread_gone ? 0 : net_context->net_thread->reclamation_epoch();
+    /// epoch_now > recorded + 1: every pump iteration that could have loaded the pointer
+    ///  before its tombstone became visible has completed (see network_thread epoch contract)
+    auto quiescent = [&](uint64_t recorded) {
+      return force || thread_gone || epoch_now > recorded + 1;
+    };
+
+    std::erase_if(provider_reclaims, [&](provider_reclaim& entry) {
+      if (!quiescent(entry.epoch)) {
+        return false;
+      }
+      CORE_LOG_DEBUG("Reclaiming unregistered transport provider '{}'", entry.provider->name());
+      entry.provider->shutdown();
+      return true;
+    });
+    std::erase_if(sink_reclaims, [&](sink_reclaim& entry) { return quiescent(entry.epoch); });
   }
 
   natural_t network_system::register_transport_provider(scope<transport_provider> provider) {
@@ -133,6 +163,11 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(provider != nullptr, "Cannot register null transport provider.");
     PROFILE_SECTION("network_system::register_transport_provider");
+
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring transport provider '{}': networking is disabled (no network thread).", provider->name());
+      return 0;
+    }
 
     natural_t id = provider->hash();
     if (net_context->registered_transport_providers.find(id) != net_context->registered_transport_providers.end()) {
@@ -154,6 +189,11 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink.");
     PROFILE_SECTION("network_system::register_transport_listener");
+
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring packet sink for transport [{}]: networking is disabled (no network thread).", transport_name);
+      return 0;
+    }
 
     natural_t id = net_context->generate_packet_sink_id();
     OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
@@ -183,7 +223,10 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
+    /// tombstone first, then sample the epoch: the reclaim sweep destroys only after the
+    ///  pump provably stops seeing the pointer (shutdown() runs there too, not here)
     net_context->net_thread->unregister_provider(itr->second.get());
+    provider_reclaims.push_back({ std::move(itr->second), net_context->net_thread->reclamation_epoch() });
     net_context->registered_transport_providers.erase(itr);
   }
 
@@ -199,7 +242,14 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering packet sink [{}]", sink_id);
-    net_context->net_thread->unregister_packet_sink(sink_id);
+    /// strip the sink from every provider's fan-out registry (registration recorded no
+    ///  transport binding, and a stale entry is a use-after-free the moment traffic flows),
+    ///  then defer destruction until the network thread provably stopped seeing it
+    for (auto& [provider_id, provider] : net_context->registered_transport_providers) {
+      provider->unregister_packet_sink(itr->second.get());
+    }
+    const uint64_t epoch = net_context->net_thread != nullptr ? net_context->net_thread->reclamation_epoch() : 0;
+    sink_reclaims.push_back({ std::move(itr->second), epoch });
     net_context->registered_packet_sinks.erase(itr);
   }
 
@@ -400,12 +450,6 @@ namespace other {
 
     send_to_network_thread(kernel, std::move(ack_msg));
     return ack_id;
-  }
-
-  void network_system::cancel_acknowledgment(natural_t ack_id) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("network_system::cancel_acknowledgment");
-    ack_list.cancel_ack(ack_id);
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {

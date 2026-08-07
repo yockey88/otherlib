@@ -43,7 +43,7 @@ namespace other {
     message shutdown_msg{ COMMAND, SHUTDOWN_REQUEST, {} };
     message req_ack_msg{ REQUEST, ACK, {} };
     request_acknowledgment req_ack_data{
-      .ack_id = 0,  // not used in this context
+      .ack_id = 1,  // shutdown acks are deferred until the drain completes; 0 is the no-ack sentinel
       .original_header = message_header{ shutdown_msg.category, shutdown_msg.id },
       .message_data = std::move(shutdown_msg.data),
     };

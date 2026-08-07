@@ -4,6 +4,8 @@
 #ifndef OTHERLIB_DRIVER_SYSTEMS_NETWORK_SYSTEM_HPP
 #define OTHERLIB_DRIVER_SYSTEMS_NETWORK_SYSTEM_HPP
 
+#include <vector>
+
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
 
@@ -19,6 +21,7 @@
 
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
+#include "peer_mesh/packet_sink.hpp"
 #include "peer_mesh/peer_actor_host.hpp"
 
 
@@ -95,6 +98,22 @@ namespace other {
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
 
+    /// unregistered providers/sinks are tombstoned in the lock-free registries, then
+    ///  parked here until the network thread's pump epoch proves no reader can still
+    ///  hold the pointer (or until the thread is gone) — only then destroyed
+    struct provider_reclaim {
+      scope<transport_provider> provider;
+      uint64_t epoch = 0;
+    };
+    struct sink_reclaim {
+      scope<packet_sink> sink;
+      uint64_t epoch = 0;
+    };
+    std::vector<provider_reclaim> provider_reclaims;
+    std::vector<sink_reclaim> sink_reclaims;
+
+    void sweep_deferred_reclaims(bool force);
+
     std::map<message_header, message_handler> message_handlers;
     std::map<message_header, microseconds> message_handler_timeouts;
 
@@ -105,7 +124,6 @@ namespace other {
 
     void send_to_network_thread(driver_kernel* kernel, message&& msg);
     natural_t send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
-    void cancel_acknowledgment(natural_t ack_id);
 
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 

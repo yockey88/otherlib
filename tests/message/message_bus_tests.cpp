@@ -101,4 +101,29 @@ namespace other {
     );
   }
 
+  TEST_F(thread_tests, channel_await_without_timeout_blocks_until_push) {
+    ref<channel_queue<message>> queue = make_ref<channel_queue<message>>();
+    auto [producer, consumer] = channel<message>::make_channel(queue);
+
+    /// no-timeout await must block on an empty queue (popping blind was UB), then wake
+    std::thread pusher{ [&]() {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      message msg = {};
+      msg.category = 0xBEEF;
+      msg.id = 0xF00D;
+      producer->push(std::move(msg));
+    } };
+
+    const auto start = std::chrono::steady_clock::now();
+    opt<message> received = consumer->await_message();
+    const auto waited = std::chrono::steady_clock::now() - start;
+
+    pusher.join();
+
+    ASSERT_TRUE(received.has_value());
+    EXPECT_EQ(received->category, 0xBEEF);
+    EXPECT_EQ(received->id, 0xF00D);
+    EXPECT_GE(waited, std::chrono::milliseconds(30));
+  }
+
 }  // namespace other
