@@ -9,12 +9,9 @@
 namespace other {
 
   struct io {
-    constexpr static size_t kDefaultIoThreadPoolSize = 4;
-
     asio::io_context context;
-    asio::thread_pool thread_pool;
 
-    io() : thread_pool(kDefaultIoThreadPoolSize) {}
+    io() {}
   };
 
 }  // namespace other

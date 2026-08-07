@@ -5,6 +5,8 @@
 
 #include <filesystem>
 
+#include "core/profiler.hpp"
+
 #include "serialization/reflection.hpp"
 
 #include "script/scripting_environment.hpp"
@@ -65,6 +67,7 @@ namespace other {
 
   void scene_interface::attach_dotnet_behavior_to_object(scene* scene_ptr, natural_t id, const std::string_view behavior_type_name) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_dotnet_behavior_to_object");
+    PROFILE_SECTION("scene_interface::attach_dotnet_behavior_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_dotnet_behavior_to_object");
@@ -80,6 +83,7 @@ namespace other {
   render_component_lua_proxy scene_interface::attach_model_to_object(scene* scene_ptr, natural_t id, const std::string_view model_path) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_model_to_object");
     OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in scene_object_interface::attach_model_to_object");
+    PROFILE_SECTION("scene_interface::attach_model_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_model_to_object");
@@ -112,6 +116,7 @@ namespace other {
 
   camera_component_lua_proxy scene_interface::attach_camera_to_object(scene* scene_ptr, natural_t id) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_camera_to_object");
+    PROFILE_SECTION("scene_interface::attach_camera_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_camera_to_object");
@@ -129,6 +134,7 @@ namespace other {
 
   point_light scene_interface::attach_point_light_to_object(scene* scene_ptr, natural_t id, const point_light& light) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_light_to_object");
+    PROFILE_SECTION("scene_interface::attach_point_light_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_light_to_object");
@@ -147,6 +153,7 @@ namespace other {
 
   direction_light scene_interface::attach_direction_light_to_object(scene* scene_ptr, natural_t id, const direction_light& light) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_direction_light_to_object");
+    PROFILE_SECTION("scene_interface::attach_direction_light_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_direction_light_to_object");

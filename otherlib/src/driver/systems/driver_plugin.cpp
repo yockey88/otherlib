@@ -7,6 +7,7 @@ namespace other {
 
   void driver_plugin::initialize(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::initialize.");
+    PROFILE_SECTION("driver_plugin::initialize");
     if (!active()) {
       on_initialize(*kernel);
       set_active(true);
@@ -15,6 +16,7 @@ namespace other {
 
   void driver_plugin::tick(driver_kernel* kernel, double dt) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::tick.");
+    PROFILE_SECTION("driver_plugin::tick");
     if (active()) {
       on_tick(*kernel, dt);
     }
@@ -22,6 +24,7 @@ namespace other {
 
   void driver_plugin::shutdown(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::shutdown.");
+    PROFILE_SECTION("driver_plugin::shutdown");
     if (active()) {
       on_shutdown(*kernel);
       set_active(false);

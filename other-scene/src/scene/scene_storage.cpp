@@ -4,6 +4,7 @@
 #include "scene/scene_storage.hpp"
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 
 #include "lua/lua_sandbox.hpp"
 #include "physics/physics_environment.hpp"
@@ -26,6 +27,7 @@ namespace other {
   scene_storage::~scene_storage() = default;
 
   scope<scene_storage> make_scene_storage(scene* scene_ptr) {
+    PROFILE_SECTION("make_scene_storage");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Failed to retrieve scripting environment");
 
@@ -54,6 +56,7 @@ namespace other {
   }
 
   void clear_storage(scope<scene_storage>& storage) {
+    PROFILE_SECTION("clear_storage");
     if (storage->physics != nullptr) {
       auto* env = subsystem<physics_environment>::get();
       OTHER_ASSERT(env != nullptr, "Physics environment subsystem is not initialized.");

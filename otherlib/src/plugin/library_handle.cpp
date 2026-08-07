@@ -4,10 +4,12 @@
 #include "plugin/library_handle.hpp"
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
   opt<symbol> library_handle::get_symbol(const std::string_view sym) {
+    PROFILE_SECTION("library_handle::get_symbol");
     natural_t hash = FNV(sym);
     auto it = symbols.find(hash);
     if (it != symbols.end()) {

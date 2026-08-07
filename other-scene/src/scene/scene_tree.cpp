@@ -3,6 +3,8 @@
  **/
 #include "scene/scene_tree.hpp"
 
+#include "core/profiler.hpp"
+
 #include "model/vertex.hpp"
 
 #include "object/scene_object.hpp"
@@ -48,6 +50,7 @@ namespace other {
   }
 
   scene_tree::~scene_tree() {
+    PROFILE_SECTION("scene_tree::~scene_tree");
     scene_ptr = nullptr;
     objects = nullptr;
     nodes = nullptr;
@@ -55,6 +58,7 @@ namespace other {
   }
 
   void scene_tree::destroy_all_objects() {
+    PROFILE_SECTION("scene_tree::destroy_all_objects");
     if (objects != nullptr) {
       for (auto& obj : *objects) {
         if (scene_ptr != nullptr) {

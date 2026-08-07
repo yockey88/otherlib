@@ -5,6 +5,7 @@
 
 #include <xxHash/xxh3.h>
 
+#include "core/profiler.hpp"
 #include "file/path_helpers.hpp"
 
 namespace other {
@@ -66,6 +67,7 @@ namespace other {
   }
 
   natural_t glob_set::content_hash() const {
+    PROFILE_SECTION("glob_set::content_hash");
     auto sorted_sources = [](const ostd::vector<glob_pattern>& v) {
       ostd::vector<std::string_view> out;
       for (const glob_pattern& p : v) out.push_back(p.source);

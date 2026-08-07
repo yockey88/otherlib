@@ -7,6 +7,7 @@
 
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "message/message_fields.hpp"
 
@@ -15,6 +16,7 @@ namespace other {
   static thread_local thread::threadlocal_data* thread_data;
 
   void thread::launch() {
+    PROFILE_SECTION("thread::launch");
     thread_handle = std::jthread([this](std::stop_token stoken) {
       auto [thread_rx_channel, thread_tx_channel] = thread_launch_setup();
       run(stoken, std::move(thread_rx_channel), std::move(thread_tx_channel));
@@ -50,6 +52,7 @@ namespace other {
   }
 
   void thread::shutdown() {
+    PROFILE_SECTION("thread::shutdown");
     if (checkpoints.force_exit.load(std::memory_order_acquire)) {
       CORE_LOG_WARN("Thread [{}] is already in force exit mode, shutdown request ignored", thread_name);
       return;
@@ -79,6 +82,7 @@ namespace other {
   }
 
   void thread::force_shutdown() {
+    PROFILE_SECTION("thread::force_shutdown");
     if (checkpoints.force_exit.load(std::memory_order_acquire)) {
       CORE_LOG_WARN("Thread [{}] is already in force exit mode, force shutdown request ignored", thread_name);
       return;
@@ -93,6 +97,7 @@ namespace other {
   }
 
   void thread::wait_for_shutdown_complete() {
+    PROFILE_SECTION("thread::wait_for_shutdown_complete");
     while (get_current_state() != STOPPED) {
       std::this_thread::yield();
     }
@@ -190,6 +195,7 @@ namespace other {
   }
 
   std::pair<scope<message_channel>, scope<message_channel>> thread::thread_launch_setup() {
+    PROFILE_SECTION("thread::thread_launch_setup");
     ref<channel_queue<message>> tx_queue = make_ref<channel_queue<message>>();
     ref<channel_queue<message>> rx_queue = make_ref<channel_queue<message>>();
 
@@ -207,6 +213,7 @@ namespace other {
 
   bool thread::thread_control_loop(std::stop_token& stoken) {
     do {
+      PROFILE_SECTION("thread::thread_control_loop--iteration");
       try {
         opt<message> msg = receive_from_main_thread(get_message_timeout());
         if (!msg.has_value()) {
@@ -283,6 +290,7 @@ namespace other {
 
   void thread::main_loop(std::stop_token& stoken) {
     do {
+      PROFILE_SECTION("thread::main_loop--iteration");
       try {
         set_current_state(WAITING);
         opt<message> msg = receive_from_main_thread(get_message_timeout());
@@ -397,6 +405,7 @@ namespace other {
   }
 
   void thread::handle_message(const message& msg) {
+    PROFILE_SECTION("thread::handle_message");
     CORE_LOG_TRACE("[THREAD RX: {}]", message_header{ msg.category, msg.id });
     switch (msg.get_category()) {
       case message_category::NOTIFICATION: handle_notification_message(msg); break;

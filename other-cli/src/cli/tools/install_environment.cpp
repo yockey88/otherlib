@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "cli/tools/dev_common.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace cli {
@@ -87,6 +88,7 @@ namespace other {
     }
 
     tool_result install_environment_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("install_environment_tool::execute");
       dev_tool_options options;
       opt<std::string> prefix = std::nullopt;
 
@@ -153,6 +155,7 @@ namespace other {
     }
 
     tool_result package_environment_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("package_environment_tool::execute");
       dev_tool_options options;
       std::string generators = "ZIP";
 

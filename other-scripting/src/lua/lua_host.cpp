@@ -5,6 +5,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "lua/lua_script.hpp"
 #include "script/scripting_environment.hpp"
@@ -67,6 +68,7 @@ namespace other {
   }
 
   void lua_host::load_host(const config_table& config) {
+    PROFILE_SECTION("lua_host::load_host");
     lua_state.open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::io, sol::lib::os, sol::lib::debug);
 
     filepath default_path = std::format("{}/lua", get_other_environment_install_folder().string());
@@ -90,6 +92,7 @@ namespace other {
   }
 
   lua_script* lua_host::load_file(const std::string_view file_path) {
+    PROFILE_SECTION("lua_host::load_file");
     filepath fpath{ file_path };
     if (fpath.extension() != ".lua") {
       CORE_LOG_ERROR("Lua host can only load .lua files, got '{}'", fpath.extension().string());
@@ -128,6 +131,7 @@ namespace other {
   }
 
   sol::table lua_host::try_load_table(const std::string_view file_path) {
+    PROFILE_SECTION("lua_host::try_load_table");
     filepath fpath{ file_path };
     if (fpath.extension() != ".lua") {
       CORE_LOG_ERROR("Lua host can only load .lua files, got '{}'", fpath.extension().string());
@@ -175,6 +179,7 @@ namespace other {
   }
 
   void lua_host::shutdown() {
+    PROFILE_SECTION("lua_host::shutdown");
     lua_state.collect_garbage();
     loaded_scripts.clear();
 

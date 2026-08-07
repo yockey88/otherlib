@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/command_files/token.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
@@ -54,6 +55,7 @@ namespace other {
 
   ostd::vector<token> ocmd_lexer::tokenize(diagnostic_engine* diag) {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine is null in lexer!");
+    PROFILE_SECTION("ocmd_lexer::tokenize");
     diagnostics = diag;
 
     lexer_error_sink error_sink{};

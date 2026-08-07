@@ -370,6 +370,7 @@ namespace other {
   }
 
   void bind_otherlib_lua_functions(lua_host& lua_host) {
+    PROFILE_SECTION("bind_otherlib_lua_functions");
     filepath lua_defs_path = lua_host.retrieve_script_path("global_definitions.lua");
     filepath lua_bridge_path = lua_host.retrieve_script_path("other_bridge.lua");
     if (!std::filesystem::exists(lua_defs_path)) {
@@ -404,16 +405,22 @@ namespace other {
     paths_table["global_definitions"] = lua_defs_path.string();
     paths_table["other_bridge"] = lua_bridge_path.string();
 
-    CORE_LOG_DEBUG("Loading lua global definitions script '{}'.", lua_defs_path.string());
-    lua_state.script_file(lua_defs_path.string());
+    {
+      PROFILE_SECTION("bind_otherlib_lua_functions--run-global-definitions");
+      CORE_LOG_DEBUG("Loading lua global definitions script '{}'.", lua_defs_path.string());
+      lua_state.script_file(lua_defs_path.string());
+    }
 
     sol::table log_table = lua_state["__other_native"]["__log"];
     log_table.set_function("send_log_message", [](spdlog::level::level_enum level, const std::string& message, const std::string& source, int line) {
       other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
     });
 
-    CORE_LOG_DEBUG("Loading lua bridge script '{}'.", lua_bridge_path.string());
-    lua_state.script_file(lua_bridge_path.string());
+    {
+      PROFILE_SECTION("bind_otherlib_lua_functions--run-bridge-script");
+      CORE_LOG_DEBUG("Loading lua bridge script '{}'.", lua_bridge_path.string());
+      lua_state.script_file(lua_bridge_path.string());
+    }
   }
 
   void do_script_interface_bindings(driver* drv) {
@@ -470,6 +477,7 @@ namespace other {
     }
 
     void bind_native_types_lua(sol::state& lua_state) {
+      PROFILE_SECTION("bind_native_types_lua");
       lua_state.new_enum(
         "log_level",
         "TRACE", spdlog::level::trace,
@@ -524,6 +532,7 @@ namespace other {
     }
 
     void bind_native_types_dotnet(dotnet_host& dn_host) {
+      PROFILE_SECTION("bind_native_types_dotnet");
       CORE_LOG_DEBUG("Binding native types to .NET");
 
       dotnet_object* obj = nullptr;

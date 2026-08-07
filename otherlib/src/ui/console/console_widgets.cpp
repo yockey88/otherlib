@@ -10,6 +10,7 @@
 #include <string>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "driver/driver.hpp"
 #include "theme/colors.hpp"
@@ -162,6 +163,7 @@ namespace other {
       }
 
       filter_result draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size) {
+        PROFILE_SECTION("draw_filter_bar");
         using namespace colors::console;
         filter_result result;
         result.changed = false;
@@ -396,6 +398,7 @@ namespace other {
 
       prompt_result draw_prompt_bar(driver* driver_ptr, char* input_buf, uint32_t buf_size, bool focus_requested) {
         OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null");
+        PROFILE_SECTION("draw_prompt_bar");
         using namespace colors::console;
 
         prompt_result result{};
@@ -478,6 +481,7 @@ namespace other {
       }
 
       autocomplete_result draw_autocomplete_popup(const autocomplete_item* items, uint32_t item_count, int32_t current_index, const ImVec2& anchor_pos) {
+        PROFILE_SECTION("draw_autocomplete_popup");
         using namespace colors::console;
 
         autocomplete_result result{};

@@ -4,6 +4,7 @@
 #ifndef OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
 #define OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
 
+#include "core/profiler.hpp"
 #include "core/state_machine.hpp"
 
 namespace other {
@@ -45,6 +46,7 @@ namespace other {
    public:
     connection_state_machine()
         : state_machine(connection_state::DISCONNECTED) {
+      PROFILE_SECTION("connection_state_machine::connection_state_machine");
       add_transition(connection_state::DISCONNECTED, connection_event::START_CONNECT, connection_state::CONNECTING);
       add_transition(connection_state::DISCONNECTED, connection_event::CONNECT_SUCCESS, connection_state::CONNECTED);
 

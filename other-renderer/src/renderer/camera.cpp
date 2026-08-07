@@ -66,6 +66,7 @@ namespace other {
   }
 
   void camera::look(const glm::vec3& position, const glm::vec3& target) {
+    PROFILE_SECTION("camera::look");
     this->position = position;
     direction = glm::normalize(target - position);
 
@@ -106,6 +107,7 @@ namespace other {
   }
 
   void camera::calculate_matrices(const glm::ivec2& window_size) {
+    PROFILE_SECTION("camera::calculate_matrices");
     get_view_matrix();
     get_projection_matrix(window_size);
     cam_frustum.set_from_camera(position, direction, up(), fov, aspect_ratio, clip.near_plane, clip.far_plane);
@@ -147,6 +149,7 @@ namespace other {
   }
 
   void camera::reset_camera() {
+    PROFILE_SECTION("camera::reset_camera");
     image_size.x = image_width;
     image_size.y = int(image_size.x / aspect_ratio);
     image_size.y = (image_size.y < 1) ? 1 : image_size.y;

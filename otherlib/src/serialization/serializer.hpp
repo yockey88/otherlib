@@ -4,6 +4,7 @@
 #ifndef OTHERLIB_SERIALIZATION_SERIALIZER_HPP
 #define OTHERLIB_SERIALIZATION_SERIALIZER_HPP
 
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "serialization/encoding/binary_encoder.hpp"
 #include "serialization/serialization.hpp"
@@ -49,11 +50,13 @@ namespace other {
 
     template <typename T>
     void write_to_bytes(const T& value) {
+      PROFILE_SECTION("serializer::write_to_bytes");
       other::binary::template encoder<T>{}.encode(value, data);
     }
 
     template <typename T>
     opt<T> read_from_bytes(size_t offset = 0) const {
+      PROFILE_SECTION("serializer::read_from_bytes");
       return other::binary::template encoder<T>{}.decode(data, offset);
     }
 

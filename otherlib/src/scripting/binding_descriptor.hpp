@@ -11,6 +11,7 @@
 #include <refl/refl.hpp>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 #include "serialization/reflection.hpp"
 
 #include "scene/scene.hpp"
@@ -126,6 +127,7 @@ namespace other {
   template <typename CT>
     requires reflected_type<CT>
   component_binding_descriptor make_component_descriptor(const std::string_view name) {
+    PROFILE_SECTION("make_component_descriptor");
     component_binding_descriptor desc;
     desc.component_id = FNV(name);
     desc.name = std::string{ name };

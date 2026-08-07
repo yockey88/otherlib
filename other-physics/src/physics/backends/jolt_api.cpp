@@ -37,6 +37,7 @@
 #include <Jolt/Renderer/DebugRendererSimple.h>
 // clang-format on
 
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "math/matrix.hpp"
 
@@ -218,6 +219,7 @@ namespace other {
 
   physics_api::physics_render_debug_data jolt_api::get_debug_render_data(natural_t id, const physics_world* world) const {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt debug render data retrieval.");
+    PROFILE_SECTION("jolt_api::get_debug_render_data");
 
     const jolt_world& jw = world_state(id);
 
@@ -238,6 +240,7 @@ namespace other {
   }
 
   void jolt_api::initialize_world(natural_t id, physics_world* world, const physics_world_config& config) {
+    PROFILE_SECTION("jolt_api::initialize_world");
     if (jolt_worlds.find(id) != jolt_worlds.end()) {
       CORE_LOG_WARN("Jolt physics world with id '{}' already exists.", id);
       return;
@@ -258,6 +261,7 @@ namespace other {
 
   void jolt_api::shutdown_world(physics_world* world) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt shutdown.");
+    PROFILE_SECTION("jolt_api::shutdown_world");
 
     auto itr = jolt_worlds.find(world->world_id);
     if (itr == jolt_worlds.end()) {
@@ -289,12 +293,14 @@ namespace other {
 
   void jolt_api::on_scene_start(natural_t world_id, physics_world* world) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt scene start.");
+    PROFILE_SECTION("jolt_api::on_scene_start");
     world_state(world_id).system->OptimizeBroadPhase();
   }
 
   void jolt_api::register_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt physics body registration.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt physics body registration.");
+    PROFILE_SECTION("jolt_api::register_physics_body");
 
     jolt_world& jw = world_state(world_id);
 
@@ -354,6 +360,7 @@ namespace other {
   void jolt_api::unregister_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt physics body unregistration.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt physics body unregistration.");
+    PROFILE_SECTION("jolt_api::unregister_physics_body");
 
     jolt_world& jw = world_state(world_id);
 
@@ -388,6 +395,7 @@ namespace other {
   void jolt_api::teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt body teleport.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt body teleport.");
+    PROFILE_SECTION("jolt_api::teleport_body");
 
     jolt_world& jw = world_state(world_id);
 
@@ -432,6 +440,7 @@ namespace other {
                                 const shape_geometry* geometry) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt shape build.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt shape build.");
+    PROFILE_SECTION("jolt_api::set_body_shape");
 
     jolt_world& jw = world_state(world_id);
 
@@ -462,6 +471,7 @@ namespace other {
         result = s.Create();
       } break;
       case PHYSICS_SHAPE_CONVEX_HULL: {
+        PROFILE_SECTION("jolt_api::set_body_shape--convex_hull");
         if (geometry == nullptr || geometry->positions.empty()) {
           CORE_LOG_ERROR("Convex hull for body {} requires geometry.", body->id);
           return false;
@@ -477,6 +487,7 @@ namespace other {
         result = s.Create();
       } break;
       case PHYSICS_SHAPE_TRIANGLE_MESH: {
+        PROFILE_SECTION("jolt_api::set_body_shape--triangle_mesh");
         if (geometry == nullptr || geometry->positions.empty() || geometry->indices.size() < 3) {
           CORE_LOG_ERROR("Triangle mesh for body {} requires indexed geometry.", body->id);
           return false;
@@ -529,6 +540,7 @@ namespace other {
 
   void jolt_api::step_simulation(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt step simulation.");
+    PROFILE_SECTION("jolt_api::step_simulation");
 
     const JPH::uint cCollisionSteps = 1;
     world_state(world_id).system->Update(delta_time, cCollisionSteps, temp_allocator, job_system);
@@ -536,6 +548,7 @@ namespace other {
 
   void jolt_api::update_active_transforms(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt update active transforms.");
+    PROFILE_SECTION("jolt_api::update_active_transforms");
 
     jolt_world& jw = world_state(world_id);
 
@@ -561,6 +574,7 @@ namespace other {
 
   void jolt_api::drain_contacts(natural_t world_id, physics_world* world, ostd::vector<contact_event>& out) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during contact drain.");
+    PROFILE_SECTION("jolt_api::drain_contacts");
     jolt_world& jw = world_state(world_id);
 
     scratch_events.clear();
@@ -601,6 +615,7 @@ namespace other {
   raycast_hit jolt_api::cast_ray(natural_t world_id, physics_world* world, const glm::vec3& origin,
                                  const glm::vec3& direction, float max_distance) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during raycast.");
+    PROFILE_SECTION("jolt_api::cast_ray");
     jolt_world& jw = world_state(world_id);
 
     raycast_hit out;
@@ -631,6 +646,7 @@ namespace other {
   integer_t jolt_api::create_fixed_joint(natural_t world_id, physics_world* world, physics_body* body_a, physics_body* body_b) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during weld creation.");
     OTHER_ASSERT(body_a != nullptr && body_b != nullptr, "Cannot weld a null physics body.");
+    PROFILE_SECTION("jolt_api::create_fixed_joint");
     jolt_world& jw = world_state(world_id);
 
     JPH::BodyID ids[2] = { JPH::BodyID(static_cast<uint32_t>(body_a->backend_id)),
@@ -655,6 +671,7 @@ namespace other {
   }
 
   void jolt_api::destroy_joint(natural_t world_id, physics_world* world, integer_t joint_id) {
+    PROFILE_SECTION("jolt_api::destroy_joint");
     jolt_world& jw = world_state(world_id);
     auto itr = jw.joints.find(joint_id);
     if (itr == jw.joints.end()) {
@@ -746,6 +763,7 @@ namespace other {
   }
 
   void jolt_api::on_initialize(const config_table& configuration) {
+    PROFILE_SECTION("jolt_api::on_initialize");
     JPH::RegisterDefaultAllocator();
 
     JPH::Trace = trace_impl;
@@ -780,6 +798,7 @@ namespace other {
   }
 
   void jolt_api::on_shutdown() {
+    PROFILE_SECTION("jolt_api::on_shutdown");
     if (!jolt_worlds.empty()) {
       CORE_LOG_WARN("Jolt backend shutting down with {} live worlds.", jolt_worlds.size());
       while (!jolt_worlds.empty()) {

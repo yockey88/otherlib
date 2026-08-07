@@ -3,7 +3,10 @@
  **/
 #include "vm_debugger_window.hpp"
 
+#include "core/profiler.hpp"
+
 void vm_debugger_window::on_render_body() {
+  PROFILE_SECTION("vm_debugger_window::on_render_body");
   driver& drv = get_driver();
   vm_system& vm_sys = drv.get_kernel().get_core_system<vm_system>();
 
@@ -32,6 +35,7 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
 }
 
 void vm_debugger_window::render_device(other_command_device& device) {
+  PROFILE_SECTION("vm_debugger_window::render_device");
   for (size_t i = 0; i < other::vm_register::kNumRegisters; ++i) {
     const auto& reg = device.registers[i];
     ImGui::Text("R%02zu: 0x%016llX", i, reg.memory.to_u64());
@@ -57,6 +61,7 @@ void vm_debugger_window::render_debugger_home(other_command_device& device) {
 }
 
 void vm_debugger_window::render_program_debugger(other_command_device& device) {
+  PROFILE_SECTION("vm_debugger_window::render_program_debugger");
   natural_t pc = static_cast<natural_t>(device.pc);
   natural_t sp = static_cast<natural_t>(device.sp);
   natural_t load_cursor = static_cast<natural_t>(device.program_load_cursor);

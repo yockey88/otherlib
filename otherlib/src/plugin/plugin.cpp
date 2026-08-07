@@ -24,6 +24,7 @@ namespace other {
   std::map<natural_t, library_handle*> plugin::loaded_libraries;
 
   library_handle* plugin::load_plugin_library(const std::string_view plugin_path) {
+    PROFILE_SECTION("plugin::load_plugin_library");
     if (plugin_path.empty()) {
       CORE_LOG_ERROR("Plugin path is empty");
       return nullptr;
@@ -121,6 +122,7 @@ namespace other {
   }
 
   library_handle* plugin::get_plugin_library(const std::string_view plugin_name) {
+    PROFILE_SECTION("plugin::get_plugin_library");
     if (plugin_name.empty()) {
       CORE_LOG_ERROR("Plugin name is empty");
       return nullptr;
@@ -138,6 +140,7 @@ namespace other {
   }
 
   void plugin::unload_plugin_library(const std::string_view plugin_name) {
+    PROFILE_SECTION("plugin::unload_plugin_library");
     auto* lib_handle = get_plugin_library(plugin_name);
     if (lib_handle == nullptr) {
       CORE_LOG_ERROR("Plugin library '{}' not found", plugin_name);
@@ -155,6 +158,7 @@ namespace other {
   }
 
   void plugin::on_enter(const std::string_view pl_name, other_plugin_argv* argv) {
+    PROFILE_SECTION("plugin::on_enter");
     register_main_thread();
     set_subsystem_flags(pl_name, argv);
     plugin_binding(pl_name, argv);

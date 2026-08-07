@@ -8,6 +8,7 @@
 
 #include "cli/process.hpp"
 #include "cli/tools/dev_common.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace cli {
@@ -65,6 +66,7 @@ namespace other {
     }
 
     tool_result run_driver_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("run_driver_tool::execute");
       dev_tool_options options;
       opt<std::string> driver_name = std::nullopt;
       bool verbose = false;

@@ -3,6 +3,8 @@
  **/
 #include "network/tcp/tcp_transport_provider.hpp"
 
+#include "core/profiler.hpp"
+
 #include "network/network_thread.hpp"
 
 #include "asio/asio/ip/address.hpp"
@@ -17,6 +19,7 @@ namespace other {
   }
 
   void tcp_transport_provider::on_begin_shutdown() {
+    PROFILE_SECTION("tcp_transport_provider::on_begin_shutdown");
     for (auto itr = active_tcp_listeners.begin(); itr != active_tcp_listeners.end(); ++itr) {
       auto state_itr = connection_state_machines.find(itr->first);
       if (state_itr != connection_state_machines.end()) {
@@ -50,6 +53,7 @@ namespace other {
   }
 
   void tcp_transport_provider::on_start_listen(natural_t conn_id, const binding_point& endpoint) {
+    PROFILE_SECTION("tcp_transport_provider::on_start_listen");
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
     OTHER_ASSERT(active_tcp_listeners.find(conn_id) == active_tcp_listeners.end(), "Listener ID {} is already in use", conn_id);
@@ -95,6 +99,7 @@ namespace other {
   }
 
   void tcp_transport_provider::close(natural_t connection_id) {
+    PROFILE_SECTION("tcp_transport_provider::close");
     auto itr = active_connections.find(connection_id);
     if (itr == active_connections.end()) {
       auto acceptor_itr = active_tcp_listeners.find(connection_id);
@@ -147,6 +152,7 @@ namespace other {
   }
 
   void tcp_transport_provider::on_accepted(natural_t id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket) {
+    PROFILE_SECTION("tcp_transport_provider::on_accepted");
     if ((ec && ec == asio::error::operation_aborted) ||
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
@@ -169,6 +175,7 @@ namespace other {
 
   void tcp_transport_provider::register_new_connection(asio::ip::tcp::socket&& socket, const binding_point& endpoint, natural_t listener_conn_id) {
     OTHER_ASSERT(host_thread_ref().is_shutdown_pending() == false, "tcp_transport_provider has null host");
+    PROFILE_SECTION("tcp_transport_provider::register_new_connection");
     if (host_thread_ref().is_shutdown_pending()) {
       CORE_LOG_WARN("Received new connection while shutdown pending, rejecting connection from {}", socket.remote_endpoint().address().to_string() + ":" + std::to_string(socket.remote_endpoint().port()));
       return;

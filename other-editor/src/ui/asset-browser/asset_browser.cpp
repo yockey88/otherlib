@@ -3,6 +3,7 @@
  **/
 #include "ui/asset-browser/asset_browser.hpp"
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 
 namespace other {
@@ -24,6 +25,7 @@ namespace other {
     }
 
     void asset_browser::on_render_body() {
+      PROFILE_SECTION("asset_browser::on_render_body");
       ImDrawList* dl = ImGui::GetWindowDrawList();
       ImVec2 avail = ImGui::GetContentRegionAvail();
 

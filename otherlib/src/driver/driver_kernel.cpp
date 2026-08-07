@@ -26,6 +26,7 @@
 namespace other {
 
   void driver_kernel::load_profile(const std::string_view profile_name) {
+    PROFILE_SECTION("driver_kernel::load_profile");
     /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it handles the network-disabled case internally
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
     add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
@@ -59,6 +60,7 @@ namespace other {
   }
 
   void driver_kernel::load_driver_plugins_from_config(driver* driver_instance) {
+    PROFILE_SECTION("driver_kernel::load_driver_plugins_from_config");
     const auto& configuration = driver_instance->configuration();
     const toml::node_view plugins_node = configuration.get_raw("driver.plugins");
     if (!plugins_node || !plugins_node.is_array_of_tables()) {
@@ -109,6 +111,7 @@ namespace other {
     }
 
     for (const auto& plugin : plugins_to_load) {
+      PROFILE_SECTION("driver_kernel::load_driver_plugins_from_config--load_library");
       CORE_LOG_DEBUG("Loading driver plugin: '{}' @ {}", plugin.name, plugin.path);
 
       auto* lib = plugin::load_plugin_library(plugin.path);
@@ -214,6 +217,7 @@ namespace other {
   }
 
   void driver_kernel::shutdown() {
+    PROFILE_SECTION("driver_kernel::shutdown");
     for (auto itr = system_order.rbegin(); itr != system_order.rend(); ++itr) {
       OTHER_ASSERT(builtin_systems[static_cast<size_t>(*itr)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(*itr));
       CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);
@@ -313,6 +317,7 @@ namespace other {
   }
 
   void driver_kernel::register_plugin(plugin_registry& registry, const filepath& path, library_handle* lib) {
+    PROFILE_SECTION("driver_kernel::register_plugin");
     std::string name = path.filename().stem().string();
 
     opt<symbol> manifest_symbol = lib->get_symbol(kManifestFunctionSymbolName);

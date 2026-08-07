@@ -5,9 +5,12 @@
 
 #include <cstdint>
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   message_bus::message_bus() {
+    PROFILE_SECTION("message_bus::message_bus");
     ref<channel_queue<message>> tx_queue = make_ref<channel_queue<message>>();
     ref<channel_queue<message>> rx_queue = make_ref<channel_queue<message>>();
 
@@ -46,6 +49,7 @@ namespace other {
   }
 
   opt<message> message_bus::receive_message(microseconds timeout) {
+    PROFILE_SECTION("message_bus::receive_message");
     uint8_t index = 0;
     {
       std::lock_guard lock(thread_data_mutex);
@@ -62,6 +66,7 @@ namespace other {
   }
 
   void message_bus::send_message(message&& msg) {
+    PROFILE_SECTION("message_bus::send_message");
     uint8_t index = 0;
     {
       std::lock_guard lock(thread_data_mutex);
@@ -78,6 +83,7 @@ namespace other {
   }
 
   bool message_bus::has_message() {
+    PROFILE_SECTION("message_bus::has_message");
     uint8_t index = 0;
     {
       std::lock_guard lock(thread_data_mutex);

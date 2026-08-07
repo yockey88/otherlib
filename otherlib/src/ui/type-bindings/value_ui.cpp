@@ -5,6 +5,7 @@
 
 #include <imgui/imgui_memory_editor.h>
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 #include "ui/ui_helpers.hpp"
 #include "ui/ui_widgets.hpp"
@@ -59,6 +60,7 @@ namespace other {
     }
 
     bool edit_value(const char* label, value& val) {
+      PROFILE_SECTION("edit_value");
       bool changed = false;
 
       switch (val.type()) {
@@ -162,6 +164,7 @@ namespace other {
     }
 
     void draw_value_memory(const char* label, value& val, bool with_options, bool show_ascii, uint32_t columns) {
+      PROFILE_SECTION("draw_value_memory");
       auto& raw_data = val.get_mutable_storage();
 
       static MemoryEditor mem_edit;
@@ -174,6 +177,7 @@ namespace other {
     }
 
     void value_editor::on_render_node_body() {
+      PROFILE_SECTION("value_editor::on_render_node_body");
       ImVec2 base_position = ImGui::GetCursorScreenPos();
       ImVec2 window_max = {
         base_position.x + ImGui::GetContentRegionAvail().x,

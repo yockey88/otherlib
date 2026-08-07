@@ -9,6 +9,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "scene/scene.hpp"
 
@@ -125,6 +126,7 @@ namespace other {
     }
 
     bool oe_add_component(uint64_t obj_id, uint64_t comp_id) {
+      PROFILE_SECTION("oe_add_component");
       scene* s = detail::get_active_scene();
       if (s == nullptr || !s->has_object(obj_id)) {
         return false;
@@ -137,6 +139,7 @@ namespace other {
     }
 
     bool oe_remove_component(uint64_t obj_id, uint64_t comp_id) {
+      PROFILE_SECTION("oe_remove_component");
       scene* s = detail::get_active_scene();
       if (s == nullptr || !s->has_object(obj_id)) {
         return false;

@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "lua/lua_sandbox.hpp"
 
@@ -91,6 +92,7 @@ namespace other {
 
     template <typename R, typename... Args>
     R call_function(const std::string_view function_name, Args&&... args) {
+      PROFILE_SECTION("lua_script::call_function");
       if (!script_ready()) {
         return R{};
       }

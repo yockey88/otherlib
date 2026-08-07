@@ -18,6 +18,7 @@ namespace other {
 
     static void expand_walk(const filepath& root_abs, const filepath& dir,
                             const glob_set& set, ostd::vector<resolved_file>& out) {
+      PROFILE_SECTION("expand_walk");
       for (const auto& entry : std::filesystem::directory_iterator(dir)) {
         const opt<std::string> rel = try_relative(entry.path(), root_abs);
         OTHER_ASSERT(rel.has_value(), "walk escaped its root: '{}'", entry.path().string());
@@ -61,6 +62,7 @@ namespace other {
   }
 
   void file_system::initialize_directory_structure(const std::span<const std::string_view> mounts) {
+    PROFILE_SECTION("file_system::initialize_directory_structure");
     for (const auto& mount : mounts) {
       if (!mount.empty()) {
         mount_virtual(mount);
@@ -86,6 +88,7 @@ namespace other {
   }
 
   resolved_path file_system::resolve_path(const std::string_view engine_path) {
+    PROFILE_SECTION("file_system::resolve_path");
     resolved_path result;
 
     std::string rel_path = {};
@@ -313,6 +316,7 @@ namespace other {
     }
     disk_path /= (rp.file_name + rp.extension);
     if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
+      PROFILE_SECTION("file_system::get_file--materialize_local");
       /// materialize the directory chain under the mount so later lookups cache-hit
       ref<directory> registry_dir = mount;
       if (!rp.relative_path_components.empty()) {
@@ -328,6 +332,7 @@ namespace other {
   }
 
   ostd::vector<std::string> file_system::mounted_names() const {
+    PROFILE_SECTION("file_system::mounted_names");
     std::lock_guard lock(fs_mutex);
     ostd::vector<std::string> names;
     names.reserve(mounts.size());
@@ -342,6 +347,7 @@ namespace other {
   }
 
   bool file_system::file_exists(const std::string_view engine_path) const {
+    PROFILE_SECTION("file_system::file_exists");
     bool is_system_file = std::filesystem::exists(filepath(engine_path)) && std::filesystem::is_regular_file(filepath(engine_path));
     if (is_system_file) {
       return true;
@@ -373,6 +379,7 @@ namespace other {
     }
 
     if (!mount->absolute_path().empty()) {
+      PROFILE_SECTION("file_system::file_exists--disk_probe");
       filepath disk_path = mount->absolute_path();
       for (const auto& comp : rp.relative_path_components) {
         disk_path /= comp;
@@ -385,6 +392,7 @@ namespace other {
   }
 
   bool file_system::directory_exists(const std::string_view engine_path) const {
+    PROFILE_SECTION("file_system::directory_exists");
     for (const auto& [hash, mount] : mounts) {
       if (mount->directory_exists(engine_path)) {
         return true;
@@ -439,6 +447,7 @@ namespace other {
 
     ref<file_handle> file = target_dir != nullptr ? target_dir->get_file(rp.file_name, rp.extension) : nullptr;
     if (file == nullptr) {
+      PROFILE_SECTION("file_system::open--disk_fallback");
       /// try to open it as a local file if the mount has a disk path
       if (!mount->absolute_path().empty()) {
         filepath disk_path = mount->absolute_path();
@@ -463,6 +472,7 @@ namespace other {
 
   ref<local_file> file_system::register_local_file(const filepath& path) {
     OTHER_ASSERT(events != nullptr, "File system events not initialized when registering local file for path: {}", path.string());
+    PROFILE_SECTION("file_system::register_local_file");
 
     filepath abs_path = std::filesystem::absolute(path);
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_regular_file(abs_path), "Cannot register local file: path '{}' does not exist or is not a regular file", abs_path.string());
@@ -628,6 +638,7 @@ namespace other {
   }
 
   ref<directory> file_system::walk_or_create_path(ref<directory> root, const std::span<const std::string> components) {
+    PROFILE_SECTION("file_system::walk_or_create_path");
     ref<directory> current = root;
     for (const auto& comp : components) {
       ref<directory> child = current->get_child_directory(comp);
@@ -655,6 +666,7 @@ namespace other {
   }
 
   void file_system::scan_directory_impl(ref<directory> dir, const filepath& disk_path, bool recursive) {
+    PROFILE_SECTION("file_system::scan_directory_impl");
     if (!std::filesystem::exists(disk_path) || !std::filesystem::is_directory(disk_path)) {
       return;
     }

@@ -10,6 +10,8 @@
   #include <windows.h>
 #endif
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace cli {
     namespace {
@@ -85,6 +87,7 @@ namespace other {
     }
 
     process_result launch_process(const process_launch& launch) {
+      PROFILE_SECTION("launch_process");
       process_result result;
       if (launch.executable.empty()) {
         result.error = "no executable given";

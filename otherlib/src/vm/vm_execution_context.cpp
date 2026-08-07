@@ -3,10 +3,13 @@
  **/
 #include "vm/vm_execution_context.hpp"
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   void vm_execution_context::save_from(const other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Null device!");
+    PROFILE_SECTION("vm_execution_context::save_from");
 
     pc = device->pc;
     sp = device->sp;
@@ -20,6 +23,7 @@ namespace other {
 
   void vm_execution_context::restore_to(other_command_device* device) const {
     OTHER_ASSERT(device != nullptr, "Null device!");
+    PROFILE_SECTION("vm_execution_context::restore_to");
 
     device->pc = pc;
     device->sp = sp;

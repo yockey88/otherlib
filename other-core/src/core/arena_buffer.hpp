@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "serialization//reflection.hpp"
 
@@ -49,6 +50,7 @@ namespace other {
     template <typename T>
       requires is_container<T>
     void write_arr(const T& container) {
+      PROFILE_SECTION("arena_buffer::write_arr");
       allocate(sizeof(typename T::value_type) * container.size());
       for (const auto& item : container) {
         buffer_data(item);

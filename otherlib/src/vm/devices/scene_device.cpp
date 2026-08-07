@@ -5,6 +5,8 @@
 
 #include <filesystem>
 
+#include "core/profiler.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "vm/device_utils.hpp"
@@ -50,6 +52,7 @@ namespace other {
 
   void scene_device::dispatch(uint8_t function_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "device must not be null");
+    PROFILE_SECTION("scene_device::dispatch");
     CORE_LOG_WARN("No scene functions implemented yet");
     switch (function_id) {
       case scene_device::LOAD_SCENE: {

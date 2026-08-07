@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 
 #include "dotnet/behavior_descriptor.hpp"
@@ -36,6 +37,7 @@ namespace other {
     template <>
     struct component_widget<script_component> {
       bool operator()(const std::string_view, script_component& component, scene*, scene_object*, asset_handler* = nullptr, driver* = nullptr) {
+        PROFILE_SECTION("component_widget<script_component>::operator()");
         bool changed = false;
 
         auto* env = subsystem<scripting_environment>::get();

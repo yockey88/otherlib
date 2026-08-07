@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "theme/colors.hpp"
 #include "ui/ui_helpers.hpp"
@@ -137,6 +138,7 @@ namespace other {
     bool draw_behavior_field(const behavior_descriptor& behavior, const behavior_field_descriptor& field) {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment is not available");
+      PROFILE_SECTION("draw_behavior_field");
 
       /// field access goes through the behavior's own script object, by name — snapshots
       ///  are per-frame so the id is never stale across an assembly refresh

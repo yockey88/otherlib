@@ -9,6 +9,7 @@
 #include <string>
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 #include "serialization/serialization.hpp"
 
 #include "dotnet/dotnet_host.hpp"
@@ -20,6 +21,7 @@ namespace other {
   void dotnet_object::load_fields() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
+    PROFILE_SECTION("dotnet_object::load_fields");
 
     const auto& fields = dn_type->get_fields();
     for (const auto& f : fields) {
@@ -36,6 +38,7 @@ namespace other {
   void dotnet_object::write_fields() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
+    PROFILE_SECTION("dotnet_object::write_fields");
 
     const auto& fields = dn_type->get_fields();
     for (const auto& f : fields) {
@@ -70,6 +73,7 @@ namespace other {
   }
 
   int32_t dotnet_object::read_field_value(const std::string_view field_name, void* out_data, int32_t buffer_size) {
+    PROFILE_SECTION("dotnet_object::read_field_value");
     if (managed_object == nullptr || dn_type == nullptr || out_data == nullptr || buffer_size <= 0) {
       return 0;
     }
@@ -121,6 +125,7 @@ namespace other {
   }
 
   bool dotnet_object::write_field_value(const std::string_view field_name, const void* in_data, int32_t data_size) {
+    PROFILE_SECTION("dotnet_object::write_field_value");
     if (managed_object == nullptr || dn_type == nullptr || in_data == nullptr || data_size <= 0) {
       return false;
     }
@@ -480,6 +485,7 @@ namespace other {
 
   void dotnet_object::invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_object::invoke_method_with_args");
     auto name = native_string::new_str(method_name);
     host->interop().invoke_instance_method(managed_object, name, argv, arg_ts, argc);
     native_string::free_str(name);
@@ -487,6 +493,7 @@ namespace other {
 
   void dotnet_object::invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_object::invoke_returning_method_args");
     auto name = native_string::new_str(method_name);
     host->interop().invoke_instance_method_ret(managed_object, name, argv, arg_ts, argc, out);
     native_string::free_str(name);

@@ -17,6 +17,7 @@
 namespace other {
 
   arena::~arena() {
+    PROFILE_SECTION("arena::~arena");
     freelist.cleanup();
     storage.cleanup(page_allocation_cursor);
     storage.finalize();
@@ -147,6 +148,7 @@ namespace other {
   }
 
   void arena::handle_spillover() {
+    PROFILE_SECTION("arena::handle_spillover");
     /// caller holds arena_mutex
     // decompose the tail of outgoing page into pow2 blocks and assign them to a bin to avoid too much fragmentation
     if (current_page == nullptr) {

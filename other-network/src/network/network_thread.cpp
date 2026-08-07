@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/enum_formatter.hpp"
+#include "core/profiler.hpp"
 #include "core/time.hpp"
 
 #include "network/network_error.hpp"
@@ -22,6 +23,7 @@ namespace other {
 
   void network_thread::register_provider(transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot register null provider");
+    PROFILE_SECTION("network_thread::register_provider");
     std::lock_guard lock(providers_mutex);
 
     provider->initialize(this, &network_io);
@@ -31,6 +33,7 @@ namespace other {
 
   void network_thread::register_packet_sink(natural_t id, packet_sink* sink) {
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
+    PROFILE_SECTION("network_thread::register_packet_sink");
     std::lock_guard lock(sink_mutex);
     OTHER_ASSERT(std::ranges::find(packet_sinks, id, &target::id) == packet_sinks.end(), "Packet sink ID {} is already registered", id);
 
@@ -40,6 +43,7 @@ namespace other {
 
   void network_thread::unregister_provider(transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot unregister null provider");
+    PROFILE_SECTION("network_thread::unregister_provider");
     std::lock_guard lock(providers_mutex);
 
     auto itr = std::ranges::find(providers, provider);
@@ -54,6 +58,7 @@ namespace other {
   }
 
   void network_thread::unregister_packet_sink(natural_t id) {
+    PROFILE_SECTION("network_thread::unregister_packet_sink");
     std::lock_guard lock(sink_mutex);
     auto itr = std::ranges::find(packet_sinks, id, &target::id);
     if (itr == packet_sinks.end()) {
@@ -67,6 +72,7 @@ namespace other {
 
   void network_thread::register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink) {
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
+    PROFILE_SECTION("network_thread::register_transport_listener");
 
     CORE_LOG_DEBUG("Registering transport listener for transport hash {:#010x} with packet sink ID {}", transport_hash, id);
     register_packet_sink(id, sink);
@@ -84,22 +90,8 @@ namespace other {
     }
   }
 
-  void network_thread::attach_connection_listener(natural_t connection_id, natural_t id, packet_sink* sink) {
-    OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
-
-    CORE_LOG_DEBUG("Attaching connection listener for connection ID {} with packet sink ID {}", connection_id, id);
-    register_packet_sink(id, sink);
-
-    auto conn = active_connections.find(connection_id);
-    if (conn == active_connections.end()) {
-      CORE_LOG_ERROR("Failed to attach connection listener: no active connection found with ID {}", connection_id);
-      return;
-    }
-
-    conn->second.sink = sink;
-  }
-
   void network_thread::attach_connection_listener(natural_t connection_id, natural_t sink_id) {
+    PROFILE_SECTION("network_thread::attach_connection_listener");
     {
       std::lock_guard lock(sink_mutex);
       if (std::ranges::find(packet_sinks, sink_id, &target::id) == packet_sinks.end()) {
@@ -152,6 +144,7 @@ namespace other {
   }
 
   void network_thread::on_initialize() {
+    PROFILE_SECTION("network_thread::on_initialize");
     bus.register_thread();
     {
       std::lock_guard lock(providers_mutex);
@@ -168,6 +161,7 @@ namespace other {
   }
 
   void network_thread::on_shutdown() {
+    PROFILE_SECTION("network_thread::on_shutdown");
     {
       std::lock_guard lock(providers_mutex);
       for (auto* p : providers) {
@@ -182,12 +176,17 @@ namespace other {
   }
 
   void network_thread::pump_thread() {
-    network_io.context.poll();
-    if (network_io.context.stopped()) {
-      network_io.context.restart();
+    PROFILE_SECTION("network_thread::pump_thread");
+    {
+      PROFILE_SECTION("network_thread::pump_thread--io_context_poll");
+      network_io.context.poll();
+      if (network_io.context.stopped()) {
+        network_io.context.restart();
+      }
     }
 
     if (current_state.shutdown_pending) {
+      PROFILE_SECTION("network_thread::pump_thread--shutdown_cleanup");
       // we should allow user to re-open a connection with the same ID,
       // we should only actually close these on shutdown
       for (natural_t connection_id : recently_closed_connections) {
@@ -211,6 +210,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("network_thread::pump_thread--provider_tick");
       std::lock_guard lock(providers_mutex);
       for (auto& provider : providers) {
         OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
@@ -218,16 +218,20 @@ namespace other {
       }
     }
 
-    auto msg = bus.receive_message(microseconds(1));
-    try {
-      process_message(std::move(msg));
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Error processing message in network thread: {}", e.what());
-    } catch (...) {
-      CORE_LOG_ERROR("Unknown error processing message in network thread");
+    {
+      PROFILE_SECTION("network_thread::pump_thread--message_pump");
+      auto msg = bus.receive_message(microseconds(1));
+      try {
+        process_message(std::move(msg));
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Error processing message in network thread: {}", e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Unknown error processing message in network thread");
+      }
     }
 
     if (current_state.shutdown_ready) {
+      PROFILE_SECTION("network_thread::pump_thread--finalize_shutdown");
       if (current_state.shutdown_complete) {
         return;
       }
@@ -253,6 +257,7 @@ namespace other {
   }
 
   void network_thread::process_message(opt<message>&& msg) {
+    PROFILE_SECTION("network_thread::process_message");
     if (msg.has_value()) {
       CORE_LOG_TRACE("[NETWORK THREAD RX: {}]", message_header{ msg->category, msg->id });
       switch (msg->category) {
@@ -295,6 +300,7 @@ namespace other {
   }
 
   void network_thread::handle_command_shutdown_request(message&& msg) {
+    PROFILE_SECTION("network_thread::handle_command_shutdown_request");
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
 
@@ -308,6 +314,7 @@ namespace other {
   /// \todo check for duplicate endpoints or other invalid connection parameters
 
   void network_thread::handle_command_listen_connection(message&& msg) {
+    PROFILE_SECTION("network_thread::handle_command_listen_connection");
     command_listen_connection request = deserialize_direct<command_listen_connection>(msg.data).first;
 
     transport_provider* provider = nullptr;
@@ -336,6 +343,7 @@ namespace other {
   }
 
   void network_thread::handle_command_close_connection(message&& msg) {
+    PROFILE_SECTION("network_thread::handle_command_close_connection");
     command_close_connection request = deserialize_direct<command_close_connection>(msg.data).first;
 
     natural_t connection_id = request.connection_id;
@@ -350,6 +358,7 @@ namespace other {
   }
 
   void network_thread::handle_command_tx_data(message&& msg) {
+    PROFILE_SECTION("network_thread::handle_command_tx_data");
     command_tx_data request = deserialize_direct<command_tx_data>(msg.data).first;
 
     natural_t connection_id = request.connection_id;
@@ -371,10 +380,12 @@ namespace other {
 
   void network_thread::handle_request_ack_process_msg(message&& msg) {
     OTHER_ASSERT(msg.data.size() >= sizeof(natural_t) + sizeof(message_header), "Invalid ACK message data size: {}", msg.data.size());
+    PROFILE_SECTION("network_thread::handle_request_ack_process_msg");
     natural_t ack_id = 0;
     message acked_msg;
 
     {
+      PROFILE_SECTION("network_thread::handle_request_ack_process_msg--deserialize");
       request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
       ack_id = request_data.ack_id;
       acked_msg.category = request_data.original_header.category;

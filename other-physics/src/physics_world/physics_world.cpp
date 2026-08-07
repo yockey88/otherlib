@@ -60,6 +60,7 @@ namespace other {
   }
 
   void physics_world::drain_contacts(ostd::vector<contact_event>& out) {
+    PROFILE_SECTION("physics_world::drain_contacts");
     physics_api()->drain_contacts(world_id, this, out);
     for (contact_event& ev : out) {
       if (ev.type != contact_event::kEnd) {
@@ -155,6 +156,7 @@ namespace other {
 
   physics_body* physics_world::create_physics_body(const physics_body::settings& settings, const glm::mat4& world_transform) {
     OTHER_ASSERT(physics_bodies != nullptr, "Physics body memory pool is not initialized.");
+    PROFILE_SECTION("physics_world::create_physics_body");
     if (physics_bodies->full()) {
       CORE_LOG_ERROR("Physics body pool is full ({} bodies), cannot create another.", kMaxPhysicsBodies);
       return nullptr;
@@ -183,6 +185,7 @@ namespace other {
 
   void physics_world::destroy_physics_body(physics_body* body) {
     OTHER_ASSERT(body != nullptr, "Cannot destroy a null physics body.");
+    PROFILE_SECTION("physics_world::destroy_physics_body");
     size_t idx = static_cast<size_t>(body->id);
     OTHER_ASSERT(idx < kMaxPhysicsBodies, "Physics body ID {} is out of bounds.", body->id);
 
@@ -201,6 +204,7 @@ namespace other {
   namespace {
 
     bounding_box scaled_geometry_bounds(const shape_geometry& geometry, const glm::vec3& world_scale) {
+      PROFILE_SECTION("scaled_geometry_bounds");
       bounding_box bounds = bounding_box::empty;
       for (const glm::vec3& p : geometry.positions) {
         glm::vec3 sp = p * world_scale;
@@ -216,6 +220,7 @@ namespace other {
                                             const glm::vec3& world_scale, const shape_geometry* geometry,
                                             const bounding_box* fit_bounds) {
     OTHER_ASSERT(body != nullptr, "Cannot apply a shape to a null physics body.");
+    PROFILE_SECTION("physics_world::apply_shape");
 
     live_body& live_obj = live_objects[static_cast<size_t>(body->id)];
     OTHER_ASSERT(live_obj.object == body, "Physics body at index {} does not match the provided body.", body->id);

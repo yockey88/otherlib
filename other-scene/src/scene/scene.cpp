@@ -150,6 +150,7 @@ namespace other {
 
   scene::~scene() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::~scene");
     if (storage != nullptr) {
       storage->tree.destroy_all_objects();
 
@@ -163,6 +164,7 @@ namespace other {
     if (!script_path.has_value() || script_loaded) {
       return;
     }
+    PROFILE_SECTION("scene::run_script_file");
 
     if (!std::filesystem::exists(*script_path)) {
       CORE_LOG_ERROR("Scene '{}' hook script '{}' does not exist.", name, script_path->string());
@@ -204,6 +206,7 @@ namespace other {
     if (!pending_document.has_value()) {
       return;
     }
+    PROFILE_SECTION("scene::instantiate_pending_document");
 
     CORE_LOG_DEBUG("Instantiating scene document into scene '{}' ({} objects).", name, pending_document->objects.size());
     serialization::instantiate_scene(*this, *pending_document, serialization::default_codec_services());
@@ -233,6 +236,7 @@ namespace other {
       CORE_LOG_ERROR("Cannot play scene because storage is not initialized.");
       return;
     }
+    PROFILE_SECTION("scene::play");
 
     play_snapshot = capture_snapshot();
 
@@ -255,6 +259,7 @@ namespace other {
       CORE_LOG_ERROR("Cannot pause scene because storage is not initialized.");
       return;
     }
+    PROFILE_SECTION("scene::pause");
 
     if (storage->physics != nullptr) {
       storage->physics->stop_simulation();
@@ -268,6 +273,7 @@ namespace other {
       CORE_LOG_ERROR("Cannot stop scene because storage is not initialized.");
       return;
     }
+    PROFILE_SECTION("scene::stop");
 
     if (storage->physics != nullptr) {
       destroy_scene_joints();  /// welds go before the restore tears their bodies down
@@ -344,6 +350,7 @@ namespace other {
 
   void scene::destroy_all_non_root_objects() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::destroy_all_non_root_objects");
     const natural_t root_id = root_object().id;
     /// copy the child list — destroy mutates it
     const ostd::vector<uint64_t> children = get_children_ids(root_id);
@@ -354,6 +361,7 @@ namespace other {
 
   ostd::vector<std::string> scene::get_object_tags(natural_t id) const {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_object_tags");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
 
@@ -436,6 +444,7 @@ namespace other {
     };
 
     extracted_geometry extract_render_geometry(const model_data& data) {
+      PROFILE_SECTION("extract_render_geometry");
       extracted_geometry geo;
       geo.positions.reserve(data.vertices.size());
       for (const vertex& v : data.vertices) {
@@ -453,6 +462,7 @@ namespace other {
   }  // namespace
 
   void scene::apply_component_shape(entt::entity entity, physics_component& phys_comp) {
+    PROFILE_SECTION("scene::apply_component_shape");
     object_handle& handle = storage->registry.get<object_handle>(entity);
 
     glm::vec3 position, scale;
@@ -486,6 +496,7 @@ namespace other {
   }
 
   void scene::rebuild_physics_body(entt::entity entity, physics_component& phys_comp) {
+    PROFILE_SECTION("scene::rebuild_physics_body");
     object_handle& handle = storage->registry.get<object_handle>(entity);
 
     if (phys_comp.shape != nullptr) {
@@ -610,6 +621,7 @@ namespace other {
   }
 
   void scene::destroy_scene_joints() {
+    PROFILE_SECTION("scene::destroy_scene_joints");
     storage->registry.view<physics_joint_component>().each([this](entt::entity entity, physics_joint_component& joint_comp) {
       if (joint_comp.joint_id >= 0) {
         storage->physics->destroy_joint(joint_comp.joint_id);
@@ -681,6 +693,7 @@ namespace other {
     ///  model's palette. runs after every script surface so state scripts set lands in the
     ///  same frame's pose
     void tick_animation(animation_component& anim, render_component& render, double delta_time, scope<asset_handler>& asset_handler) {
+      PROFILE_SECTION("tick_animation");
       model_source* source = render.obj_model.source;
       if (source == nullptr || source->source_data().skel.empty()) {
         anim.clip = nullptr;
@@ -1235,6 +1248,7 @@ namespace other {
 
   bounding_box scene::get_bounding_box(scene_object* object) const {
     OTHER_ASSERT(object != nullptr, "Scene object is null.");
+    PROFILE_SECTION("scene::get_bounding_box");
     const entt::entity entity = entt::entity(object->registry_id);
 
     bounding_box box = bounding_box::empty;
@@ -1398,152 +1412,155 @@ namespace other {
     });
 
     bool instance_overflow_warned = false;
-    storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {
-      if (!render.visible) {
-        return;
-      }
-      auto& obj = get_object(handle.id);
-      if (!obj.visible) {
-        return;
-      }
-
-      bool changed = render.last_model_asset_id != render.model_asset_id;
-      if (changed) {
-        if (!asset_handler->asset_exists(render.model_asset_id)) {
-          CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
-          // avoids repeated failed lookups and objects don't disappear from scene
-          render.model_asset_id = render.last_model_asset_id;
+    {
+      PROFILE_SECTION("scene::prepare_render_data--render_view");
+      storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {
+        if (!render.visible) {
+          return;
         }
-      }
-
-      /// the same validation dance for the material override; a bad assignment reverts
-      ///  instead of killing the draw
-      if (render.last_material_asset_id != render.material_asset_id && render.material_asset_id != 0) {
-        if (!asset_handler->asset_exists(render.material_asset_id)) {
-          CORE_LOG_ERROR("Render component material asset ID {} does not exist for object ID {}.", render.material_asset_id, handle.id);
-          render.material_asset_id = render.last_material_asset_id;
-        }
-      }
-      render.last_material_asset_id = render.material_asset_id;
-
-      /// either they are the same or we already validated the change
-      const bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
-      if (!is_loaded) {
-        return;
-      }
-
-      natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
-      OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
-
-      renderer_backend* backend = subsystem<renderer_backend>::get();
-      ref<model_source> model_src = backend->get_model_source(hash);
-      if (model_src == nullptr) {
-        /// unloaded from the renderer (or mid-reload): drop the draw and forget the stale instance
-        render.obj_model = {};
-        return;
-      }
-      if (render.obj_model.source != model_src.raw_ptr()) {
-        /// first sight of this asset, or a hot reload swapped the source under the same hash
-        render.obj_model = model_src->produce_model();
-      }
-
-      /// effective material resolution: component override wins when its asset is registered,
-      ///  else the model's imported material per submesh, else nullptr = layout defaults at
-      ///  bind time. the key keeps batching stable through the override's async load window.
-      const material* override_material = nullptr;
-      natural_t material_key = 0;
-      if (render.material_asset_id != 0 && asset_handler->asset_exists(render.material_asset_id)) {
-        material_key = asset_handler->get_asset_hash(render.material_asset_id);
-        override_material = backend->get_material(material_key);
-      }
-
-      model* draw_model = &render.obj_model;
-      const std::span<const submesh> submeshes = draw_model->source->source_data().submeshes;
-      OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
-      const ostd::vector<material>& imported_materials = model_src->imported_materials();
-
-      const auto sm_idxs = draw_model->submesh_indices;
-      OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
-      for (const auto& sm_idx : sm_idxs) {
-        OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
-
-        auto transform_it = draw_model->local_submesh_transforms.find(sm_idx);
-        OTHER_ASSERT(transform_it != draw_model->local_submesh_transforms.end(), "Local submesh transform not found for submesh index {}", sm_idx);
-
-        mesh_key key = {
-          .model_source_handle = draw_model->source->get_mesh_handle(),
-          .render_state = render_polygon_mode::POLYGON_MODE_FILL,
-          .draw_mode = mesh::primitive_type::TRIANGLES,
-          .submesh_index = sm_idx,
-          .material_key = material_key,
-        };
-
-        const submesh& sm = submeshes[sm_idx];
-        const material* draw_material = override_material;
-        if (draw_material == nullptr && sm.material_index < imported_materials.size()) {
-          draw_material = &imported_materials[sm.material_index];
+        auto& obj = get_object(handle.id);
+        if (!obj.visible) {
+          return;
         }
 
-        auto it = data.mesh_indices.find(key);
-        if (it == data.mesh_indices.end()) {
-          auto [itr, inserted] = data.mesh_indices.insert({ key, data.num_draw_calls++ });
-          OTHER_ASSERT(inserted, "Failed to insert mesh key into map");
-
-          data.mesh_keys.emplace_back() = key;
-          data.draw_calls.emplace_back() = draw_call{};
-          data.draw_materials.emplace_back() = draw_material;
-          data.draw_tints.emplace_back() = draw_instance_tints{};
-          data.model_buffers.emplace_back() = gpu::model_matrix_buffer{};
-          data.bone_buffers.emplace_back() = gpu::bone_matrix_buffer{};
-
-          it = itr;
-        }
-        OTHER_ASSERT(it != data.mesh_indices.end(), "Mesh key not found in map after insertion");
-
-        size_t mesh_index = it->second;
-
-        draw_call& call = data.draw_calls[mesh_index];
-        if (call.instance_count == 0) {
-          call.submesh_index = sm_idx;
-
-          call.mesh_handle = draw_model->source->get_mesh_handle();
-
-          call.vertex_offset = sm.base_vertex;
-          call.vertex_count = sm.vert_cnt;
-          call.index_offset = sm.base_idx;
-          call.index_count = sm.idx_cnt;
-
-          call.line_thickness = 1.f;
-        }
-
-        /// per-instance slots (tints + model matrices) are fixed arrays: a dropped instance
-        ///  beats a buffer overrun; a real >kMaxMaterials-instance path is instancing work
-        if (call.instance_count >= gpu::kMaxMaterials) {
-          if (!instance_overflow_warned) {
-            CORE_LOG_WARN("Draw for submesh {} exceeded {} instances; extra instances are dropped this frame.", sm_idx, gpu::kMaxMaterials);
-            instance_overflow_warned = true;
+        bool changed = render.last_model_asset_id != render.model_asset_id;
+        if (changed) {
+          if (!asset_handler->asset_exists(render.model_asset_id)) {
+            CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
+            // avoids repeated failed lookups and objects don't disappear from scene
+            render.model_asset_id = render.last_model_asset_id;
           }
-          continue;
         }
 
-        glm::mat4 world_transform = get_world_transform(handle.id);  // * transform_it->second;
-
-        size_t index = call.instance_count++;
-        data.draw_tints[mesh_index].tints[index] = render.tint;
-        data.model_buffers[mesh_index].model_matrices[index] = world_transform;
-
-        /// instances sharing one draw share one palette (per-draw buffer); the tick
-        ///  recomputes it every frame, so no clear. unrigged draws keep use_bones = 0
-        if (sm.rigged && !draw_model->bone_matrices.empty()) {
-          gpu::bone_matrix_buffer& bone_buff = data.bone_buffers[mesh_index];
-          const size_t bone_count = std::min(draw_model->bone_matrices.size(), kMaxBones);
-          std::copy_n(draw_model->bone_matrices.begin(), bone_count, bone_buff.bone_matrices);
-          bone_buff.use_bones = 1;
+        /// the same validation dance for the material override; a bad assignment reverts
+        ///  instead of killing the draw
+        if (render.last_material_asset_id != render.material_asset_id && render.material_asset_id != 0) {
+          if (!asset_handler->asset_exists(render.material_asset_id)) {
+            CORE_LOG_ERROR("Render component material asset ID {} does not exist for object ID {}.", render.material_asset_id, handle.id);
+            render.material_asset_id = render.last_material_asset_id;
+          }
         }
-      }
+        render.last_material_asset_id = render.material_asset_id;
 
-      render.last_model_asset_id = render.model_asset_id;
-    });
+        /// either they are the same or we already validated the change
+        const bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
+        if (!is_loaded) {
+          return;
+        }
+
+        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+        OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
+
+        renderer_backend* backend = subsystem<renderer_backend>::get();
+        ref<model_source> model_src = backend->get_model_source(hash);
+        if (model_src == nullptr) {
+          /// unloaded from the renderer (or mid-reload): drop the draw and forget the stale instance
+          render.obj_model = {};
+          return;
+        }
+        if (render.obj_model.source != model_src.raw_ptr()) {
+          /// first sight of this asset, or a hot reload swapped the source under the same hash
+          render.obj_model = model_src->produce_model();
+        }
+
+        /// effective material resolution: component override wins when its asset is registered,
+        ///  else the model's imported material per submesh, else nullptr = layout defaults at
+        ///  bind time. the key keeps batching stable through the override's async load window.
+        const material* override_material = nullptr;
+        natural_t material_key = 0;
+        if (render.material_asset_id != 0 && asset_handler->asset_exists(render.material_asset_id)) {
+          material_key = asset_handler->get_asset_hash(render.material_asset_id);
+          override_material = backend->get_material(material_key);
+        }
+
+        model* draw_model = &render.obj_model;
+        const std::span<const submesh> submeshes = draw_model->source->source_data().submeshes;
+        OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
+        const ostd::vector<material>& imported_materials = model_src->imported_materials();
+
+        const auto sm_idxs = draw_model->submesh_indices;
+        OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
+        for (const auto& sm_idx : sm_idxs) {
+          OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
+
+          auto transform_it = draw_model->local_submesh_transforms.find(sm_idx);
+          OTHER_ASSERT(transform_it != draw_model->local_submesh_transforms.end(), "Local submesh transform not found for submesh index {}", sm_idx);
+
+          mesh_key key = {
+            .model_source_handle = draw_model->source->get_mesh_handle(),
+            .render_state = render_polygon_mode::POLYGON_MODE_FILL,
+            .draw_mode = mesh::primitive_type::TRIANGLES,
+            .submesh_index = sm_idx,
+            .material_key = material_key,
+          };
+
+          const submesh& sm = submeshes[sm_idx];
+          const material* draw_material = override_material;
+          if (draw_material == nullptr && sm.material_index < imported_materials.size()) {
+            draw_material = &imported_materials[sm.material_index];
+          }
+
+          auto it = data.mesh_indices.find(key);
+          if (it == data.mesh_indices.end()) {
+            auto [itr, inserted] = data.mesh_indices.insert({ key, data.num_draw_calls++ });
+            OTHER_ASSERT(inserted, "Failed to insert mesh key into map");
+
+            data.mesh_keys.emplace_back() = key;
+            data.draw_calls.emplace_back() = draw_call{};
+            data.draw_materials.emplace_back() = draw_material;
+            data.draw_tints.emplace_back() = draw_instance_tints{};
+            data.model_buffers.emplace_back() = gpu::model_matrix_buffer{};
+            data.bone_buffers.emplace_back() = gpu::bone_matrix_buffer{};
+
+            it = itr;
+          }
+          OTHER_ASSERT(it != data.mesh_indices.end(), "Mesh key not found in map after insertion");
+
+          size_t mesh_index = it->second;
+
+          draw_call& call = data.draw_calls[mesh_index];
+          if (call.instance_count == 0) {
+            call.submesh_index = sm_idx;
+
+            call.mesh_handle = draw_model->source->get_mesh_handle();
+
+            call.vertex_offset = sm.base_vertex;
+            call.vertex_count = sm.vert_cnt;
+            call.index_offset = sm.base_idx;
+            call.index_count = sm.idx_cnt;
+
+            call.line_thickness = 1.f;
+          }
+
+          /// per-instance slots (tints + model matrices) are fixed arrays: a dropped instance
+          ///  beats a buffer overrun; a real >kMaxMaterials-instance path is instancing work
+          if (call.instance_count >= gpu::kMaxMaterials) {
+            if (!instance_overflow_warned) {
+              CORE_LOG_WARN("Draw for submesh {} exceeded {} instances; extra instances are dropped this frame.", sm_idx, gpu::kMaxMaterials);
+              instance_overflow_warned = true;
+            }
+            continue;
+          }
+
+          glm::mat4 world_transform = get_world_transform(handle.id);  // * transform_it->second;
+
+          size_t index = call.instance_count++;
+          data.draw_tints[mesh_index].tints[index] = render.tint;
+          data.model_buffers[mesh_index].model_matrices[index] = world_transform;
+
+          /// instances sharing one draw share one palette (per-draw buffer); the tick
+          ///  recomputes it every frame, so no clear. unrigged draws keep use_bones = 0
+          if (sm.rigged && !draw_model->bone_matrices.empty()) {
+            gpu::bone_matrix_buffer& bone_buff = data.bone_buffers[mesh_index];
+            const size_t bone_count = std::min(draw_model->bone_matrices.size(), kMaxBones);
+            std::copy_n(draw_model->bone_matrices.begin(), bone_count, bone_buff.bone_matrices);
+            bone_buff.use_bones = 1;
+          }
+        }
+
+        render.last_model_asset_id = render.model_asset_id;
+      });
+    }
 
     if (scene_ambient_light != nullptr) {
       data.simulation_environment.sun_direction = glm::vec4(scene_ambient_light->direction, 0.0f);

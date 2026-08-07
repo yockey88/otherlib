@@ -41,6 +41,7 @@ namespace other {
   }
 
   void physics_environment::initialize_physics_environment(const config_table& configuration) {
+    PROFILE_SECTION("physics_environment::initialize_physics_environment");
     physics_bodies = make_scope<memory_pool<physics_body>>();
     physics_shapes = make_scope<memory_pool<physics_shape>>();
     fixed_step = configuration.get_value<float>("physics.fixed_step", kDefaultFixedStep);
@@ -65,6 +66,7 @@ namespace other {
   }
 
   void physics_environment::shutdown_physics_environment() {
+    PROFILE_SECTION("physics_environment::shutdown_physics_environment");
     /// drain through destroy_world so every backend world shuts down, not just the map entries
     while (!worlds.empty()) {
       destroy_world(worlds.begin()->first);
@@ -74,6 +76,7 @@ namespace other {
   }
 
   physics_world* physics_environment::create_world(natural_t id) {
+    PROFILE_SECTION("physics_environment::create_world");
     {
       auto itr = worlds.find(id);
       if (itr != worlds.end()) {
@@ -93,6 +96,7 @@ namespace other {
   }
 
   void physics_environment::destroy_world(natural_t id) {
+    PROFILE_SECTION("physics_environment::destroy_world");
     auto itr = worlds.find(id);
     if (itr == worlds.end()) {
       CORE_LOG_ERROR("Physics world with id '{}' does not exist.", id);

@@ -8,6 +8,7 @@
 #include <imgui/imgui.h>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "ui/ui_window.hpp"
 
@@ -24,6 +25,7 @@ namespace other {
   }
 
   void ui_node::render() {
+    PROFILE_SECTION("ui_node::render");
     bool current_state = state.open;
     if (!state.open) {
       return;
@@ -75,6 +77,7 @@ namespace other {
 
   natural_t ui_node::add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
+    PROFILE_SECTION("ui_node::add_node_to");
     if (remaining_search_pattern.empty()) {
       node->containing_window = containing_window;
       children.push_back(node->id);

@@ -56,6 +56,7 @@ namespace other {
   // }
 
   void build_tool::poll_project_build() {
+    PROFILE_SECTION("build_tool::poll_project_build");
     if (build_tool_obj == nullptr) {
       return;
     }
@@ -64,6 +65,7 @@ namespace other {
   }
 
   void build_tool::finalize_build() {
+    PROFILE_SECTION("build_tool::finalize_build");
     if (build_tool_obj == nullptr) {
       return;
     }

@@ -3,6 +3,8 @@
  **/
 #include "vm/command_files/opcode_builder.hpp"
 
+#include "core/profiler.hpp"
+
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/register.hpp"
 
@@ -52,6 +54,7 @@ namespace other {
   }
 
   lowering_artifact opcode_builder::finalize(ocmd_code_generator& generator) const {
+    PROFILE_SECTION("opcode_builder::finalize");
     lowering_artifact artifact{};
     for (const auto& instr : emitted_instructions) {
       generator.encode(instr, artifact);

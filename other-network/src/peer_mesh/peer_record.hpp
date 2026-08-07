@@ -1,5 +1,5 @@
 /**
- * \file peer-mesh/peer_record.hpp
+ * \file peer_mesh/peer_record.hpp
  **/
 #ifndef OTHER_NETWORK_PEER_MESH_PEER_RECORD_HPP
 #define OTHER_NETWORK_PEER_MESH_PEER_RECORD_HPP

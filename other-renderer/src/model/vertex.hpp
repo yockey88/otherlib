@@ -80,8 +80,13 @@ namespace other {
     static buffer_layout get_buffer_layout();
     static size_t stride();
 
-    inline ostd::vector<float> to_gpu_buffer() const { return to_gpu_buffer(*this); }
-    static ostd::vector<float> to_gpu_buffer(const vertex& v);
+    inline ostd::vector<float> to_gpu_buffer() const {
+      ostd::vector<float> buffer{};
+      buffer.reserve(stride());
+      to_gpu_buffer(buffer, *this);
+      return buffer;
+    }
+    static void to_gpu_buffer(ostd::vector<float>& buffer, const vertex& v);
     static ostd::vector<float> to_gpu_buffer(const std::span<const vertex> v);
   };
 
@@ -94,7 +99,7 @@ namespace other {
     uint32_t v1 = 0;
     uint32_t v2 = 0;
 
-    static ostd::vector<uint32_t> to_gpu_buffer(const index& idx);
+    static void to_gpu_buffer(ostd::vector<uint32_t>& buffer, const index& idx);
     static ostd::vector<uint32_t> to_gpu_buffer(const std::span<const index> indices);
   };
 

@@ -3,6 +3,7 @@
  **/
 #include "ui/asset-browser/asset_browser_tree_node.hpp"
 
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "file/directory.hpp"
 #include "file/filesystem.hpp"
@@ -48,6 +49,7 @@ namespace other {
     }
 
     void asset_browser_tree_node::rebuild_tree() {
+      PROFILE_SECTION("asset_browser_tree_node::rebuild_tree");
       nodes.clear();
 
       auto* fs = subsystem<file_system>::get();
@@ -69,6 +71,7 @@ namespace other {
     }
 
     void asset_browser_tree_node::on_render_node_body() {
+      PROFILE_SECTION("asset_browser_tree_node::on_render_node_body");
       ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::asset_browser::kDirTreeBG));
 
       if (!ImGui::BeginChild("##dir-tree-scroll", ImVec2(0, 0), ImGuiChildFlags_None)) {

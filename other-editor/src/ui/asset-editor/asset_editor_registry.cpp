@@ -4,6 +4,7 @@
 #include "ui/asset-editor/asset_editor_registry.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace ui {
@@ -19,6 +20,7 @@ namespace other {
     }
 
     scope<asset_editor_node> asset_editor_registry::create_editor(asset::type type, ui_window* window) const {
+      PROFILE_SECTION("asset_editor_registry::create_editor");
       /// script overrides take priority
       /// \todo: script editors need a type-name → asset::type mapping to work
       ///        for now, only builtin editors are used

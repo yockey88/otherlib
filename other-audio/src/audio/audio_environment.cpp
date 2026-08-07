@@ -8,6 +8,7 @@
 #include <miniaudio/miniaudio.h>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "memory/arena_allocator.hpp"
 #include "thread/thread_safety.hpp"
 
@@ -92,6 +93,7 @@ namespace other {
   /// no thread assert here: subsystem initialization runs before the driver
   ///  registers the main thread (other.cpp boot order), same as the renderer
   bool audio_environment::initialize(const audio_config& config) {
+    PROFILE_SECTION("audio_environment::initialize");
     if (initialized) {
       CORE_LOG_WARN("audio_environment::initialize called while already initialized; ignoring");
       return true;
@@ -151,6 +153,7 @@ namespace other {
   }
 
   void audio_environment::shutdown() {
+    PROFILE_SECTION("audio_environment::shutdown");
     if (!initialized) {
       return;
     }
@@ -177,6 +180,7 @@ namespace other {
   void audio_environment::pump(double dt) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(initialized && pump_active, "pump() is only valid on an initialized pump-mode audio environment");
+    PROFILE_SECTION("audio_environment::pump");
     if (dt <= 0.0) {
       return;
     }
@@ -226,6 +230,7 @@ namespace other {
 
   voice_id audio_environment::start_voice(const voice_params& params) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("audio_environment::start_voice");
     if (!initialized) {
       CORE_LOG_ERROR("start_voice on an uninitialized audio environment");
       return 0;
@@ -256,6 +261,7 @@ namespace other {
     }
 
     if (clip->streamed) {
+      PROFILE_SECTION("audio_environment::start_voice--stream_open");
       const ma_uint32 flags = MA_SOUND_FLAG_STREAM | (params.spatial ? 0 : MA_SOUND_FLAG_NO_SPATIALIZATION);
       const std::string path = clip->source_absolute.string();
       if (ma_sound_init_from_file(&state->engine, path.c_str(), flags,
@@ -265,6 +271,7 @@ namespace other {
       }
       free_slot->streamed = true;
     } else {
+      PROFILE_SECTION("audio_environment::start_voice--buffer_init");
       ma_audio_buffer_config buffer_config =
         ma_audio_buffer_config_init(ma_format_f32, clip->channels, clip->frames, clip->pcm.data(), nullptr);
       buffer_config.sampleRate = clip->sample_rate;
@@ -320,6 +327,7 @@ namespace other {
 
   void audio_environment::recycle_finished_one_shots() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("audio_environment::recycle_finished_one_shots");
     if (!initialized) {
       return;
     }
@@ -365,6 +373,7 @@ namespace other {
 
   void audio_environment::stop_voices_on(natural_t clip_hash) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("audio_environment::stop_voices_on");
     if (!initialized) {
       return;
     }
@@ -377,6 +386,7 @@ namespace other {
 
   void audio_environment::stop_all_voices() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("audio_environment::stop_all_voices");
     if (!initialized) {
       return;
     }
@@ -432,6 +442,7 @@ namespace other {
 
   void audio_environment::preview_play(const filepath& absolute, float volume, opt<loop_region> loop) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("audio_environment::preview_play");
     if (!initialized) {
       CORE_LOG_WARN("preview_play on an uninitialized audio environment");
       return;

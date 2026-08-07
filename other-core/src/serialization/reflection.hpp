@@ -18,6 +18,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "data-structures/std_container.hpp"
 
@@ -311,6 +312,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   std::string string_writer::write_fields_to_string(const std::string& name, const T& value, int32_t indent_level) const {
+    PROFILE_SECTION("string_writer::write_fields_to_string");
     std::stringstream ss;
     std::string indent = std::string((indent_level - 1) * 2, ' ');
     ss << indent << name;
@@ -358,6 +360,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   reflection_data* type_database::get_reflection_data(const T& value) {
+    PROFILE_SECTION("type_database::get_reflection_data");
     static const auto refl_data = refl::reflect(value);
     static const std::string refl_type_name = std::string{ refl_data.name };
     static const uint64_t type_hash = typeid(T).hash_code();

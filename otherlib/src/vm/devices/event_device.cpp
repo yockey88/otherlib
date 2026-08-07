@@ -3,6 +3,7 @@
  **/
 #include "vm/devices/event_device.hpp"
 
+#include "core/profiler.hpp"
 #include "event/event_system.hpp"
 
 #include "driver/driver.hpp"
@@ -35,6 +36,7 @@ namespace other {
   }
 
   void event_device::dispatch(uint8_t function_id, other_command_device* device) {
+    PROFILE_SECTION("event_device::dispatch");
     switch (function_id) {
       case TRIGGER_EVENT: {
         std::string event_name = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);

@@ -3,6 +3,8 @@
  **/
 #include "scripting/execution_graph.hpp"
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   void execution_graph::set_delta_time(float dt) {
@@ -35,6 +37,7 @@ namespace other {
   }
 
   void execution_graph::connect_nodes(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
+    PROFILE_SECTION("execution_graph::connect_nodes");
     auto* from_n = nodes.find_item([from_node](const auto& n) { return n.name == from_node; });
     if (from_n == nullptr) {
       CORE_LOG_ERROR("From node '{}' not found in graph!", from_node);
@@ -61,6 +64,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> execution_graph::topological_sort() {
+    PROFILE_SECTION("execution_graph::topological_sort");
     if (nodes.empty()) {
       return {};
     }

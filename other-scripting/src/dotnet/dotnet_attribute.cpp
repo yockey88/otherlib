@@ -4,6 +4,7 @@
 #include "dotnet/dotnet_attribute.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "dotnet/dotnet_host.hpp"
 #include "dotnet/native_string.hpp"
@@ -29,6 +30,7 @@ namespace other {
   }
 
   std::span<const dotnet_attribute>::const_iterator find_dotnet_attribute(const std::span<const dotnet_attribute> attributes, const std::string_view attr_name) {
+    PROFILE_SECTION("find_dotnet_attribute");
     if (auto itr = std::ranges::find_if(attributes, [&attr_name](const dotnet_attribute& attr) { return attr.name() == attr_name; }); itr != attributes.end()) {
       return itr;
     }
@@ -73,6 +75,7 @@ namespace other {
 
   bool dotnet_attribute_get_attribute_object(dotnet_host* host, const std::span<const dotnet_attribute> attributes, const std::string_view attr_name, const std::string_view field_name, void* out) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_attribute_get_attribute_object");
 
     auto itr = find_dotnet_attribute(attributes, attr_name);
     if (itr == attributes.end()) {

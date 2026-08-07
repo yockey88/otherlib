@@ -6,6 +6,7 @@
 #include <asio/asio.hpp>
 
 #include "core/config_table.hpp"
+#include "core/profiler.hpp"
 
 #include "defines.hpp"
 
@@ -17,12 +18,14 @@ namespace other {
   job_system::~job_system() = default;
 
   void job_system::initialize(const config_table& cfg) {
+    PROFILE_SECTION("job_system::initialize");
     config.worker_count = cfg.get_value<uint32_t>("application.async.worker_count", std::max(2u, std::thread::hardware_concurrency() - 1));
     pool = make_scope<asio::thread_pool>(config.worker_count);
     OTHER_ASSERT(pool != nullptr, "Failed to create thread pool for job system.");
   }
 
   void job_system::poll() {
+    PROFILE_SECTION("job_system::poll");
     ostd::vector<completion_record> completions;
     {
       std::lock_guard lck{ completion_mutex };
@@ -30,6 +33,7 @@ namespace other {
     }
 
     for (const auto& [id, status] : completions) {
+      PROFILE_SECTION("job_system::poll--resolve_completion");
       {
         auto* node = jobs.get_node(id);
         OTHER_ASSERT(node != nullptr, "Job node with ID {} not found in job graph on completion.", id);
@@ -47,6 +51,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("job_system::poll--coroutine_pump");
       std::lock_guard lck{ live_coroutines_mutex };
       running_coroutines = true;
       for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
@@ -70,6 +75,7 @@ namespace other {
   }
 
   void job_system::shutdown() {
+    PROFILE_SECTION("job_system::shutdown");
     for (auto& c : live_coroutines) {
       c.handle.coro_handle.destroy();
     }
@@ -81,6 +87,7 @@ namespace other {
   }
 
   ref<job> job_system::submit(job::descriptor desc, job_graph::work_fn work) {
+    PROFILE_SECTION("job_system::submit");
     auto j = jobs.insert(desc, work);
     dispatch_ready();
     return j;
@@ -88,6 +95,7 @@ namespace other {
 
   ref<job> job_system::submit(job::descriptor desc, job_graph::work_fn work, std::span<const natural_t> dependencies) {
     OTHER_ASSERT(work != nullptr, "Work function for job '{}' is null.", desc.name);
+    PROFILE_SECTION("job_system::submit");
 
     for (natural_t dep : dependencies) {
       if (!jobs.get_node(dep)) {
@@ -111,6 +119,7 @@ namespace other {
   }
 
   void job_system::post_coroutine(task&& coro) {
+    PROFILE_SECTION("job_system::post_coroutine");
     /// this is to not invalidate the iterators of live_coroutines if we post a new coroutine from within a running coroutine
     if (running_coroutines) {
       std::lock_guard lck{ pending_coroutines_mutex };
@@ -127,6 +136,7 @@ namespace other {
   }
 
   void job_system::dispatch_ready() {
+    PROFILE_SECTION("job_system::dispatch_ready");
     auto ready = jobs.collect_ready();
     CORE_LOG_DEBUG("Dispatching ready jobs: {}", ready);
     for (natural_t job_id : ready) {
@@ -135,6 +145,7 @@ namespace other {
   }
 
   void job_system::dispatch_node(natural_t id) {
+    PROFILE_SECTION("job_system::dispatch_node");
     job_graph::job_node* node = jobs.get_node(id);
     if (node == nullptr) {
       CORE_LOG_ERROR("Job node with ID {} not found for dispatch.", id);
@@ -148,6 +159,7 @@ namespace other {
 
     node->handle->current_status.store(job::status::RUNNING, std::memory_order_release);
     auto wrapped = [this, w = std::move(w), id]() {
+      PROFILE_SECTION("job_system::dispatch_node--run_job");
       job::status final_status = job::status::COMPLETED;
       try {
         w();
@@ -181,6 +193,7 @@ namespace other {
   }
 
   void job_system::on_job_complete(natural_t id, job::status status) {
+    PROFILE_SECTION("job_system::on_job_complete");
     CORE_LOG_DEBUG("Job [{}] completed with status {}.", id, status);
     std::lock_guard lck{ completion_mutex };
     pending_completions.push_back({ .id = id, .status = status });

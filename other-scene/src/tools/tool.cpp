@@ -3,6 +3,7 @@
  **/
 #include "tools/tool.hpp"
 
+#include "core/profiler.hpp"
 #include "script/scripting_environment.hpp"
 
 namespace other {
@@ -16,6 +17,7 @@ namespace other {
   }
 
   void tool::initialize() {
+    PROFILE_SECTION("tool::initialize");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment subsystem is not available.");
 
@@ -33,6 +35,7 @@ namespace other {
   }
 
   void tool::shutdown() {
+    PROFILE_SECTION("tool::shutdown");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment subsystem is not available.");
 

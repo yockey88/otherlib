@@ -8,6 +8,7 @@
 #include <ranges>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
@@ -40,6 +41,7 @@ namespace other {
   std::vector<uint8_t> ocmd_linker::link(scope<symbol_resolver> resolver, diagnostic_engine* diag) {
     OTHER_ASSERT(resolver != nullptr, "Symbol resolver scope cannot be null");
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
+    PROFILE_SECTION("ocmd_linker::link");
     diagnostics = diag;
 
     /// resolve compiler gen symbol addresses by estimating start of section based on how man goto instructions we will have to add
@@ -164,6 +166,7 @@ namespace other {
   }
 
   void ocmd_linker::register_symbols(scope<symbol_resolver>& resolver) {
+    PROFILE_SECTION("ocmd_linker::register_symbols");
     for (const auto& data_section : code.compiled_data_sections) {
       resolver->register_symbol(data_section.name, {});
       for (const auto& field : data_section.fields) {
@@ -177,6 +180,7 @@ namespace other {
   }
 
   void ocmd_linker::write_code(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
+    PROFILE_SECTION("ocmd_linker::write_code");
     for (const auto& code_block : code.compiled_blocks) {
       auto bytes_view =
         code_block.artifact.machine_instructions |
@@ -205,6 +209,7 @@ namespace other {
   // }
 
   void ocmd_linker::write_data_sections(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
+    PROFILE_SECTION("ocmd_linker::write_data_sections");
     for (const auto& data_section : code.compiled_data_sections) {
       // don't normalize here because using acutal size of output binary here
       uint16_t data_section_start_address = get_current_linking_address(binary);
@@ -230,6 +235,7 @@ namespace other {
   }
 
   void ocmd_linker::do_final_linking(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
+    PROFILE_SECTION("ocmd_linker::do_final_linking");
     for (uint32_t code_block_index = 0; code_block_index < code.compiled_blocks.size(); ++code_block_index) {
       auto& code_block = code.compiled_blocks[code_block_index];
       uint16_t code_block_start_address = calculate_code_section_offset(code_block_index);

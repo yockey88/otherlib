@@ -10,6 +10,7 @@
 namespace other {
 
   natural_t interface_registry::register_interface(const environment_interface& env_interface) {
+    PROFILE_SECTION("interface_registry::register_interface");
     natural_t new_id = generate_interface_id();
     auto [it, inserted] = interfaces.emplace(new_id, env_interface);
     OTHER_ASSERT(inserted, "Failed to register environment interface '{}'.", env_interface.name);
@@ -79,6 +80,7 @@ namespace other {
   }
 
   bool interface_registry::validate_lua_interface_table(const environment_interface& env_interface, const sol::table& table) const {
+    PROFILE_SECTION("interface_registry::validate_lua_interface_table");
     for (const auto& method : env_interface.actions) {
       sol::object func_obj = table[method.script_name.value_or(method.name).data()];
       if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
@@ -104,6 +106,7 @@ namespace other {
 
   void interface_registry::bind_lua_interface_methods(bound_interface& bound_interface, const environment_interface& env_interface) {
     OTHER_ASSERT(bound_interface.interface_table.has_value(), "Cannot bind Lua interface methods to interface '{}' because the bound interface has no Lua table.", env_interface.name);
+    PROFILE_SECTION("interface_registry::bind_lua_interface_methods");
 
     sol::table& table = bound_interface.interface_table.value();
     for (const auto& method : env_interface.actions) {

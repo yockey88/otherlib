@@ -5,6 +5,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "model/vertex.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -65,6 +66,7 @@ namespace other {
   }
 
   mesh& mesh::upload_vertex_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t vertex_count, const void* data, size_t size) {
+    PROFILE_SECTION("mesh::upload_vertex_buffer");
     destroy_vertex_buffer();
 
     bind();
@@ -86,6 +88,7 @@ namespace other {
   }
 
   mesh& mesh::upload_index_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t index_count, const void* data, size_t size) {
+    PROFILE_SECTION("mesh::upload_index_buffer");
     destroy_index_buffer();
 
     bind();
@@ -189,6 +192,7 @@ namespace other {
   }
 
   void mesh::finalize_mesh() {
+    PROFILE_SECTION("mesh::finalize_mesh");
     if (vertex_buffer_handle.id == 0) {
       CORE_LOG_ERROR("Vertex buffer not uploaded, cannot finalize mesh.");
       return;
@@ -216,6 +220,7 @@ namespace other {
   }
 
   void mesh::destroy_resources() {
+    PROFILE_SECTION("mesh::destroy_resources");
     destroy_vertex_buffer();
     destroy_index_buffer();
   }

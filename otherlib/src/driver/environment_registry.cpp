@@ -7,6 +7,7 @@ namespace other {
 
   natural_t environment_registry::install_from_manifest(std::string_view plugin_name, const plugin_manifest& m) {
     OTHER_ASSERT(m.factory_function != nullptr, "Plugin manifest for plugin '{}' does not have a valid factory function.", plugin_name);
+    PROFILE_SECTION("environment_registry::install_from_manifest");
     CORE_LOG_DEBUG("Installing plugin '{}' to interface [{}]", plugin_name, m.class_name);
     CORE_LOG_DEBUG(" - Plugin Instance Name: {}", m.plugin_instance_name);
     CORE_LOG_DEBUG(" - Interface Hash: {}", m.interface_hash);
@@ -40,6 +41,7 @@ namespace other {
   }
 
   void environment_registry::uninstall_plugin(std::string_view plugin_name) {
+    PROFILE_SECTION("environment_registry::uninstall_plugin");
     auto interface_itr = std::ranges::find_if(registered_interfaces, [&](const registered_interface& reg_interface) {
       return std::ranges::find(reg_interface.providers, plugin_name, &plugin_provider::plugin_name) != reg_interface.providers.end();
     });

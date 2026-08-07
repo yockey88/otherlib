@@ -3,11 +3,14 @@
  **/
 #include "edit_stack.hpp"
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   void edit_stack::commit(const edit& e) {
     OTHER_ASSERT(e.apply != nullptr, "Cannot commit edit: no apply action defined.");
     OTHER_ASSERT(e.undo != nullptr, "Cannot commit edit: no undo action defined.");
+    PROFILE_SECTION("edit_stack::commit");
     e.apply();
     edit_future.clear();
     edit_history.push_back(e);
@@ -16,6 +19,7 @@ namespace other {
   void edit_stack::record(const edit& e) {
     OTHER_ASSERT(e.apply != nullptr, "Cannot record edit: no apply action defined.");
     OTHER_ASSERT(e.undo != nullptr, "Cannot record edit: no undo action defined.");
+    PROFILE_SECTION("edit_stack::record");
     edit_future.clear();
     edit_history.push_back(e);
   }
@@ -26,6 +30,7 @@ namespace other {
   }
 
   void edit_stack::undo() {
+    PROFILE_SECTION("edit_stack::undo");
     if (can_undo()) {
       edit e = edit_history.back();
       OTHER_ASSERT(e.undo != nullptr, "Cannot undo edit: no undo action defined.");
@@ -37,6 +42,7 @@ namespace other {
   }
 
   void edit_stack::redo() {
+    PROFILE_SECTION("edit_stack::redo");
     if (can_redo()) {
       edit e = edit_future.back();
       OTHER_ASSERT(e.apply != nullptr, "Cannot redo edit: no apply action defined.");

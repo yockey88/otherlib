@@ -5,6 +5,8 @@
 
 #include <set>
 
+#include "core/profiler.hpp"
+
 /// \todo make this more general and don't re-write this for each type of asset
 
 namespace other {
@@ -25,6 +27,7 @@ namespace other {
     }  // namespace
 
     validation_result validate_pipeline_toml(const toml::table& tbl) {
+      PROFILE_SECTION("validate_pipeline_toml");
       validation_result result;
 
       const auto asset_type = tbl.at_path("asset-type");

@@ -7,6 +7,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
@@ -46,6 +47,7 @@ namespace other {
   void material_layout::finalize() {
     OTHER_ASSERT(!params.empty(), "material layout declares no params — a material binding without a block is meaningless");
     OTHER_ASSERT(instance_capacity > 0, "material layout instance capacity must be > 0");
+    PROFILE_SECTION("material_layout::finalize");
 
     uint32_t cursor = 0;
     uint32_t max_alignment = 4;
@@ -86,6 +88,7 @@ namespace other {
   void material_layout::pack(const material* mat, std::span<uint8_t> out, const pack_warning_fn& warn) const {
     OTHER_ASSERT(element_size > 0, "material layout was not finalized before pack");
     OTHER_ASSERT(out.size() >= element_size, "material pack target is smaller than the layout element ({} < {})", out.size(), element_size);
+    PROFILE_SECTION("material_layout::pack");
     std::memset(out.data(), 0, element_size);
 
     for (const param& p : params) {

@@ -4,10 +4,12 @@
 #include "network/acknowledgement_list.hpp"
 
 #include "core/enum_formatter.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
   natural_t acknowledgement_list::register_ack(asio::io_context& io, message_header header, microseconds timeout, message_handler handler) {
+    PROFILE_SECTION("acknowledgement_list::register_ack");
     natural_t ack_id = generate_ack_id();
     OTHER_ASSERT(std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id && ack.header == header; }) == pending_acks.end(), "Acknowledgment for message ID {} already pending", header);
 
@@ -26,6 +28,7 @@ namespace other {
 
     ack_itr->timer.expires_after(timeout);
     ack_itr->timer.async_wait([this, stime = ack.sent_time, id = ack_id](const asio::error_code& ec) {
+      PROFILE_SECTION("acknowledgement_list::register_ack--timeout_handler");
       if (ec && ec == asio::error::operation_aborted) {
         auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
         if (itr != pending_acks.end()) {
@@ -60,6 +63,7 @@ namespace other {
   }
 
   void acknowledgement_list::handle_ack(natural_t ack_id, message_header original_header, std::span<const uint8_t> data) {
+    PROFILE_SECTION("acknowledgement_list::handle_ack");
     auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id && ack.header == original_header; });
     if (itr == pending_acks.end()) {
       CORE_LOG_ERROR("Received acknowledgment for unknown message ID {} with ACK ID {}", original_header, ack_id);
@@ -84,6 +88,7 @@ namespace other {
   }
 
   void acknowledgement_list::clear() {
+    PROFILE_SECTION("acknowledgement_list::clear");
     for (auto& ack : pending_acks) {
       ack.timer.cancel();
     }

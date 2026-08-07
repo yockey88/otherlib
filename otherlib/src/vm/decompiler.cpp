@@ -8,6 +8,7 @@
 
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/command_files/ocmd_headers.hpp"
 #include "vm/control_table.hpp"
@@ -156,6 +157,7 @@ namespace other {
 
   void decompiler::hexdump_memory(other_command_device* device) {
     assert(device != nullptr && "Null device!");
+    PROFILE_SECTION("decompiler::hexdump_memory");
     std::stringstream ss;
     for (size_t i = 0; i < other_command_device::kMemorySize; ++i) {
       if (i % 16 == 0) {
@@ -170,6 +172,7 @@ namespace other {
   }
 
   void decompiler::dump_instructions(const std::span<const uint8_t> instructions) {
+    PROFILE_SECTION("decompiler::dump_instructions");
     if (instructions.size() % other_command_device::kOpCodeSize != 0) {
       CORE_LOG_ERROR("Instruction size is not a multiple of opcode size!");
       return;

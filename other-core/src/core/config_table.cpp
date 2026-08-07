@@ -26,6 +26,7 @@ namespace other {
         : ptr(std::make_unique<toml::table>(*other.ptr)) {}
 
     toml_table_box& toml_table_box::operator=(const toml_table_box& other) {
+      PROFILE_SECTION("toml_table_box::operator=");
       if (this != &other) {
         ptr = std::make_unique<toml::table>(*other.ptr);
       }
@@ -107,6 +108,7 @@ namespace other {
 
   template <typename T>
   opt<T> config_table::try_get_value(const std::string_view toml_path) const {
+    PROFILE_SECTION("config_table::try_get_value");
     if (!has_path(toml_path)) {
       return std::nullopt;
     }
@@ -353,6 +355,7 @@ namespace other {
   }
 
   std::string config_table::dump_table_string() const {
+    PROFILE_SECTION("config_table::dump_table_string");
     std::ostringstream oss;
     oss << table.get();
     return oss.str();

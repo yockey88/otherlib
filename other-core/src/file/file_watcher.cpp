@@ -9,34 +9,31 @@
 #include "file/path_helpers.hpp"
 
 namespace other {
-  namespace {
 
-    /// '/'-separated paths relative to @p root; the filter prunes excluded subtrees
-    //  (bin/, obj/, .*/), which is the rebuild-loop safety mechanism — do not drop it.
-    //  iteration tolerates transient races (files vanishing mid-scan) via error codes.
-    void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, std::unordered_map<std::string, std::filesystem::file_time_type>& out) {
-      std::error_code ec;
-      for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
-        const opt<std::string> rel = try_relative(it->path(), root);
-        if (!rel.has_value()) {
-          continue;
+  /// '/'-separated paths relative to @p root; the filter prunes excluded subtrees
+  //  (bin/, obj/, .*/), which is the rebuild-loop safety mechanism — do not drop it.
+  //  iteration tolerates transient races (files vanishing mid-scan) via error codes.
+  void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, ostd::vector<file_watcher::file_time>& out) {
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
+      const opt<std::string> rel = try_relative(it->path(), root);
+      if (!rel.has_value()) {
+        continue;
+      }
+
+      if (it->is_directory(ec)) {
+        if (filter == nullptr || filter->may_contain(*rel)) {
+          scan_subtree_impl(root, it->path(), filter, out);
         }
-
-        if (it->is_directory(ec)) {
-          if (filter == nullptr || filter->may_contain(*rel)) {
-            scan_subtree_impl(root, it->path(), filter, out);
-          }
-        } else if (it->is_regular_file(ec)) {
-          if (filter == nullptr || filter->matches(*rel)) {
-            std::error_code time_ec;
-            const auto write_time = it->last_write_time(time_ec);
-            out.emplace(*rel, time_ec ? std::filesystem::file_time_type::min() : write_time);
-          }
+      } else if (it->is_regular_file(ec)) {
+        if (filter == nullptr || filter->matches(*rel)) {
+          std::error_code time_ec;
+          const auto write_time = it->last_write_time(time_ec);
+          out.push_back({ *rel, time_ec ? std::filesystem::file_time_type::min() : write_time });
         }
       }
     }
-
-  }  // namespace
+  }
 
   file_watcher::file_watcher(event_system& events, const filepath& path, watch_type type, watch_mode mode)
       : events(events), watch_path(path), type(type), mode(mode) {
@@ -46,6 +43,8 @@ namespace other {
       checksum = compute_checksum(watch_path);
     }
     if (exists && type == watch_type::DIRECTORY) {
+      directory_contained_files = calculate_directory_file_count();
+      subtree.reserve(directory_contained_files);
       scan_subtree(subtree);
     }
   }
@@ -93,21 +92,21 @@ namespace other {
   void file_watcher::poll_directory() {
     PROFILE_SECTION("file_watcher::poll_directory");
 
-    std::unordered_map<std::string, std::filesystem::file_time_type> current;
+    ostd::vector<file_time> current;
     scan_subtree(current);
 
     for (const auto& [rel, write_time] : current) {
-      auto prev = subtree.find(rel);
+      auto prev = std::ranges::find(subtree, rel, &file_time::path);
       if (prev == subtree.end()) {
         events.trigger_event("filesystem.watch-event",
                              file_event{ .type = file_event::type::CREATED, .path = watch_path / rel });
-      } else if (prev->second != write_time) {
+      } else if (prev->last_write_time != write_time) {
         events.trigger_event("filesystem.watch-event",
                              file_event{ .type = file_event::type::MODIFIED, .path = watch_path / rel });
       }
     }
     for (const auto& [rel, write_time] : subtree) {
-      if (!current.contains(rel)) {
+      if (std::ranges::find(current, rel, &file_time::path) == current.end()) {
         events.trigger_event("filesystem.watch-event",
                              file_event{ .type = file_event::type::DELETED, .path = watch_path / rel });
       }
@@ -126,7 +125,8 @@ namespace other {
     }
   }
 
-  void file_watcher::scan_subtree(std::unordered_map<std::string, std::filesystem::file_time_type>& out) const {
+  void file_watcher::scan_subtree(ostd::vector<file_time>& out) const {
+    PROFILE_SECTION("file_watcher::scan_subtree");
     scan_subtree_impl(watch_path, watch_path, filter, out);
   }
 
@@ -136,6 +136,17 @@ namespace other {
 
   scope<file_watcher> file_watcher::make_directory_watcher(event_system& events, const filepath& path, watch_mode mode) {
     return make_scope<file_watcher>(events, path, watch_type::DIRECTORY, mode);
+  }
+
+  size_t file_watcher::calculate_directory_file_count() const {
+    PROFILE_SECTION("file_watcher::calculate_directory_file_count");
+    size_t count = 0;
+    for (std::filesystem::recursive_directory_iterator it(watch_path), end; it != end; ++it) {
+      if (it->is_regular_file()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   natural_t file_watcher::compute_checksum(const filepath& path) {

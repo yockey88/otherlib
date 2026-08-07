@@ -3,6 +3,8 @@
  **/
 #include "renderer/render_pass.hpp"
 
+#include "core/profiler.hpp"
+
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/shader.hpp"
 #include "renderer/renderer.hpp"
@@ -11,6 +13,7 @@ namespace other {
 
   void render_pass::bind_pass(renderer* renderer_ptr) {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+    PROFILE_SECTION("render_pass::bind_pass");
 
     if (framebuffer_handle.has_value()) {
       renderer_ptr->get_resource<framebuffer>(*framebuffer_handle).bind(!override_fb_clear);

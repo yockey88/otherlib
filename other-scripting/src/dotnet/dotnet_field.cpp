@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "memory/arena.hpp"
 
 #include "dotnet/dotnet_host.hpp"
@@ -44,6 +45,7 @@ namespace other {
 
   void dotnet_field::initialize_field() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_field::initialize_field");
     ostd::vector<int32_t> attribute_ids;
     int32_t num_attributes = 0;
 
@@ -62,6 +64,7 @@ namespace other {
   }
 
   value dotnet_field::get_default_value() const {
+    PROFILE_SECTION("dotnet_field::get_default_value");
     value val{};
 
     auto retrieve_default = [this]<typename T>() -> T {

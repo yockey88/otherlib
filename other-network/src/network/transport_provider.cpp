@@ -3,6 +3,8 @@
  **/
 #include "network/transport_provider.hpp"
 
+#include "core/profiler.hpp"
+
 #include "network/network_thread.hpp"
 
 #include "message/messages.hpp"
@@ -10,6 +12,7 @@
 namespace other {
 
   natural_t transport_provider::hash() const {
+    PROFILE_SECTION("transport_provider::hash");
     std::string n = name();
     if (n.empty()) {
       CORE_LOG_ERROR("Transport provider has an empty name, which is not allowed. Please override the name() method to return a non-empty name.");
@@ -66,6 +69,7 @@ namespace other {
   }
 
   void transport_provider::rx_data(natural_t connection_id, std::span<const uint8_t> data) {
+    PROFILE_SECTION("transport_provider::rx_data");
     CORE_LOG_DEBUG("[TRANSPORT {}] Received data on connection {}: {} bytes", name(), connection_id, data.size());
     on_rx_data(connection_id, data);
 
@@ -76,6 +80,7 @@ namespace other {
   }
 
   void transport_provider::connection_accepted(natural_t listener_id, const binding_point& endpoint) {
+    PROFILE_SECTION("transport_provider::connection_accepted");
     CORE_LOG_DEBUG("[TRANSPORT {}] Connection accepted on listener {} from {}:{}", name(), listener_id, endpoint.ip, endpoint.port);
     on_connection_accepted(listener_id, endpoint);
 
@@ -86,6 +91,7 @@ namespace other {
   }
 
   void transport_provider::connection_socket_closed(natural_t connection_id) {
+    PROFILE_SECTION("transport_provider::connection_socket_closed");
     CORE_LOG_DEBUG("[TRANSPORT {}] connection closed: ID {}", name(), connection_id);
 
     on_connection_socket_closed(connection_id);
@@ -99,6 +105,7 @@ namespace other {
   }
 
   void transport_provider::connection_socket_broken(natural_t connection_id) {
+    PROFILE_SECTION("transport_provider::connection_socket_broken");
     CORE_LOG_DEBUG("[TRANSPORT {}] connection broken: ID {}", name(), connection_id);
     on_connection_socket_broken(connection_id);
 

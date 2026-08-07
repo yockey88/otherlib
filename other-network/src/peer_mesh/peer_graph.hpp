@@ -1,13 +1,14 @@
 /**
- * \file peer-mesh/peer_graph.hpp
+ * \file peer_mesh/peer_graph.hpp
  **/
 #ifndef OTHER_NETWORK_PEER_MESH_PEER_GRAPH_HPP
 #define OTHER_NETWORK_PEER_MESH_PEER_GRAPH_HPP
 
 #include "core/defines.hpp"
-
 #include "data-structures/graph.hpp"
-#include "peer-mesh/peer_record.hpp"
+
+#include "peer_mesh/peer_record.hpp"
+
 
 namespace other {
 

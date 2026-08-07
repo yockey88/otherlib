@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <format>
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace cli {
     namespace {
@@ -92,6 +94,7 @@ namespace other {
     }
 
     void sidestep_running_executable(const tool_context& ctx, const filepath& output_root, std::string_view verb, bool dry_run) {
+      PROFILE_SECTION("sidestep_running_executable");
       const std::string exe_string = get_current_exe_full_path();
       if (exe_string.empty()) {
         return;

@@ -1,10 +1,11 @@
 /**
  * \file plugins/tcp_side_channel.hpp
  **/
+#include "core/profiler.hpp"
 #include "driver/driver.hpp"
 #include "plugin/plugin.hpp"
 
-#include "peer-mesh/packet_sink.hpp"
+#include "peer_mesh/packet_sink.hpp"
 
 using other::packet_sink;
 
@@ -15,6 +16,7 @@ class OTHER_CLASS tcp_side_channel : public other::packet_sink {
   ~tcp_side_channel() override = default;
 
   void on_rx_data(other::natural_t from_peer_id, std::span<const uint8_t> data) override {
+    PROFILE_SECTION("tcp_side_channel::on_rx_data");
     std::string str = "PEER ID: " + std::to_string(from_peer_id) + "\n";
     str += " - DATA: " + std::string(data.begin(), data.end());
     CORE_LOG_INFO("Received data on TCP listener:\n{}", str);

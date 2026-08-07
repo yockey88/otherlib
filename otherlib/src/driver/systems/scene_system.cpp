@@ -187,11 +187,15 @@ namespace other {
 
     /// declarative content first, then the behavior-hook script — both only happen the
     ///  first time the scene activates
-    active_scene->instantiate_pending_document();
-    active_scene->run_script_file();
+    {
+      PROFILE_SECTION("scene_system::set_scene_to_active--instantiate-scene");
+      active_scene->instantiate_pending_document();
+      active_scene->run_script_file();
+    }
 
     auto& storage = active_scene->get_storage();
     if ((*storage.sandbox)["OnSceneActivate"].valid()) {
+      PROFILE_SECTION("scene_system::set_scene_to_active--on_scene_activate");
       CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
       sol::protected_function on_scene_activate_fn = (*storage.sandbox)["OnSceneActivate"];
       sol::protected_function_result result = on_scene_activate_fn();

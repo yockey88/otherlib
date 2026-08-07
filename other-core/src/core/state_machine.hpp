@@ -11,6 +11,7 @@
 #include "core/enum_formatter.hpp"
 #include "core/formatting.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 
 namespace other {
@@ -44,6 +45,7 @@ namespace other {
     ST get_current_state() const { return current_state; }
 
     virtual void handle_event(ET event, void* data = nullptr) {
+      PROFILE_SECTION("state_machine::handle_event");
       ST current = get_current_state();
       OTHER_ASSERT(current < ST::NUM_STATES, "Current state is invalid");
 
@@ -75,6 +77,7 @@ namespace other {
     void add_transition(ST from, ET event, ST to, action on_transition = nullptr) {
       OTHER_ASSERT(from <= ST::NUM_STATES, "Invalid 'from' state");
       OTHER_ASSERT(event <= ET::NUM_EVENTS, "Invalid 'event'");
+      PROFILE_SECTION("state_machine::add_transition");
 
       auto itr = std::ranges::find_if(transition_table[static_cast<size_t>(from)], [event](const transition& t) { return t.event == event; });
       OTHER_ASSERT(itr == transition_table[static_cast<size_t>(from)].end(), "Transition already exists");

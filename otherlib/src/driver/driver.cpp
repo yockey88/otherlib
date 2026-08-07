@@ -135,6 +135,7 @@ namespace other {
   }
 
   std::pair<driver*, std::string> driver::create(const command_line& cmd, const config_table& config) {
+    PROFILE_SECTION("driver::create");
     driver* driver_instance = nullptr;
 
     std::string driver_path = config.dynamic_driver_rel_path.value_or("");
@@ -188,6 +189,7 @@ namespace other {
 
   void driver::destroy(const std::string& name, driver* instance) {
     OTHER_ASSERT(instance != nullptr, "Cannot destroy a null driver instance.");
+    PROFILE_SECTION("driver::destroy");
 
     if (!instance->dynamic) {
       CORE_LOG_DEBUG("Destroying driver instance.");
@@ -287,6 +289,7 @@ namespace other {
 
   void driver::confirm_initialization() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    PROFILE_SECTION("driver::confirm_initialization");
     CORE_LOG_DEBUG("Confirming initialization...");
 
     /// engine-level cli tools (scene compile/...) become reachable from in-process
@@ -295,7 +298,10 @@ namespace other {
     cli::register_dev_tools(cli::default_tool_registry());
     cli::register_environment_tools(cli::default_tool_registry());
 
-    on_initialization_confirm();
+    {
+      PROFILE_SECTION("driver::confirm_initialization--on_initialization_confirm");
+      on_initialization_confirm();
+    }
 
     if (network_enabled()) {
       OTHER_ASSERT(driver_kernel_ptr->has_core_system<network_system>(), "Network system is not initialized in driver kernel.");
@@ -325,6 +331,7 @@ namespace other {
 
   void driver::confirm_shutdown() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    PROFILE_SECTION("driver::confirm_shutdown");
     CORE_LOG_DEBUG("Confirming shutdown...");
 
     on_shutdown_confirm();
@@ -456,6 +463,7 @@ namespace other {
   }
 
   driver::metadata driver::build_metadata() {
+    PROFILE_SECTION("driver::build_metadata");
     const auto md = configuration().get_raw("application.metadata");
 
     metadata data = {};
@@ -569,7 +577,10 @@ namespace other {
 
     driver_kernel_ptr->tick(dt);
 
-    on_update();
+    {
+      PROFILE_SECTION("driver::update--on_update");
+      on_update();
+    }
     switch (current_driver_state()) {
       case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
 
@@ -581,7 +592,10 @@ namespace other {
           runtime_state.queued_project_file = std::nullopt;
         }
 
-        update_running();
+        {
+          PROFILE_SECTION("driver::update--update_running");
+          update_running();
+        }
       } break;
 
       case driver_state::DRIVER_STATE_SHUTTING_DOWN: {
@@ -607,7 +621,10 @@ namespace other {
       return;
     }
     PROFILE_SECTION("driver::render");
-    on_render();
+    {
+      PROFILE_SECTION("driver::render--on_render");
+      on_render();
+    }
 
     if (driver_kernel_ptr->has_core_system<rendering_system>()) {
       driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
@@ -617,6 +634,7 @@ namespace other {
   void driver::on_project_loaded() {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    PROFILE_SECTION("driver::on_project_loaded");
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
     OTHER_ASSERT(p.is_loaded(), "Project is not loaded in on_project_loaded!");
     CORE_LOG_DEBUG("Project loaded: {}", p.get_project_name());
@@ -693,6 +711,7 @@ namespace other {
   }
 
   void driver::begin_shutdown_sequence() {
+    PROFILE_SECTION("driver::begin_shutdown_sequence");
     CORE_LOG_DEBUG("Beginning shutdown sequence");
 
     if (driver_kernel_ptr->has_core_system<rendering_system>()) {

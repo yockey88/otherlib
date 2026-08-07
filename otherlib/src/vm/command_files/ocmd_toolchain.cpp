@@ -4,6 +4,7 @@
 #include "vm/command_files/ocmd_toolchain.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/code_generator_000.hpp"
 #include "vm/command_bus.hpp"
@@ -20,9 +21,11 @@ namespace other {
   std::vector<uint8_t> ocmd_toolchain::assemble_oasm_source(other_command_device* device, const filepath& path) {
     OTHER_ASSERT(std::filesystem::exists(path), "File does not exist: {}", path.string());
     OTHER_ASSERT(path.extension() == ".oasm", "File is not an OASM source file: {}", path.string());
+    PROFILE_SECTION("ocmd_toolchain::assemble_oasm_source");
 
     std::string contents;
     {
+      PROFILE_SECTION("ocmd_toolchain::assemble_oasm_source--read_source");
       std::ifstream file(path.string());
       OTHER_ASSERT(file, "Failed to open file: {}", path.string());
 

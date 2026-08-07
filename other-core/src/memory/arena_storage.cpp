@@ -15,6 +15,7 @@ namespace other {
   }
 
   void arena_storage::finalize() {
+    PROFILE_SECTION("arena_storage::finalize");
     if (current_frame_allocator != nullptr) {
       destroy_page(current_frame_allocator->page);
       delete current_frame_allocator;
@@ -50,6 +51,7 @@ namespace other {
   }
 
   page* arena_storage::create_page() {
+    PROFILE_SECTION("arena_storage::create_page");
     page* p = new page();
     std::memset(p->data(), 0, page::kPageSize);
     requested_pages.push_back(p);
@@ -57,6 +59,7 @@ namespace other {
   }
 
   void arena_storage::destroy_page(page* p) {
+    PROFILE_SECTION("arena_storage::destroy_page");
     if (p == nullptr) {
       return;
     }

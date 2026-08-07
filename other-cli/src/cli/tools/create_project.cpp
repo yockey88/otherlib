@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace cli {
     namespace {
@@ -170,6 +172,7 @@ return {
     }
 
     tool_result create_project_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("create_project_tool::execute");
       std::string project_name = "";
       opt<filepath> destination = std::nullopt;
       std::string author = "N/A";

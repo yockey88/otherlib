@@ -4,6 +4,7 @@
 #include "model/vertex.hpp"
 
 #include "core/enum_formatter.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
@@ -132,8 +133,7 @@ namespace other {
     };
   }
 
-  ostd::vector<float> vertex::to_gpu_buffer(const vertex& v) {
-    ostd::vector<float> buffer;
+  void vertex::to_gpu_buffer(ostd::vector<float>& buffer, const vertex& v) {
     buffer.push_back(v.position.x);
     buffer.push_back(v.position.y);
     buffer.push_back(v.position.z);
@@ -156,25 +156,30 @@ namespace other {
     buffer.push_back(v.bone_weights.y);
     buffer.push_back(v.bone_weights.z);
     buffer.push_back(v.bone_weights.w);
-    return buffer;
   }
 
   ostd::vector<float> vertex::to_gpu_buffer(const std::span<const vertex> v) {
+    PROFILE_SECTION("vertex::to_gpu_buffer");
     ostd::vector<float> buffer;
+    buffer.reserve(v.size() * stride());
     for (const auto& vert : v) {
-      buffer.append_range(to_gpu_buffer(vert));
+      to_gpu_buffer(buffer, vert);
     }
     return buffer;
   }
 
-  ostd::vector<uint32_t> index::to_gpu_buffer(const index& idx) {
-    return { idx.v0, idx.v1, idx.v2 };
+  void index::to_gpu_buffer(ostd::vector<uint32_t>& buffer, const index& idx) {
+    buffer.push_back(idx.v0);
+    buffer.push_back(idx.v1);
+    buffer.push_back(idx.v2);
   }
 
   ostd::vector<uint32_t> index::to_gpu_buffer(const std::span<const index> indices) {
+    PROFILE_SECTION("index::to_gpu_buffer");
     ostd::vector<uint32_t> buffer;
+    buffer.reserve(indices.size() * 3);
     for (const auto& idx : indices) {
-      buffer.append_range(to_gpu_buffer(idx));
+      to_gpu_buffer(buffer, idx);
     }
     return buffer;
   }

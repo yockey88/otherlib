@@ -5,6 +5,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_type.hpp"
@@ -15,6 +16,7 @@
 namespace other {
 
   void assembly::cache_types(type_cache* cache, const std::span<const int32_t> dotnet_type_ids) {
+    PROFILE_SECTION("assembly::cache_types");
     for (auto id : dotnet_type_ids) {
       types.emplace_back(cache->cache_type(host, id));
     }
@@ -32,6 +34,7 @@ namespace other {
   }
 
   ostd::vector<callback_binding> assembly::get_native_function_bindings() const {
+    PROFILE_SECTION("assembly::get_native_function_bindings");
     // for each type in assembly check method for CallbackBindingAttribute and if it exists add to list of bindings to return
     ostd::vector<callback_binding> bindings;
 
@@ -143,6 +146,7 @@ namespace other {
   }
 
   void assembly_context::unload_assembly(natural_t assembly_id) {
+    PROFILE_SECTION("assembly_context::unload_assembly");
     auto itr = assemblies.find(assembly_id);
     if (itr == assemblies.end()) {
       CORE_LOG_ERROR("Failed to unload assembly: ID {} not found", assembly_id);
@@ -176,6 +180,7 @@ namespace other {
   }
 
   void assembly_context::unload_all() {
+    PROFILE_SECTION("assembly_context::unload_all");
     CORE_LOG_DEBUG("Unloading all assemblies from context [{}:{}]", handle, name);
     for (auto itr = assemblies.begin(); itr != assemblies.end();) {
       itr = unload_assembly_and_erase(itr->first);

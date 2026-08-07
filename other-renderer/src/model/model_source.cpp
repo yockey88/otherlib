@@ -6,6 +6,7 @@
 #include <ranges>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
@@ -33,6 +34,7 @@ namespace other {
   }
 
   model model_source::produce_model(const std::string& name, std::span<const uint32_t> submesh_idxs) {
+    PROFILE_SECTION("model_source::produce_model");
     model m = {
       .name = name.empty() ? data.name + "_instance_" + std::to_string(num_models_produced++) : name,
       .source = this,

@@ -3,6 +3,8 @@
  **/
 #include "script/script_object.hpp"
 
+#include "core/profiler.hpp"
+
 #include "dotnet/dotnet_object.hpp"
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
@@ -13,6 +15,7 @@ namespace other {
   ///  parent-indexed field surface, and does not need to: every attached behavior already
   ///  owns a script_object whose type reflection carries the field list
   behavior_snapshot script_object::get_behavior_snapshot() const {
+    PROFILE_SECTION("script_object::get_behavior_snapshot");
     if (dotnet_object == nullptr) {
       return {};
     }

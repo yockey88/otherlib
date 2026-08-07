@@ -19,8 +19,8 @@
 
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
+#include "peer_mesh/peer_actor_host.hpp"
 
-#include "peer-mesh/peer_actor_host.hpp"
 
 namespace other {
 

@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "serialization/scene_field_codec.hpp"
 
 #include "scene/scene.hpp"
@@ -51,6 +52,7 @@ namespace other {
     }  // namespace
 
     scene_document capture_scene(scene& s, const codec_services& services) {
+      PROFILE_SECTION("capture_scene");
       scene_document doc = {};
       doc.schema_version = scene_document::kCurrentSchemaVersion;
       doc.name = s.name;
@@ -65,6 +67,7 @@ namespace other {
     }
 
     void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services) {
+      PROFILE_SECTION("instantiate_scene");
       s.get_storage().clear_color = doc.clear_color;
 
       ostd::map<natural_t, natural_t> id_remap = {};
@@ -100,6 +103,7 @@ namespace other {
     /// -- binary ------------------------------------------------------------
 
     ostd::vector<uint8_t> write_scene_binary(const scene_document& doc) {
+      PROFILE_SECTION("write_scene_binary");
       using namespace field_codec;
 
       ostd::vector<uint8_t> out = {};
@@ -113,31 +117,35 @@ namespace other {
 
       OTHER_ASSERT(doc.objects.size() <= std::numeric_limits<uint32_t>::max(), "scene document too large");
       write_raw<uint32_t>(static_cast<uint32_t>(doc.objects.size()), out);
-      for (const object_record& record : doc.objects) {
-        write_raw<natural_t>(record.file_id, out);
-        write_raw<natural_t>(record.parent_file_id, out);
-        write_sized_string(record.name, out);
-        write_raw<uint8_t>(record.visible ? 1 : 0, out);
+      {
+        PROFILE_SECTION("write_scene_binary--objects");
+        for (const object_record& record : doc.objects) {
+          write_raw<natural_t>(record.file_id, out);
+          write_raw<natural_t>(record.parent_file_id, out);
+          write_sized_string(record.name, out);
+          write_raw<uint8_t>(record.visible ? 1 : 0, out);
 
-        OTHER_ASSERT(record.tags.size() <= std::numeric_limits<uint16_t>::max(), "too many tags on object '{}'", record.name);
-        write_raw<uint16_t>(static_cast<uint16_t>(record.tags.size()), out);
-        for (const std::string& tag : record.tags) {
-          write_sized_string(tag, out);
-        }
+          OTHER_ASSERT(record.tags.size() <= std::numeric_limits<uint16_t>::max(), "too many tags on object '{}'", record.name);
+          write_raw<uint16_t>(static_cast<uint16_t>(record.tags.size()), out);
+          for (const std::string& tag : record.tags) {
+            write_sized_string(tag, out);
+          }
 
-        OTHER_ASSERT(record.components.size() <= std::numeric_limits<uint16_t>::max(), "too many components on object '{}'", record.name);
-        write_raw<uint16_t>(static_cast<uint16_t>(record.components.size()), out);
-        for (const component_record& component : record.components) {
-          write_raw<natural_t>(component.key_hash, out);
-          OTHER_ASSERT(component.payload.size() <= std::numeric_limits<uint32_t>::max(), "component payload too large on object '{}'", record.name);
-          write_raw<uint32_t>(static_cast<uint32_t>(component.payload.size()), out);
-          out.insert(out.end(), component.payload.begin(), component.payload.end());
+          OTHER_ASSERT(record.components.size() <= std::numeric_limits<uint16_t>::max(), "too many components on object '{}'", record.name);
+          write_raw<uint16_t>(static_cast<uint16_t>(record.components.size()), out);
+          for (const component_record& component : record.components) {
+            write_raw<natural_t>(component.key_hash, out);
+            OTHER_ASSERT(component.payload.size() <= std::numeric_limits<uint32_t>::max(), "component payload too large on object '{}'", record.name);
+            write_raw<uint32_t>(static_cast<uint32_t>(component.payload.size()), out);
+            out.insert(out.end(), component.payload.begin(), component.payload.end());
+          }
         }
       }
       return out;
     }
 
     scene_parse_result parse_scene_binary(std::span<const uint8_t> bytes) {
+      PROFILE_SECTION("parse_scene_binary");
       using namespace field_codec;
       size_t offset = 0;
 
@@ -172,50 +180,53 @@ namespace other {
 
       ostd::vector<std::string> warnings = {};
       std::set<natural_t> seen_ids = {};
-      for (uint32_t i = 0; i < object_count; ++i) {
-        object_record record = {};
-        uint8_t visible = 1;
-        if (!read_raw(bytes, offset, record.file_id) || !read_raw(bytes, offset, record.parent_file_id) ||
-            !read_sized_string(bytes, offset, record.name) || !read_raw(bytes, offset, visible)) {
-          return scene_parse_result::fail(std::format("truncated scene binary (object {})", i));
-        }
-        record.visible = visible != 0;
-
-        if (record.file_id == 0 || !seen_ids.insert(record.file_id).second) {
-          return scene_parse_result::fail(std::format("scene binary object {} has invalid or duplicate id {:#x}", i, record.file_id));
-        }
-        if (record.parent_file_id != 0 && !seen_ids.contains(record.parent_file_id)) {
-          return scene_parse_result::fail(std::format("scene binary object '{}' references parent {:#x} that does not precede it", record.name, record.parent_file_id));
-        }
-
-        uint16_t tag_count = 0;
-        if (!read_raw(bytes, offset, tag_count)) {
-          return scene_parse_result::fail(std::format("truncated scene binary (object '{}' tags)", record.name));
-        }
-        for (uint16_t t = 0; t < tag_count; ++t) {
-          std::string tag = "";
-          if (!read_sized_string(bytes, offset, tag)) {
-            return scene_parse_result::fail(std::format("truncated scene binary (object '{}' tag {})", record.name, t));
+      {
+        PROFILE_SECTION("parse_scene_binary--objects");
+        for (uint32_t i = 0; i < object_count; ++i) {
+          object_record record = {};
+          uint8_t visible = 1;
+          if (!read_raw(bytes, offset, record.file_id) || !read_raw(bytes, offset, record.parent_file_id) ||
+              !read_sized_string(bytes, offset, record.name) || !read_raw(bytes, offset, visible)) {
+            return scene_parse_result::fail(std::format("truncated scene binary (object {})", i));
           }
-          record.tags.push_back(std::move(tag));
-        }
+          record.visible = visible != 0;
 
-        uint16_t component_count = 0;
-        if (!read_raw(bytes, offset, component_count)) {
-          return scene_parse_result::fail(std::format("truncated scene binary (object '{}' components)", record.name));
-        }
-        for (uint16_t c = 0; c < component_count; ++c) {
-          component_record component = {};
-          uint32_t payload_size = 0;
-          if (!read_raw(bytes, offset, component.key_hash) || !read_raw(bytes, offset, payload_size) || offset + payload_size > bytes.size()) {
-            return scene_parse_result::fail(std::format("truncated scene binary (object '{}' component {})", record.name, c));
+          if (record.file_id == 0 || !seen_ids.insert(record.file_id).second) {
+            return scene_parse_result::fail(std::format("scene binary object {} has invalid or duplicate id {:#x}", i, record.file_id));
           }
-          component.payload.assign(bytes.begin() + offset, bytes.begin() + offset + payload_size);
-          offset += payload_size;
-          record.components.push_back(std::move(component));
-        }
+          if (record.parent_file_id != 0 && !seen_ids.contains(record.parent_file_id)) {
+            return scene_parse_result::fail(std::format("scene binary object '{}' references parent {:#x} that does not precede it", record.name, record.parent_file_id));
+          }
 
-        doc.objects.push_back(std::move(record));
+          uint16_t tag_count = 0;
+          if (!read_raw(bytes, offset, tag_count)) {
+            return scene_parse_result::fail(std::format("truncated scene binary (object '{}' tags)", record.name));
+          }
+          for (uint16_t t = 0; t < tag_count; ++t) {
+            std::string tag = "";
+            if (!read_sized_string(bytes, offset, tag)) {
+              return scene_parse_result::fail(std::format("truncated scene binary (object '{}' tag {})", record.name, t));
+            }
+            record.tags.push_back(std::move(tag));
+          }
+
+          uint16_t component_count = 0;
+          if (!read_raw(bytes, offset, component_count)) {
+            return scene_parse_result::fail(std::format("truncated scene binary (object '{}' components)", record.name));
+          }
+          for (uint16_t c = 0; c < component_count; ++c) {
+            component_record component = {};
+            uint32_t payload_size = 0;
+            if (!read_raw(bytes, offset, component.key_hash) || !read_raw(bytes, offset, payload_size) || offset + payload_size > bytes.size()) {
+              return scene_parse_result::fail(std::format("truncated scene binary (object '{}' component {})", record.name, c));
+            }
+            component.payload.assign(bytes.begin() + offset, bytes.begin() + offset + payload_size);
+            offset += payload_size;
+            record.components.push_back(std::move(component));
+          }
+
+          doc.objects.push_back(std::move(record));
+        }
       }
 
       if (offset != bytes.size()) {
@@ -227,6 +238,7 @@ namespace other {
     /// -- toml --------------------------------------------------------------
 
     std::string write_scene_toml(const scene_document& doc) {
+      PROFILE_SECTION("write_scene_toml");
       toml_writer w;
       w.comment("other environment scene document");
       w.table("scene");
@@ -238,43 +250,50 @@ namespace other {
       const std::array<float, 4> clear_color = { doc.clear_color.r, doc.clear_color.g, doc.clear_color.b, doc.clear_color.a };
       w.key_array("clear-color", clear_color);
 
-      for (const object_record& record : doc.objects) {
-        w.blank();
-        w.table_array("objects");
-        w.key("id", record.file_id);
-        if (record.parent_file_id != 0) {
-          w.key("parent", record.parent_file_id);
-        }
-        w.key("name", record.name);
-        if (!record.visible) {
-          w.key("visible", false);
-        }
-        if (!record.tags.empty()) {
-          w.key_array("tags", record.tags);
-        }
-
-        for (const component_record& component : record.components) {
-          const component_codec* codec = find_component_codec(component.key_hash);
-          if (codec == nullptr) {
-            w.comment(std::format("unknown component {:#018x} omitted", component.key_hash));
-            continue;
+      {
+        PROFILE_SECTION("write_scene_toml--objects");
+        for (const object_record& record : doc.objects) {
+          w.blank();
+          w.table_array("objects");
+          w.key("id", record.file_id);
+          if (record.parent_file_id != 0) {
+            w.key("parent", record.parent_file_id);
           }
-          const std::string table_path = std::format("objects.components.{}", codec->key);
-          w.table(table_path);
-          codec->payload_to_toml(component.payload, w, table_path);
+          w.key("name", record.name);
+          if (!record.visible) {
+            w.key("visible", false);
+          }
+          if (!record.tags.empty()) {
+            w.key_array("tags", record.tags);
+          }
+
+          for (const component_record& component : record.components) {
+            const component_codec* codec = find_component_codec(component.key_hash);
+            if (codec == nullptr) {
+              w.comment(std::format("unknown component {:#018x} omitted", component.key_hash));
+              continue;
+            }
+            const std::string table_path = std::format("objects.components.{}", codec->key);
+            w.table(table_path);
+            codec->payload_to_toml(component.payload, w, table_path);
+          }
         }
       }
       return w.str();
     }
 
     scene_parse_result parse_scene_toml(std::string_view text) {
+      PROFILE_SECTION("parse_scene_toml");
       toml::table root;
-      try {
-        root = toml::parse(text);
-      } catch (const toml::parse_error& e) {
-        return scene_parse_result::fail(std::format("toml parse error: {}", std::string{ e.description() }));
-      } catch (const std::exception& e) {
-        return scene_parse_result::fail(std::format("toml parse error: {}", e.what()));
+      {
+        PROFILE_SECTION("parse_scene_toml--toml-parse");
+        try {
+          root = toml::parse(text);
+        } catch (const toml::parse_error& e) {
+          return scene_parse_result::fail(std::format("toml parse error: {}", std::string{ e.description() }));
+        } catch (const std::exception& e) {
+          return scene_parse_result::fail(std::format("toml parse error: {}", e.what()));
+        }
       }
 
       const toml::table* scene_table = root.get_as<toml::table>("scene");
@@ -301,6 +320,7 @@ namespace other {
       std::set<natural_t> seen_ids = {};
       natural_t next_synthetic_id = 1;
       if (const toml::array* objects = root.get_as<toml::array>("objects"); objects != nullptr) {
+        PROFILE_SECTION("parse_scene_toml--objects");
         for (size_t i = 0; i < objects->size(); ++i) {
           const toml::table* object_table = objects->get(i)->as_table();
           if (object_table == nullptr) {
@@ -370,6 +390,7 @@ namespace other {
     /// -- files -------------------------------------------------------------
 
     scene_parse_result load_scene_document(const filepath& path) {
+      PROFILE_SECTION("load_scene_document");
       std::ifstream in(path, std::ios::binary);
       if (!in.is_open()) {
         return scene_parse_result::fail(std::format("failed to open scene file '{}'", path.string()));
@@ -387,6 +408,7 @@ namespace other {
     }
 
     bool save_scene_document(const scene_document& doc, const filepath& path) {
+      PROFILE_SECTION("save_scene_document");
       const std::string extension = path.extension().string();
       std::ofstream out(path, std::ios::binary | std::ios::trunc);
       if (!out.is_open()) {
@@ -410,6 +432,7 @@ namespace other {
     }
 
     ostd::vector<component_asset_ref> collect_scene_asset_refs(const scene_document& doc) {
+      PROFILE_SECTION("collect_scene_asset_refs");
       ostd::vector<component_asset_ref> refs = {};
       for (const object_record& object : doc.objects) {
         for (const component_record& component : object.components) {

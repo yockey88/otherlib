@@ -10,6 +10,7 @@
 #include <imgui/imgui_internal.h>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 
 #include "theme/colors.hpp"
 #include "ui/unicode.hpp"
@@ -80,6 +81,7 @@ namespace other {
     }
 
     void console_history_node::push_log(console_w::log_entry entry) {
+      PROFILE_SECTION("console_history_node::push_log");
       if (entry.timestamp.empty()) {
         entry.timestamp = make_timestamp();
       }
@@ -171,6 +173,7 @@ namespace other {
     }
 
     void console_history_node::on_render_node_body() {
+      PROFILE_SECTION("console_history_node::on_render_node_body");
       namespace cw = console_w;
       using namespace colors;
 
@@ -203,6 +206,7 @@ namespace other {
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, cw::kPaddingY));
 
       if (ImGui::BeginChild("##log-scroll")) {
+        PROFILE_SECTION("console_history_node::on_render_node_body--log_lines");
         /// draw visible entries
         uint32_t visible_idx = 0;
         for (const auto& entry : entries) {

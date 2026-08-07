@@ -4,6 +4,7 @@
 #include "lua/lua_script.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "sol/protected_function_result.hpp"
 
@@ -24,6 +25,7 @@ namespace other {
   }
 
   void lua_script::run_script() {
+    PROFILE_SECTION("lua_script::run_script");
     if (!is_valid()) {
       CORE_LOG_ERROR("Lua script [{}] is not valid, cannot run script", script_sandbox["__script_name"].get<std::string>());
       return;
@@ -60,6 +62,7 @@ namespace other {
   }
 
   void lua_script::call_hook_function_if_exists(const std::string_view function_name, bool on_entry) {
+    PROFILE_SECTION("lua_script::call_hook_function_if_exists");
     if (!on_entry) {
       /// if we are entering we already validated and are running the first time
       ///   this will actually also cause infinite recursion if the hook calls this function again

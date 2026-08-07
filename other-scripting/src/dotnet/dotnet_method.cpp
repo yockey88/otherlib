@@ -4,6 +4,7 @@
 #include "dotnet/dotnet_method.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "dotnet/dotnet_host.hpp"
 #include "dotnet/types.hpp"
@@ -22,6 +23,7 @@ namespace other {
 
   void dotnet_method::initialize_method() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_method::initialize_method");
     ostd::vector<int32_t> attribute_ids;
     int32_t num_attributes = 0;
 

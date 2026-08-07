@@ -7,6 +7,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "file/path_helpers.hpp"
 
 namespace other {
@@ -38,6 +39,7 @@ namespace other {
   }
 
   asset::type asset::get_type_from_declaration(const filepath& file_path) {
+    PROFILE_SECTION("asset::get_type_from_declaration");
     toml::table t;
     try {
       t = toml::parse_file(file_path.string());
@@ -78,6 +80,7 @@ namespace other {
   }
 
   std::string asset::get_name_from_declaration(const filepath& file_path) {
+    PROFILE_SECTION("asset::get_name_from_declaration");
     toml::table t;
     try {
       t = toml::parse_file(file_path.string());

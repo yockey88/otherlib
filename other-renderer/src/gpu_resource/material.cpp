@@ -9,6 +9,7 @@
 #include <toml++/toml.hpp>
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
@@ -48,6 +49,7 @@ namespace other {
   }  // namespace
 
   material_parse_result parse_material_toml(const filepath& path) {
+    PROFILE_SECTION("parse_material_toml");
     material_parse_result result;
 
     toml::table table;

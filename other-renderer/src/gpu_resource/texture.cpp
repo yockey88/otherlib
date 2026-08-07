@@ -4,12 +4,14 @@
 #include "gpu_resource/texture.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
 
   resource_handle texture::create(const std::string& name, tex_type type, format frmt, uint32_t width, uint32_t height) {
+    PROFILE_SECTION("texture::create");
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -29,6 +31,7 @@ namespace other {
   }
 
   resource_handle texture::create(const std::string& name, tex_type type, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t mip_levels, bool generate_mips, uint32_t width, uint32_t height) {
+    PROFILE_SECTION("texture::create");
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -50,6 +53,7 @@ namespace other {
   }
 
   resource_handle texture::create3d(const std::string& name, format frmt, const glm::vec3& dimensions) {
+    PROFILE_SECTION("texture::create3d");
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create 3D texture resource with name: {}", name);
@@ -69,6 +73,7 @@ namespace other {
   }
 
   resource_handle texture::create3d(const std::string& name, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t mip_levels, bool generate_mips, const glm::vec3& dimensions) {
+    PROFILE_SECTION("texture::create3d");
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create 3D texture resource with name: {}", name);
@@ -201,6 +206,7 @@ namespace other {
   }
 
   void texture::finalize_texture() {
+    PROFILE_SECTION("texture::finalize_texture");
     if (size.x <= 0 || size.y <= 0) {
       CORE_LOG_ERROR("Texture size must be set before finalizing.");
       return;

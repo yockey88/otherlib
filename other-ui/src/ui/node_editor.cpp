@@ -9,6 +9,7 @@
 
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "theme/colors.hpp"
 #include "ui/node_editor_math.hpp"
@@ -17,6 +18,7 @@ namespace other {
 
   void node_editor::begin(const std::string_view title, const glm::vec2& size) {
     OTHER_ASSERT(!frame_open, "node_editor::begin('{}') called twice without end", title);
+    PROFILE_SECTION("node_editor::begin");
 
     frame_open = true;
     ++frame_index;
@@ -58,6 +60,7 @@ namespace other {
     OTHER_ASSERT(frame_open, "node_editor::end() called without begin");
     OTHER_ASSERT(draw_list != nullptr, "node_editor::end() ImGui::GetWindowDrawList() returned null");
     OTHER_ASSERT(splitter != nullptr, "node_editor::end() splitter is null");
+    PROFILE_SECTION("node_editor::end");
 
     splitter->SetCurrentChannel(draw_list, 0);
     process_interactions();
@@ -300,6 +303,7 @@ namespace other {
 
   void node_editor::draw_grid() {
     OTHER_ASSERT(draw_list != nullptr, "draw_grid called outside of begin/end");
+    PROFILE_SECTION("node_editor::draw_grid");
 
     float zoom_step = config.grid_step * view_transform.zoom;
 
@@ -316,6 +320,7 @@ namespace other {
   }
 
   void node_editor::draw_nodes() {
+    PROFILE_SECTION("node_editor::draw_nodes");
     sort_nodes_for_drawing();
 
     ImGui::TextWrapped("Nodes sorted topologically based on linkages.");
@@ -386,6 +391,7 @@ namespace other {
   }
 
   void node_editor::draw_pins() {
+    PROFILE_SECTION("node_editor::draw_pins");
     for (pin_record& rec : pins) {
       ImVec2 p = { rec.dot_screen_position.x, rec.dot_screen_position.y };
       draw_list->AddCircleFilled(p, style.pin_radius * view_transform.zoom, ui::colors::rgba_to_hex(rec.style.color));
@@ -393,6 +399,7 @@ namespace other {
   }
 
   void node_editor::draw_links() {
+    PROFILE_SECTION("node_editor::draw_links");
     for (const link_record& rec : links) {
       const glm::vec2 p0 = pins[pin_lookup.at(rec.from_pin)].dot_screen_position;
       const glm::vec2 p3 = pins[pin_lookup.at(rec.to_pin)].dot_screen_position;
@@ -408,6 +415,7 @@ namespace other {
   }
 
   void node_editor::update_hover(const glm::vec2& mouse, bool canvas_hovered) {
+    PROFILE_SECTION("node_editor::update_hover");
     hovered_node_id = hovered_pin_id = hovered_link_id = kInvalidId;
     if (!canvas_hovered) {
       return;
@@ -446,6 +454,7 @@ namespace other {
   }
 
   void node_editor::process_interactions() {
+    PROFILE_SECTION("node_editor::process_interactions");
     const ImGuiIO& io = ImGui::GetIO();
     const glm::vec2 mouse = { io.MousePos.x, io.MousePos.y };
     const bool canvas_hovered = ImGui::IsWindowHovered();

@@ -3,6 +3,8 @@
  **/
 #include "network/tcp/connection.hpp"
 
+#include "core/profiler.hpp"
+
 #include "network/tcp/tcp_transport_provider.hpp"
 
 #include "asio/asio/error.hpp"
@@ -22,6 +24,7 @@ namespace other {
 
   void connection::shutdown() {
     OTHER_ASSERT(provider != nullptr, "Connection has null provider");
+    PROFILE_SECTION("connection::shutdown");
 
     if (inactive || tcp_socket == nullptr) {
       return;
@@ -41,6 +44,7 @@ namespace other {
   }
 
   void connection::start_read() {
+    PROFILE_SECTION("connection::start_read");
     if (buffer.is_reading() || inactive || tcp_socket == nullptr) {
       return;
     }
@@ -51,6 +55,7 @@ namespace other {
   }
 
   void connection::write(const std::span<const uint8_t> data) {
+    PROFILE_SECTION("connection::write");
     if (inactive || tcp_socket == nullptr) {
       return;
     }
@@ -76,6 +81,7 @@ namespace other {
   }
 
   void connection::on_connect(const asio::error_code& ec) {
+    PROFILE_SECTION("connection::on_connect");
     if ((ec && ec == asio::error::operation_aborted) ||
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
@@ -97,6 +103,7 @@ namespace other {
   }
 
   void connection::finish_read(const asio::error_code& ec, size_t bytes_transferred) {
+    PROFILE_SECTION("connection::finish_read");
     if ((ec && ec == asio::error::operation_aborted) ||
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
@@ -126,6 +133,7 @@ namespace other {
   }
 
   void connection::finish_write(const asio::error_code& ec, size_t bytes_transferred) {
+    PROFILE_SECTION("connection::finish_write");
     if ((ec && ec == asio::error::operation_aborted) ||
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||

@@ -9,6 +9,7 @@
 
 #include <imgui/imgui.h>
 
+#include "core/profiler.hpp"
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
@@ -112,6 +113,7 @@ namespace other {
     void property_inspector_node::draw_component_section(const std::string_view component_name, const glm::vec4& color, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified) {
       OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr in draw_component_section");
       OTHER_ASSERT(object != nullptr, "Object must not be nullptr in draw_component_section");
+      PROFILE_SECTION("property_inspector_node::draw_component_section");
       if (!active_scene->has_component<T>(object)) {
         return;
       }
@@ -152,6 +154,7 @@ namespace other {
     }
 
     void property_inspector_node::on_render_node_body() {
+      PROFILE_SECTION("property_inspector_node::on_render_node_body");
       auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
       auto* active_scene = scenes.get_active_scene();
 
@@ -229,6 +232,7 @@ namespace other {
 
         ImGui::SetNextWindowSize({ 300.f, 0.f });
         if (ImGui::BeginPopup("##add_component_popup")) {
+          PROFILE_SECTION("property_inspector_node::on_render_node_body--add_component_popup");
           static char comp_search[64] = {};
           if (ImGui::IsWindowAppearing()) {
             comp_search[0] = '\0';

@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace {
@@ -155,6 +156,7 @@ namespace other {
 
   toml_writer& toml_writer::table(std::string_view dotted_path) {
     OTHER_ASSERT(!finalized, "toml_writer used after finalize");
+    PROFILE_SECTION("toml_writer::table");
     const std::vector<std::string> segments = split_dotted_path(dotted_path);
 
     /// walk the mirror, descending through the last element of any table-array segment;
@@ -195,6 +197,7 @@ namespace other {
 
   toml_writer& toml_writer::table_array(std::string_view dotted_path) {
     OTHER_ASSERT(!finalized, "toml_writer used after finalize");
+    PROFILE_SECTION("toml_writer::table_array");
     const std::vector<std::string> segments = split_dotted_path(dotted_path);
 
     toml::table* node = &mirror;
@@ -356,6 +359,7 @@ namespace other {
   }
 
   void toml_writer::finalize() {
+    PROFILE_SECTION("toml_writer::finalize");
     if (finalized) {
       return;
     }
@@ -376,6 +380,7 @@ namespace other {
   }
 
   bool toml_writer::save(const filepath& file_path) {
+    PROFILE_SECTION("toml_writer::save");
     finalize();
     std::ofstream out(file_path, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {

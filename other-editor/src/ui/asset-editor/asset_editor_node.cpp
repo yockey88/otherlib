@@ -6,6 +6,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 #include "ui/unicode.hpp"
 
@@ -63,6 +64,7 @@ namespace other {
         : ui_node(window, name), editor_asset_type(type) {}
 
     void asset_editor_node::draw_signature_header(const other::asset* asset_ptr, float width, bool compact) {
+      PROFILE_SECTION("asset_editor_node::draw_signature_header");
       using namespace colors;
       ImDrawList* dl = ImGui::GetWindowDrawList();
 
@@ -113,6 +115,7 @@ namespace other {
     }
 
     void asset_editor_node::draw_status_bar(const other::asset* asset_ptr, float width, const char* extra_info) {
+      PROFILE_SECTION("asset_editor_node::draw_status_bar");
       using namespace colors;
       ImDrawList* dl = ImGui::GetWindowDrawList();
 

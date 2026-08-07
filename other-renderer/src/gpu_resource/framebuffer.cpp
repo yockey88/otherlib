@@ -3,6 +3,8 @@
  **/
 #include "gpu_resource/framebuffer.hpp"
 
+#include "core/profiler.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
@@ -33,6 +35,7 @@ namespace other {
                                             texture::wrap wrap_s, texture::wrap wrap_t, texture::wrap wrap) {
     // clang-format on
     OTHER_ASSERT(type < attachment_type::NUM_ATTACHMENT_TYPES, "Invalid attachment type: {}", type);
+    PROFILE_SECTION("framebuffer::add_attachment");
     if (size.x == 0 || size.y == 0) {
       CORE_LOG_ERROR("Framebuffer size must be set before adding attachments.");
       return *this;
@@ -51,6 +54,7 @@ namespace other {
   }
 
   framebuffer& framebuffer::add_attachment(const resource_handle& attachment_handle, attachment_type type, uint32_t mip_level) {
+    PROFILE_SECTION("framebuffer::add_attachment");
     if (attachment_handle.id == 0 || !(attachment_handle.type == resource_type::TEXTURE || attachment_handle.type == resource_type::CUBEMAP)) {
       CORE_LOG_ERROR("Invalid attachment handle: must be a valid texture resource, i.e, a texture or cubemap.");
       return *this;
@@ -80,6 +84,7 @@ namespace other {
   }
 
   void framebuffer::finalize_framebuffer() {
+    PROFILE_SECTION("framebuffer::finalize_framebuffer");
     check_build_status();
     if (!ready_to_finalize) {
       CORE_LOG_ERROR("Framebuffer is not complete, cannot finalize.");

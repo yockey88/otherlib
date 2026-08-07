@@ -319,6 +319,7 @@ namespace other {
 
     /// pass 1 - decide accept/skip per assimp mesh; every later pass maps mesh indices through this table
     void map_accepted_meshes(assimp_import_ctx& ctx) {
+      PROFILE_SECTION("model_importer::import_assimp--map-accepted-meshes");
       const aiScene* scene = ctx.scene;
       ctx.submesh_of_mesh.resize(scene->mNumMeshes, assimp_import_ctx::kSkipped);
 
@@ -335,6 +336,7 @@ namespace other {
 
     void process_mesh(const aiMesh* mesh, uint32_t mesh_idx, assimp_import_ctx& ctx, model_data& data) {
       OTHER_ASSERT(mesh != nullptr, "Mesh is null");
+      PROFILE_SECTION("model_importer::import_assimp--process-mesh");
 
       const uint32_t submesh_idx = static_cast<uint32_t>(data.submeshes.size());
       OTHER_ASSERT(ctx.submesh_of_mesh[mesh_idx] == submesh_idx, "Mesh remap table out of sync at mesh {}", mesh_idx);
@@ -411,6 +413,7 @@ namespace other {
 
       bctx.influences.resize(data.vertices.size());
       for (uint32_t m = 0; m < scene->mNumMeshes; ++m) {
+        PROFILE_SECTION("model_importer::import_assimp--rig-weights");
         const uint32_t sm_idx = ctx.submesh_of_mesh[m];
         if (sm_idx == assimp_import_ctx::kSkipped) {
           continue;
@@ -750,21 +753,24 @@ namespace other {
       process_assimp_materials(scene, data);
       process_assimp_animations(ctx, data);
 
-      for (bone_influence& infl : bctx.influences) {
-        infl.normalize();
-      }
+      {
+        PROFILE_SECTION("model_importer::import_assimp--apply-influences");
+        for (bone_influence& infl : bctx.influences) {
+          infl.normalize();
+        }
 
-      for (uint32_t v = 0; v < data.vertices.size(); ++v) {
-        const bone_influence& infl = bctx.influences[v];
-        vertex& vert = data.vertices[v];
-        for (uint32_t b = 0; b < bone_influence::kMaxInfluences; ++b) {
-          vert.bone_ids[b] = infl.joint_ids[b];
-          vert.bone_weights[b] = infl.weights[b];
+        for (uint32_t v = 0; v < data.vertices.size(); ++v) {
+          const bone_influence& infl = bctx.influences[v];
+          vertex& vert = data.vertices[v];
+          for (uint32_t b = 0; b < bone_influence::kMaxInfluences; ++b) {
+            vert.bone_ids[b] = infl.joint_ids[b];
+            vert.bone_weights[b] = infl.weights[b];
 
-          if (infl.joint_ids[b] >= 0 && infl.weights[b] > 0.f) {
-            bounding_box& jb = data.skel.joints[infl.joint_ids[b]].influenced_bounds;
-            jb.min = glm::min(jb.min, vert.position);
-            jb.max = glm::max(jb.max, vert.position);
+            if (infl.joint_ids[b] >= 0 && infl.weights[b] > 0.f) {
+              bounding_box& jb = data.skel.joints[infl.joint_ids[b]].influenced_bounds;
+              jb.min = glm::min(jb.min, vert.position);
+              jb.max = glm::max(jb.max, vert.position);
+            }
           }
         }
       }

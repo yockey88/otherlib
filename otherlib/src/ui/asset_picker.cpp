@@ -10,6 +10,7 @@
 
 #include <imgui/imgui.h>
 
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "file/directory.hpp"
 #include "file/file_handle.hpp"
@@ -100,6 +101,7 @@ namespace other {
 
       bool property_asset_field(const std::string_view label, natural_t& asset_id, asset::type type, asset_handler* handler, driver* drvr) {
         OTHER_ASSERT(drvr != nullptr, "property_asset_field('{}') needs a driver", label);
+        PROFILE_SECTION("property_asset_field");
         bool changed = false;
 
         ImGui::PushID(label.data());
@@ -176,6 +178,7 @@ namespace other {
           static std::vector<picker_entry> entries;
 
           if (ImGui::IsWindowAppearing()) {
+            PROFILE_SECTION("property_asset_field--scan_assets");
             search_buf[0] = '\0';
             entries.clear();
             if (auto* fs = subsystem<file_system>::get(); fs != nullptr) {
@@ -192,6 +195,7 @@ namespace other {
           ImGui::Separator();
 
           if (ImGui::BeginChild("##asset_pick_list")) {
+            PROFILE_SECTION("property_asset_field--list_body");
             if (ImGui::Selectable("<None>")) {
               if (asset_id != 0) {
                 asset_id = 0;

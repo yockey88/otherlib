@@ -12,6 +12,8 @@
   #include <windows.h>
 #endif
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace cli {
     namespace {
@@ -122,6 +124,7 @@ namespace other {
     }
 
     environment_paths locate_environment(const opt<filepath>& explicit_root) {
+      PROFILE_SECTION("locate_environment");
       /// an explicit root is taken at face value: no walking, no fallbacks
       if (explicit_root.has_value()) {
         std::error_code ec;
