@@ -24,8 +24,18 @@
 #include "peer_mesh/packet_sink.hpp"
 #include "peer_mesh/peer_actor_host.hpp"
 
-
 namespace other {
+
+  class network_system;
+
+  struct signal_catcher {
+    signal_catcher(network_system* network_system_ptr)
+        : network_system_ptr(network_system_ptr) {}
+
+    void catch_signal(std::error_code ec, int signum);
+
+    network_system* network_system_ptr = nullptr;
+  };
 
   class OTHER_CLASS network_system : public core_system<network_system> {
    public:
@@ -95,6 +105,8 @@ namespace other {
     bool network_active() const;
 
    private:
+    signal_catcher signal_handler{ this };
+
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
 

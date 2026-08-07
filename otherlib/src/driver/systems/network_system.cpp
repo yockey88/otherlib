@@ -20,36 +20,28 @@
 
 namespace other {
 
+  void signal_catcher::catch_signal(std::error_code ec, int signum) {
+    if (ec && ec == asio::error::operation_aborted) {
+      CORE_LOG_TRACE("Signal wait aborted");
+      return;
+    }
+
+    if (!ec) {
+      network_system_ptr->catch_signal(signum);
+    } else {
+      CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
+      CORE_LOG_ERROR("Shutting down because signal handling is compromised.");
+      network_system_ptr->get_driver().request_shutdown();
+    }
+  }
+
   void network_system::initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::initialize");
     net_context = make_scope<network_context>();
     OTHER_ASSERT(net_context != nullptr, "Failed to create network context.");
 
-    /// \todo move this somewhere more permanent?
-    struct signal_catcher {
-      signal_catcher(network_system* network_system_ptr)
-          : network_system_ptr(network_system_ptr) {}
-      void catch_signal(std::error_code ec, int signum) {
-        if (ec && ec == asio::error::operation_aborted) {
-          CORE_LOG_TRACE("Signal wait aborted");
-          return;
-        }
-
-        if (!ec) {
-          network_system_ptr->catch_signal(signum);
-        } else {
-          CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
-          CORE_LOG_ERROR("Shutting down because signal handling is compromised.");
-          network_system_ptr->get_driver().request_shutdown();
-        }
-      }
-
-      network_system* network_system_ptr = nullptr;
-    };
-
-    static signal_catcher catcher{ this };
-    net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
+    net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &signal_handler));
 
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
     if (!force_disable_network) {
