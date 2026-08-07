@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_ASSET_BROWSER_WIDGETS_HPP
 
 #include <string>
+#include "data-structures/std_container.hpp"
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -104,9 +105,9 @@ namespace other {
 
       float card_width_from_zoom(float zoom_normalized);
 
-      int draw_breadcrumbs(const std::vector<breadcrumb_segment>& segments);
+      int draw_breadcrumbs(const ostd::vector<breadcrumb_segment>& segments);
       bool draw_search_input(char* buf, uint32_t buf_size, float width);
-      bool draw_filter_bar(std::vector<filter_pill_desc>& filters, int visible_asset_count);
+      bool draw_filter_bar(ostd::vector<filter_pill_desc>& filters, int visible_asset_count);
       bool draw_dir_tree_item(dir_tree_node& node, bool is_selected);
       bool draw_asset_card(asset_card_desc& desc, float card_width);
       bool draw_status_bar(status_bar_info& info);

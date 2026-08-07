@@ -366,9 +366,9 @@ namespace other {
     }
   }
 
-  std::vector<selected_draw> editor_driver::get_selection_draws() const {
+  ostd::vector<selected_draw> editor_driver::get_selection_draws() const {
     PROFILE_SECTION("editor_driver::get_selection_draws");
-    std::vector<selected_draw> draws;
+    ostd::vector<selected_draw> draws;
     if (!context.has_selection()) {
       return draws;
     }

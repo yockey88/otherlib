@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_ASSET_BROWSER_TREE_NODE_HPP
 
 #include "ui/asset-browser/asset_browser_widgets.hpp"
+#include "data-structures/std_container.hpp"
 #include "ui/ui_node.hpp"
 
 
@@ -31,7 +32,7 @@ namespace other {
      private:
       driver* driver_ptr = nullptr;
 
-      std::vector<asset_browser_w::dir_tree_node> nodes;
+      ostd::vector<asset_browser_w::dir_tree_node> nodes;
       std::string selected_path = "assets";
 
       navigate_fn on_navigate;

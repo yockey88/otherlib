@@ -180,8 +180,9 @@ namespace other {
     }  // namespace
 
     const ostd::vector<component_codec>& component_codecs() {
-      static const ostd::vector<component_codec> codecs = build_builtin_codecs();
-      return codecs;
+      /// leaked on purpose: a static's destructor runs after arena shutdown (UAF)
+      static const auto* codecs = new ostd::vector<component_codec>(build_builtin_codecs());
+      return *codecs;
     }
 
     const component_codec* find_component_codec(natural_t key_hash) {

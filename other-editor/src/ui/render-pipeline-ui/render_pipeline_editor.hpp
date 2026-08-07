@@ -5,6 +5,7 @@
 #define OTHER_EDITOR_UI_RENDER_PIPELINE_EDITOR_HPP
 
 #include "ui/node-editor/node_editor_display.hpp"
+#include "data-structures/std_container.hpp"
 #include "ui/node_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_widgets.hpp"
 #include "ui/ui_window.hpp"
@@ -27,7 +28,7 @@ namespace other {
       editor_context& editor_ctx;
       node_editor working_editor;
 
-      std::vector<inspector::render_pipeline_data> entries;
+      ostd::vector<inspector::render_pipeline_data> entries;
       int32_t selected = -1;
       int32_t pending_select = -1;
 

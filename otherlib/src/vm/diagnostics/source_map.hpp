@@ -4,6 +4,7 @@
 #ifndef OTHER_VM_DIAGNOSTICS_SOURCE_MAP_HPP
 #define OTHER_VM_DIAGNOSTICS_SOURCE_MAP_HPP
 
+
 namespace other {
 
   class source_map {
@@ -21,6 +22,7 @@ namespace other {
       std::string name;
       std::string text;
     };
+    /// std: reachable from the static vm::diagnostics engine
     std::map<natural_t, source> sources;
   };
 

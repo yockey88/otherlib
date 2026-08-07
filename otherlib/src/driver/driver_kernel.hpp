@@ -128,11 +128,11 @@ namespace other {
    private:
     driver* driver_instance;
 
-    std::map<size_t, driver_system_type> registered_core_systems;
+    ostd::map<size_t, driver_system_type> registered_core_systems;
     ostd::vector<driver_system_type> system_order;
 
-    std::map<system_key, std::string> plugin_name;
-    std::map<system_key, driver_system*> plugin_systems;
+    ostd::map<system_key, std::string> plugin_name;
+    ostd::map<system_key, driver_system*> plugin_systems;
     std::array<driver_system*, kNumBuiltinDriverSystems> builtin_systems{};
 
     struct plugin_library_info {

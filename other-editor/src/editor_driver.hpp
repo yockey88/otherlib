@@ -5,6 +5,7 @@
 #define OTHER_EDITOR_EDITOR_DRIVER_HPP
 
 #include "driver/driver.hpp"
+#include "data-structures/std_container.hpp"
 
 #include "edit_stack.hpp"
 #include "editor_context.hpp"
@@ -53,7 +54,7 @@ namespace other {
 
     void on_input_event(const input_state_change_event& event) override;
 
-    std::vector<selected_draw> get_selection_draws() const;
+    ostd::vector<selected_draw> get_selection_draws() const;
     pipeline_definition get_debug_overlay_pipeline_definition() const;
   };
 

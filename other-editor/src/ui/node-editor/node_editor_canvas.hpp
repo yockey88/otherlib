@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
 
 #include <glm/glm.hpp>
+#include "data-structures/std_container.hpp"
 
 #include "core/defines.hpp"
 
@@ -29,20 +30,20 @@ namespace other {
           SELECTED,
         };
 
-        std::vector<std::string> node_names;
-        std::vector<glm::vec2> node_positions;
-        std::vector<glm::vec2> node_sizes;
-        std::vector<glm::vec4> node_header_colors;
-        std::vector<glm::vec4> node_body_colors;
-        std::vector<std::vector<natural_t>> node_input_pin_indices;
-        std::vector<std::vector<natural_t>> node_output_pin_indices;
-        std::vector<ui_interactable> interactables;
-        std::vector<node_state> node_states;
+        ostd::vector<std::string> node_names;
+        ostd::vector<glm::vec2> node_positions;
+        ostd::vector<glm::vec2> node_sizes;
+        ostd::vector<glm::vec4> node_header_colors;
+        ostd::vector<glm::vec4> node_body_colors;
+        ostd::vector<ostd::vector<natural_t>> node_input_pin_indices;
+        ostd::vector<ostd::vector<natural_t>> node_output_pin_indices;
+        ostd::vector<ui_interactable> interactables;
+        ostd::vector<node_state> node_states;
 
-        std::vector<glm::vec2> global_node_positions;
-        std::vector<glm::vec2> full_node_maxs;
-        std::vector<glm::vec2> node_header_ends;
-        std::vector<glm::vec2> node_body_begins;
+        ostd::vector<glm::vec2> global_node_positions;
+        ostd::vector<glm::vec2> full_node_maxs;
+        ostd::vector<glm::vec2> node_header_ends;
+        ostd::vector<glm::vec2> node_body_begins;
 
         natural_t create(const std::string_view node_name, const glm::vec2& position, const glm::vec2& size, const glm::vec4& header_color, const glm::vec4& body_color);
       };
@@ -57,25 +58,25 @@ namespace other {
           INPUT,
           OUTPUT
         };
-        std::vector<natural_t> pin_node_indices;
-        std::vector<natural_t> pin_indices_within_node;
-        std::vector<glm::vec2> pin_positions;
-        std::vector<float> pin_radii;
-        std::vector<glm::vec2> pin_node_relative_positions;
-        std::vector<glm::vec4> pin_colors;
-        std::vector<ui_interactable> interactables;
-        std::vector<pin_state> pin_states;
-        std::vector<pin_type> pin_types;
+        ostd::vector<natural_t> pin_node_indices;
+        ostd::vector<natural_t> pin_indices_within_node;
+        ostd::vector<glm::vec2> pin_positions;
+        ostd::vector<float> pin_radii;
+        ostd::vector<glm::vec2> pin_node_relative_positions;
+        ostd::vector<glm::vec4> pin_colors;
+        ostd::vector<ui_interactable> interactables;
+        ostd::vector<pin_state> pin_states;
+        ostd::vector<pin_type> pin_types;
 
         natural_t create(natural_t node_id, natural_t pin_index, pin_type type);
       };
       struct link_data {
-        std::vector<natural_t> link_start_pin_indices;
-        std::vector<natural_t> link_end_pin_indices;
+        ostd::vector<natural_t> link_start_pin_indices;
+        ostd::vector<natural_t> link_end_pin_indices;
 
         constexpr static size_t kNumBezierPoints = 1;
-        std::vector<glm::vec2> link_bezier_points[kNumBezierPoints];
-        std::vector<glm::vec4> link_colors;
+        ostd::vector<glm::vec2> link_bezier_points[kNumBezierPoints];
+        ostd::vector<glm::vec4> link_colors;
 
         natural_t create(natural_t start_pin_idx, natural_t end_pin_idx, const glm::vec4& color);
       };

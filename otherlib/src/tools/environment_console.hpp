@@ -44,8 +44,6 @@ namespace other {
 
     static void clear_console_output();
 
-    static inline const std::vector<console_input>& get_console_history() { return history_lines; }
-
     static inline char* get_input_buffer() { return input_buffer.data(); }
     static inline void clear_input_buffer() {
       std::ranges::fill(input_buffer.begin(), input_buffer.end(), 0);
@@ -73,7 +71,6 @@ namespace other {
 
     static size_t history_cursor;
     static std::vector<console_input> history_lines;
-    static std::vector<console_input> long_term_history_lines;
 
     static size_t max_history_lines;
     static lua_script* console_lua_script;

@@ -71,10 +71,11 @@ namespace other {
     ObjectVsBroadPhaseLayerFilterImpl* object_vs_broadphase_layer_filter = nullptr;
     ObjectLayerPairFilterImpl* object_layer_pair_filter = nullptr;
 
+    /// raw-owned: jolt_world is cpp-local (JPH kept out of headers) and map values must be complete
     ostd::map<natural_t, jolt_world*> jolt_worlds;
 
     /// main-thread scratch for per-step contact drains (std:: — carries events queued by jolt workers)
-    std::vector<contact_event> scratch_events;
+    ostd::vector<contact_event> scratch_events;
 
     jolt_world& world_state(natural_t world_id);
     const jolt_world& world_state(natural_t world_id) const;

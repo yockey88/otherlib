@@ -58,7 +58,7 @@ namespace other {
     ostd::map<integer_t, b3MeshData*> meshes;   ///< owned mesh data (mesh shapes REFERENCE it)
     ostd::map<integer_t, uint64_t> joints;      ///< engine joint id -> b3StoreJointId bits
     integer_t next_joint_id = 0;
-    std::vector<contact_event> pending;
+    ostd::vector<contact_event> pending;
   };
 
   box3d_world& box3d_api::world_state(natural_t world_id) {
@@ -391,7 +391,7 @@ namespace other {
           CORE_LOG_ERROR("Convex hull for body {} requires geometry.", body->id);
           return false;
         }
-        std::vector<b3Vec3> points;
+        ostd::vector<b3Vec3> points;
         points.reserve(geometry->positions.size());
         for (const glm::vec3& p : geometry->positions) {
           points.push_back(to_b3(p * world_scale));
@@ -410,12 +410,12 @@ namespace other {
           CORE_LOG_ERROR("Triangle mesh for body {} requires indexed geometry.", body->id);
           return false;
         }
-        std::vector<b3Vec3> vertices;
+        ostd::vector<b3Vec3> vertices;
         vertices.reserve(geometry->positions.size());
         for (const glm::vec3& p : geometry->positions) {
           vertices.push_back(to_b3(p));  /// scale applies at shape creation below
         }
-        std::vector<int32_t> indices(geometry->indices.begin(), geometry->indices.end());
+        ostd::vector<int32_t> indices(geometry->indices.begin(), geometry->indices.end());
 
         b3MeshDef mesh_def = {};
         mesh_def.vertices = vertices.data();

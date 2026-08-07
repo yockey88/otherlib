@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_COMPONENT_WIDGET_REGISTRY_HPP
 
 #include "ui/field_ui.hpp"
+#include "data-structures/std_container.hpp"
 
 namespace other {
   namespace ui {
@@ -23,7 +24,7 @@ namespace other {
         std::string component_name;
         component_draw_fn fn;
       };
-      std::unordered_map<natural_t, entry> drawers;
+      ostd::unordered_map<natural_t, entry> drawers;
     };
 
   }  // namespace ui

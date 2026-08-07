@@ -2,6 +2,7 @@
  * \file vm/vm.cpp
  **/
 #include "vm/vm.hpp"
+#include "data-structures/std_container.hpp"
 
 #include <chrono>
 
@@ -126,7 +127,7 @@ namespace other {
       return;
     }
 
-    std::vector<uint8_t> bytes;
+    ostd::vector<uint8_t> bytes;
     if (file_path.extension() == ".oasm") {
       bytes = ocmd_toolchain{}.assemble_oasm_source(device, file_path);
     } else if (file_path.extension() == ".oexe") {

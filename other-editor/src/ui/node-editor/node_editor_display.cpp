@@ -100,7 +100,7 @@ namespace other {
       ///     for each output node placed before it
 
       /// graph data
-      ostd::map<natural_t, std::vector<natural_t>> adjacency_list;
+      ostd::map<natural_t, ostd::vector<natural_t>> adjacency_list;
       for (natural_t i = 0; i < canvas.links.link_start_pin_indices.size(); ++i) {
         natural_t start_pin = canvas.links.link_start_pin_indices[i];
         natural_t end_pin = canvas.links.link_end_pin_indices[i];
@@ -129,8 +129,8 @@ namespace other {
       }
 
       /// topological sort
-      std::vector<natural_t> in_degree;
-      std::vector<natural_t> sorted;
+      ostd::vector<natural_t> in_degree;
+      ostd::vector<natural_t> sorted;
       in_degree.resize(canvas.nodes.node_names.size(), 0);
       sorted.reserve(in_degree.size());
 

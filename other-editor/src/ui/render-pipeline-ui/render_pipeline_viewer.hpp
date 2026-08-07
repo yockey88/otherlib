@@ -5,6 +5,7 @@
 #define OTHER_EDITOR_UI_RENDER_PIPELINE_UI_RENDER_PIPELINE_VIEWER_HPP
 
 #include "event/event_system.hpp"
+#include "data-structures/std_container.hpp"
 
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/renderer.hpp"
@@ -39,7 +40,7 @@ namespace other {
 
       editor_context& editor_ctx;
 
-      std::vector<inspector::render_pipeline_data> entries;
+      ostd::vector<inspector::render_pipeline_data> entries;
       int32_t selected = -1;
       int32_t pending_select = -1;
 

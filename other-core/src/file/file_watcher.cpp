@@ -156,7 +156,7 @@ namespace other {
     if (std::filesystem::is_regular_file(path)) {
       std::ifstream file(path, std::ios::binary);
       if (file.is_open()) {
-        std::vector<char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        ostd::vector<char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         checksum = XXH3_64bits(data.data(), data.size());
       }
     }

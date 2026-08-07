@@ -13,6 +13,7 @@
 #define OTHER_CORE_SERIALIZATION_TOML_WRITER_HPP
 
 #include <set>
+#include "data-structures/std_container.hpp"
 #include <sstream>
 #include <string>
 
@@ -127,7 +128,7 @@ namespace other {
       friend class toml_writer;
       void append_raw(std::string_view key_name, std::string_view value_text);
 
-      std::vector<std::pair<std::string, std::string>> entries;
+      ostd::vector<std::pair<std::string, std::string>> entries;
       toml::table mirror;
     };
 

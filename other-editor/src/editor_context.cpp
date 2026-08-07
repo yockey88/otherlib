@@ -21,7 +21,7 @@ namespace other {
           return;
         }
 
-        std::vector<std::string> selected_names = {};
+        ostd::vector<std::string> selected_names = {};
         for (const natural_t obj_id : ctx->current_selection.objects) {
           const scene_object* obj = s->find_object(obj_id);
           if (obj != nullptr) {

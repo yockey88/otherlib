@@ -26,7 +26,7 @@ namespace other {
       uint16_t address;
       ostd::vector<uint8_t> invocation_thunk;
     };
-    std::unordered_map<natural_t, symbol_info> symbols;
+    ostd::unordered_map<natural_t, symbol_info> symbols;
   };
 
 }  // namespace other

@@ -54,6 +54,7 @@ namespace other {
     void add_torque(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& torque) override;
 
    private:
+    /// raw-owned: box3d_world is cpp-local (b3 kept out of headers) and map values must be complete
     ostd::map<natural_t, box3d_world*> box3d_worlds;
 
     box3d_world& world_state(natural_t world_id);

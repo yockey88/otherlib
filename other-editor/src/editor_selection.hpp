@@ -5,6 +5,7 @@
 #define OTHER_EDITOR_EDITOR_SELECTION_HPP
 
 #include <glm/glm.hpp>
+#include "data-structures/std_container.hpp"
 
 #include "renderer/draw_command.hpp"
 
@@ -26,7 +27,7 @@ namespace other {
     scene* scene_ptr = nullptr;
 
     bool multiple_selection_enabled = false;
-    std::vector<natural_t> objects = {};
+    ostd::vector<natural_t> objects = {};
   };
 
 }  // namespace other

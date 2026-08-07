@@ -17,7 +17,6 @@ namespace other {
   class scene_graph {
    public:
     scene_graph() = default;
-    scene_graph(std::vector<scene>& scenes);
     scene_graph(scene_graph&& other) {
       g = std::move(other.g);
       id_pairs = std::move(other.id_pairs);

@@ -19,6 +19,11 @@ core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
+[filesystem]
+# poll project files for hot-reload (off = assets treated as static)
+watch-assets = true
+# watch-interval-ms = 250
+
 [rendering]
 # fullscreen = true
 # enable-debug = false
