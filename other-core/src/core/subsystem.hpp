@@ -115,7 +115,7 @@ namespace other {
     }
 
     static void initialize() {
-      PROFILE_SECTION("subsystem<>::initialize");
+      PROFILE_SECTION_VERBOSE("subsystem<>::initialize");
       if (instance == nullptr) {
         if (inert) {
           unactive_subsystem_initialization_error(typeid(T).name());
@@ -136,7 +136,7 @@ namespace other {
     }
 
     static T* get() {
-      PROFILE_SECTION("subsystem<>::get");
+      PROFILE_SECTION_VERBOSE("subsystem<>::get");
       initialize();
       return instance;
     }

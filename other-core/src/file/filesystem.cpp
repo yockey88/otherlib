@@ -77,6 +77,13 @@ namespace other {
   }
 
   void file_system::shutdown_file_system() {
+    /// mounts and their files hold the event system by reference; dropping them here
+    ///  keeps a re-initialized environment (tests, repeat runs) from firing watch
+    ///  events into a dead event system
+    std::lock_guard lock(fs_mutex);
+    mounts.clear();
+    toplevel_files.clear();
+    events = nullptr;
   }
 
   void file_system::poll_files() {
@@ -134,6 +141,7 @@ namespace other {
       return it->second;
     }
 
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when mounting '{}'", mount_name);
     const bool watch_subtree = scope == mount_scope::PROJECT;
     auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path), file_type::LOCAL, scope, watch_subtree);
     mounts.insert({ hash, dir });
@@ -155,6 +163,7 @@ namespace other {
       return it->second;
     }
 
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when mounting '{}'", mount_name);
     /// virtual mounts have no disk path
     auto dir = make_ref<directory>(*events, mount_name, filepath{}, file_type::VIRTUAL);
     mounts.insert({ hash, dir });

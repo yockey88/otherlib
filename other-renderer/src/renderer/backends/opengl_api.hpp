@@ -84,7 +84,7 @@ namespace other {
 
     void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) override;
     void unbind_buffer_resource(const resource_handle& handle) override;
-    void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) override;
+    void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) override;
     void set_shader_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) override;
     void buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) override;
     void buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) override;
@@ -135,12 +135,19 @@ namespace other {
     ostd::map<natural_t, cube_map> cube_map_resources;
     ostd::map<natural_t, std::array<uint32_t, cube_map::kCubeFaces>> cube_map_faces;
 
-    struct shader_binding {
-      uint32_t buffer_id;
-      uint32_t shader_id;
+    struct block_binding_key {
+      natural_t shader_id;
+      natural_t name_hash;
+      gpu_buffer::buf_type buffer_type;
 
-      constexpr auto operator<=>(const shader_binding&) const = default;
+      constexpr auto operator<=>(const block_binding_key&) const = default;
     };
+    struct block_binding {
+      uint32_t block_index;
+      uint32_t binding_point;
+    };
+    /// GL_INVALID_INDEX = block absent from program (memoized)
+    ostd::map<block_binding_key, block_binding> shader_block_bindings;
     ostd::map<natural_t, gpu_buffer> buffer_resources;
 
     ostd::map<natural_t, mesh> mesh_resources;
@@ -206,6 +213,7 @@ namespace other {
 
     int32_t get_resource_handle(natural_t id) const;
     uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string_view name);
+    void ensure_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type);
   };
 
 }  // namespace other

@@ -4,13 +4,12 @@
 #ifndef OTHERLIB_DRIVER_SYSTEMS_NETWORK_SYSTEM_HPP
 #define OTHERLIB_DRIVER_SYSTEMS_NETWORK_SYSTEM_HPP
 
-#include <vector>
-
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
+#include "data-structures/std_container.hpp"
 
 #include "network/acknowledgement_list.hpp"
 #include "network/network_thread.hpp"
@@ -51,8 +50,8 @@ namespace other {
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
 
-      std::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
-      std::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
+      ostd::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
+      ostd::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
       constexpr static uint32_t kPrimarySessionBindingPort = 49222;
@@ -108,26 +107,16 @@ namespace other {
     signal_catcher signal_handler{ this };
 
     scope<network_context> net_context = nullptr;
+    /// networking.force-disable, read once at init
+    bool network_disabled = false;
     acknowledgement_list ack_list;
 
-    /// unregistered providers/sinks are tombstoned in the lock-free registries, then
-    ///  parked here until the network thread's pump epoch proves no reader can still
-    ///  hold the pointer (or until the thread is gone) — only then destroyed
-    struct provider_reclaim {
-      scope<transport_provider> provider;
-      uint64_t epoch = 0;
-    };
-    struct sink_reclaim {
-      scope<packet_sink> sink;
-      uint64_t epoch = 0;
-    };
-    std::vector<provider_reclaim> provider_reclaims;
-    std::vector<sink_reclaim> sink_reclaims;
+    /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
+    ///  providers/sinks can live in plugins that unload the moment unregister returns
+    void wait_for_pump_quiescence(uint64_t recorded_epoch);
 
-    void sweep_deferred_reclaims(bool force);
-
-    std::map<message_header, message_handler> message_handlers;
-    std::map<message_header, microseconds> message_handler_timeouts;
+    ostd::map<message_header, message_handler> message_handlers;
+    ostd::map<message_header, microseconds> message_handler_timeouts;
 
     void initialize_message_handlers();
     bool message_requires_acknowledgment(const message_header& header) const;

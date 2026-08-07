@@ -23,6 +23,13 @@
   #define PROFILE_SCOPE() ZoneScoped
   #define PROFILE_SECTION(name) ZoneScopedN(name)
 
+  /// sub-microsecond hot-path zones (millions per capture) — opt in via OTHER_PROFILE_VERBOSE
+  #ifdef OTHER_PROFILE_VERBOSE
+    #define PROFILE_SECTION_VERBOSE(name) ZoneScopedN(name)
+  #else
+    #define PROFILE_SECTION_VERBOSE(name) ((void)0)
+  #endif
+
   #define ADD_PROFILE_TAG(name) ZoneText(name, strlen(name))
   #define ADD_PROFILE_MESSAGE(message, size) TracyMessageS(message, size)
   #define PROFILE_PLOT_VALUE(name, value) TracyPlot(name, value)
@@ -41,6 +48,7 @@
 
   #define PROFILE_SCOPE() ((void)0)
   #define PROFILE_SECTION(name) ((void)0)
+  #define PROFILE_SECTION_VERBOSE(name) ((void)0)
 
   #define ADD_PROFILE_TAG(name) ((void)0)
   #define ADD_PROFILE_MESSAGE(message, size) ((void)0)

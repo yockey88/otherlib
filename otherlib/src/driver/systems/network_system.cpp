@@ -5,6 +5,7 @@
 
 #include <cctype>
 #include <cstdint>
+#include <thread>
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
@@ -43,8 +44,8 @@ namespace other {
 
     net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &signal_handler));
 
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    network_disabled = get_driver().get_config_value<bool>("networking.force-disable", false);
+    if (!network_disabled) {
       net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
 
       net_context->net_thread->launch();
@@ -88,18 +89,11 @@ namespace other {
       }
     }
 
-    sweep_deferred_reclaims(false);
-
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    if (!network_disabled) {
       PROFILE_SECTION("network_system::tick--network_thread_messages");
 
-      opt<message> msg_opt = std::nullopt;
-      {
-        PROFILE_SECTION("network_system::tick--await_message");
-        msg_opt = net_context->net_thread_message_bus.receive_message();
-      }
-      if (msg_opt.has_value()) {
+      /// non-blocking drain; a blocking receive costs a ~1ms condvar floor per frame
+      while (opt<message> msg_opt = net_context->net_thread_message_bus.try_receive_message()) {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }
     }
@@ -111,43 +105,33 @@ namespace other {
     PROFILE_SECTION("network_system::shutdown");
     message_handlers.clear();
 
-    const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (!force_disable_network) {
+    if (!network_disabled) {
       net_context->net_thread->wait_for_shutdown_complete();
       net_context->net_thread = nullptr;
       net_context->registered_transport_providers.clear();
       net_context = nullptr;
     }
 
-    /// thread is joined (or never existed) — no reader can hold a tombstoned pointer
-    sweep_deferred_reclaims(true);
-
     ack_list.clear();
   }
 
-  void network_system::sweep_deferred_reclaims(bool force) {
-    if (provider_reclaims.empty() && sink_reclaims.empty()) {
+  void network_system::wait_for_pump_quiescence(uint64_t recorded_epoch) {
+    ASSERT_MAIN_THREAD();
+    if (net_context == nullptr || net_context->net_thread == nullptr) {
       return;
     }
-    PROFILE_SECTION("network_system::sweep_deferred_reclaims");
+    PROFILE_SECTION("network_system::wait_for_pump_quiescence");
 
-    const bool thread_gone = net_context == nullptr || net_context->net_thread == nullptr;
-    const uint64_t epoch_now = thread_gone ? 0 : net_context->net_thread->reclamation_epoch();
-    /// epoch_now > recorded + 1: every pump iteration that could have loaded the pointer
-    ///  before its tombstone became visible has completed (see network_thread epoch contract)
-    auto quiescent = [&](uint64_t recorded) {
-      return force || thread_gone || epoch_now > recorded + 1;
-    };
-
-    std::erase_if(provider_reclaims, [&](provider_reclaim& entry) {
-      if (!quiescent(entry.epoch)) {
-        return false;
+    /// epoch > recorded+1: every iteration that could hold the pointer has finished
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+    while (net_context->net_thread->is_running() &&
+           net_context->net_thread->reclamation_epoch() <= recorded_epoch + 1) {
+      if (std::chrono::steady_clock::now() > deadline) {
+        CORE_LOG_WARN("Timed out waiting for network pump quiescence, destroying anyway.");
+        break;
       }
-      CORE_LOG_DEBUG("Reclaiming unregistered transport provider '{}'", entry.provider->name());
-      entry.provider->shutdown();
-      return true;
-    });
-    std::erase_if(sink_reclaims, [&](sink_reclaim& entry) { return quiescent(entry.epoch); });
+      std::this_thread::yield();
+    }
   }
 
   natural_t network_system::register_transport_provider(scope<transport_provider> provider) {
@@ -215,10 +199,10 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
-    /// tombstone first, then sample the epoch: the reclaim sweep destroys only after the
-    ///  pump provably stops seeing the pointer (shutdown() runs there too, not here)
+    /// tombstone, wait out the pump, destroy before the owner module can unload
     net_context->net_thread->unregister_provider(itr->second.get());
-    provider_reclaims.push_back({ std::move(itr->second), net_context->net_thread->reclamation_epoch() });
+    wait_for_pump_quiescence(net_context->net_thread->reclamation_epoch());
+    itr->second->shutdown();
     net_context->registered_transport_providers.erase(itr);
   }
 
@@ -234,14 +218,13 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering packet sink [{}]", sink_id);
-    /// strip the sink from every provider's fan-out registry (registration recorded no
-    ///  transport binding, and a stale entry is a use-after-free the moment traffic flows),
-    ///  then defer destruction until the network thread provably stopped seeing it
+    /// strip every provider's fan-out (stale entry = UAF once traffic flows),
+    ///  then wait out the pump before destroying
     for (auto& [provider_id, provider] : net_context->registered_transport_providers) {
       provider->unregister_packet_sink(itr->second.get());
     }
     const uint64_t epoch = net_context->net_thread != nullptr ? net_context->net_thread->reclamation_epoch() : 0;
-    sink_reclaims.push_back({ std::move(itr->second), epoch });
+    wait_for_pump_quiescence(epoch);
     net_context->registered_packet_sinks.erase(itr);
   }
 

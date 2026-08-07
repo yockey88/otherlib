@@ -51,6 +51,18 @@ namespace other {
       return queue->queue.empty();
     }
 
+    /// non-blocking pop (wait_for has a ~1ms floor on windows)
+    opt<T> try_pop() {
+      OTHER_ASSERT(queue != nullptr, "Channel queue is invalid!");
+      std::lock_guard lck(queue->mutex);
+      if (queue->queue.empty()) {
+        return std::nullopt;
+      }
+      T item = std::move(queue->queue.front());
+      queue->queue.pop();
+      return std::move(item);
+    }
+
     opt<T> await_message(opt<microseconds> timeout = std::nullopt) {
       OTHER_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
       PROFILE_SECTION("channel<T>::await_message");

@@ -43,6 +43,9 @@ namespace other {
       return begin_asset_load(asset_path);
     };
 
+    watch_assets = get_driver().get_config_value<bool>("filesystem.watch-assets", false);
+    watch_interval = get_driver().get_config_value<double>("filesystem.watch-interval-ms", 250.0) / 1000.0;
+
     event_system& events = *get_driver().get_event_system();
 
     events.register_event("ls.files");
@@ -81,6 +84,15 @@ namespace other {
     if (asset_mgr->all_assets_unloaded()) {
       get_driver().get_event_system()->trigger_event("assets.all-assets-unloaded");
     }
+
+    if (!watch_assets) {
+      return;
+    }
+    watch_accumulator += dt;
+    if (watch_accumulator < watch_interval) {
+      return;
+    }
+    watch_accumulator = 0.0;
 
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system tick.");

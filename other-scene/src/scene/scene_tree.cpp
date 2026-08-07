@@ -269,7 +269,7 @@ namespace other {
   }
 
   scene_tree::node* scene_tree::node_at(size_t idx) {
-    PROFILE_SECTION("scene_tree::node_at");
+    PROFILE_SECTION_VERBOSE("scene_tree::node_at");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
     OTHER_ASSERT(idx < kMaxNodes, "Index out of bounds for scene tree nodes.");

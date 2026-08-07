@@ -48,55 +48,36 @@ namespace other {
     td.thread_id = std::this_thread::get_id();
   }
 
+  uint8_t message_bus::current_thread_index() {
+    std::lock_guard lock(thread_data_mutex);
+    if (threads[0].thread_id == std::this_thread::get_id()) {
+      return 0;
+    }
+    if (threads[1].thread_id == std::this_thread::get_id()) {
+      return 1;
+    }
+    OTHER_ASSERT(false, "Thread not registered with message message_bus");
+    return 0;
+  }
+
   opt<message> message_bus::receive_message(microseconds timeout) {
     PROFILE_SECTION("message_bus::receive_message");
-    uint8_t index = 0;
-    {
-      std::lock_guard lock(thread_data_mutex);
-      if (threads[0].thread_id == std::this_thread::get_id()) {
-        index = 0;
-      } else if (threads[1].thread_id == std::this_thread::get_id()) {
-        index = 1;
-      } else {
-        OTHER_ASSERT(false, "Thread not registered with message message_bus");
-      }
-    }
+    return threads[current_thread_index()].rx_channel->await_message(timeout);
+  }
 
-    return threads[index].rx_channel->await_message(timeout);
+  opt<message> message_bus::try_receive_message() {
+    PROFILE_SECTION("message_bus::try_receive_message");
+    return threads[current_thread_index()].rx_channel->try_pop();
   }
 
   void message_bus::send_message(message&& msg) {
     PROFILE_SECTION("message_bus::send_message");
-    uint8_t index = 0;
-    {
-      std::lock_guard lock(thread_data_mutex);
-      if (threads[0].thread_id == std::this_thread::get_id()) {
-        index = 0;
-      } else if (threads[1].thread_id == std::this_thread::get_id()) {
-        index = 1;
-      } else {
-        OTHER_ASSERT(false, "Thread not registered with message message_bus");
-      }
-    }
-
-    threads[index].tx_channel->push(std::move(msg));
+    threads[current_thread_index()].tx_channel->push(std::move(msg));
   }
 
   bool message_bus::has_message() {
     PROFILE_SECTION("message_bus::has_message");
-    uint8_t index = 0;
-    {
-      std::lock_guard lock(thread_data_mutex);
-      if (threads[0].thread_id == std::this_thread::get_id()) {
-        index = 0;
-      } else if (threads[1].thread_id == std::this_thread::get_id()) {
-        index = 1;
-      } else {
-        OTHER_ASSERT(false, "Thread not registered with message message_bus");
-      }
-    }
-
-    return threads[index].rx_channel->empty() == false;
+    return threads[current_thread_index()].rx_channel->empty() == false;
   }
 
 }  // namespace other

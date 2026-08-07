@@ -144,7 +144,7 @@ namespace other {
 
     virtual void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) = 0;
     virtual void unbind_buffer_resource(const resource_handle& handle) = 0;
-    virtual void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) = 0;
+    virtual void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) = 0;
     virtual void set_shader_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) = 0;
     virtual void buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) = 0;
     virtual void buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) = 0;

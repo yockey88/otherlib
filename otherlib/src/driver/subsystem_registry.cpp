@@ -482,6 +482,8 @@ namespace other {
     }
 
     void shutdown_file_system() {
+      PROFILE_SECTION("other::detail::shutdown_file_system");
+      subsystem<file_system>::get()->shutdown_file_system();
     }
 
     void shutdown_input_system() {

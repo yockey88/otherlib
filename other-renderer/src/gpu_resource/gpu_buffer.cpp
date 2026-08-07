@@ -53,7 +53,10 @@ namespace other {
       CORE_LOG_ERROR("Shader resource handle is invalid, cannot bind buffer to shader.");
       return *this;
     }
-    subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type, get_data(), get_data_size());
+    if (dirty && current_size > 0) {
+      upload_buffer();
+    }
+    subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type);
     return *this;
   }
 
@@ -106,6 +109,7 @@ namespace other {
     if (data != nullptr) {
       std::memcpy(buffer_data.data(), data, current_size);
     }
+    dirty = true;
     return *this;
   }
 
@@ -115,6 +119,7 @@ namespace other {
       return *this;
     }
     std::memcpy(buffer_data.data() + offset, data, size);
+    dirty = true;
     return *this;
   }
 
@@ -132,6 +137,7 @@ namespace other {
   gpu_buffer& gpu_buffer::upload_buffer() {
     PROFILE_SECTION("gpu_buffer::upload_buffer");
     subsystem<renderer_backend>::get()->api()->buffer_data(handle(), binding_point, get_data(), get_data_size());
+    dirty = false;
     return *this;
   }
 
@@ -145,10 +151,11 @@ namespace other {
 
   void gpu_buffer::finalize_buffer() {
     PROFILE_SECTION("gpu_buffer::finalize_buffer");
-    if (shader_resource_handle.has_value()) {
-      subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type, get_data(), get_data_size());
-    } else {
+    if (dirty && current_size > 0) {
       upload_buffer();
+    }
+    if (shader_resource_handle.has_value()) {
+      subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type);
     }
   }
 
