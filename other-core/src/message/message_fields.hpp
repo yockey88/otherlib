@@ -55,6 +55,11 @@ namespace other {
     HOST_TICK,
     ROSTER_COUNT,
     SENDER_PEER,
+    NET_ID,
+    KEY_HASH,
+    ELEMENT_COUNT,
+    OP_ID,
+    OP_FLAVOR,
   };
 
   constexpr static std::string_view kMessageFieldNames[] = {
@@ -101,6 +106,11 @@ namespace other {
     "host-tick",
     "roster-count",
     "sender-peer",
+    "net-id",
+    "key-hash",
+    "element-count",
+    "op-id",
+    "op-flavor",
   };
 
   constexpr static value_type kMessageFieldTypes[] = {
@@ -146,6 +156,11 @@ namespace other {
     value_type::UINT64,  // HOST_TICK
     value_type::UINT16,  // ROSTER_COUNT
     value_type::UINT16,  // SENDER_PEER
+    value_type::UINT64,  // NET_ID
+    value_type::UINT64,  // KEY_HASH
+    value_type::UINT16,  // ELEMENT_COUNT
+    value_type::UINT64,  // OP_ID
+    value_type::UINT8,   // OP_FLAVOR
   };
 
 }  // namespace other

@@ -4,6 +4,9 @@
 #ifndef OTHERLIB_NETWORK_SESSION_NET_MESSAGES_HPP
 #define OTHERLIB_NETWORK_SESSION_NET_MESSAGES_HPP
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 #include "core/defines.hpp"
 
 #include "message/message_serialization.hpp"
@@ -94,6 +97,63 @@ namespace other {
     ostd::vector<uint8_t> payload;
   };
 
+  /// -------------------------------------------------------------- replication
+
+  struct net_snapshot_entry {
+    natural_t net_id = 0;
+    /// object_record.file_id in the snapshot document (== the host's runtime id)
+    natural_t file_id = 0;
+    uint16_t owner_peer = 0;
+  };
+
+  /// scene_bytes = write_scene_binary(capture_scene(...)) — the same bytes
+  ///  play/stop restore uses; the table maps document objects to net identities
+  struct net_join_snapshot {
+    uint64_t host_tick = 0;
+    ostd::vector<uint8_t> scene_bytes;
+    ostd::vector<net_snapshot_entry> table;
+  };
+
+  struct net_component_blob {
+    natural_t key_hash = 0;
+    ostd::vector<uint8_t> payload;
+  };
+
+  /// components = component_count reflected net_component_blob records back to back
+  struct net_spawn {
+    natural_t net_id = 0;
+    natural_t parent_net_id = 0;  // 0 = scene root
+    uint16_t owner_peer = 0;
+    ostd::vector<uint8_t> name;
+    uint16_t component_count = 0;
+    ostd::vector<uint8_t> components;
+  };
+
+  struct net_despawn {
+    natural_t net_id = 0;
+  };
+
+  /// local TRS: replicas mirror the host hierarchy, so parent-relative values are
+  ///  complete and skip world decomposition on both ends. 48 bytes on the wire
+  struct net_transform_entry {
+    natural_t net_id = 0;
+    glm::vec3 position{ 0.f };
+    glm::quat rotation{};
+    glm::vec3 scale{ 1.f };
+  };
+  static_assert(std::is_trivially_copyable_v<net_transform_entry>);
+
+  struct net_transform_batch {
+    uint64_t host_tick = 0;
+    ostd::vector<net_transform_entry> entries;
+  };
+
+  struct net_component_state {
+    natural_t net_id = 0;
+    natural_t key_hash = 0;
+    ostd::vector<uint8_t> payload;
+  };
+
 }  // namespace other
 
 OTHER_REFLECT(
@@ -131,6 +191,41 @@ OTHER_REFLECT(
   other::net_game_event,
   OTHER_MSG_FIELD(sender_peer, SENDER_PEER),
   OTHER_MSG_FIELD(name, DATA),
+  OTHER_MSG_FIELD(payload, DATA))
+
+OTHER_REFLECT(
+  other::net_join_snapshot,
+  OTHER_MSG_FIELD(host_tick, HOST_TICK),
+  OTHER_MSG_FIELD(scene_bytes, DATA),
+  OTHER_MSG_FIELD(table, DATA))
+
+OTHER_REFLECT(
+  other::net_component_blob,
+  OTHER_MSG_FIELD(key_hash, KEY_HASH),
+  OTHER_MSG_FIELD(payload, DATA))
+
+OTHER_REFLECT(
+  other::net_spawn,
+  OTHER_MSG_FIELD(net_id, NET_ID),
+  OTHER_MSG_FIELD(parent_net_id, NET_ID),
+  OTHER_MSG_FIELD(owner_peer, PEER_ID),
+  OTHER_MSG_FIELD(name, DATA),
+  OTHER_MSG_FIELD(component_count, ELEMENT_COUNT),
+  OTHER_MSG_FIELD(components, DATA))
+
+OTHER_REFLECT(
+  other::net_despawn,
+  OTHER_MSG_FIELD(net_id, NET_ID))
+
+OTHER_REFLECT(
+  other::net_transform_batch,
+  OTHER_MSG_FIELD(host_tick, HOST_TICK),
+  OTHER_MSG_FIELD(entries, DATA))
+
+OTHER_REFLECT(
+  other::net_component_state,
+  OTHER_MSG_FIELD(net_id, NET_ID),
+  OTHER_MSG_FIELD(key_hash, KEY_HASH),
   OTHER_MSG_FIELD(payload, DATA))
 
 #endif  // OTHERLIB_NETWORK_SESSION_NET_MESSAGES_HPP

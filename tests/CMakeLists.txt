@@ -75,6 +75,8 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/network/acknowledgement_list_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/peer_mesh_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/network_session_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/replication_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/scene_op_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/steam_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_conformance_tests.cpp
 

@@ -214,6 +214,7 @@ function _Console:new()
       net invite                Opens the steam overlay invite dialog (steam sessions)
       net leave                 Leaves the current session
       net status                Prints session role, roster, steam state, per-link state
+      net journal               Dumps the session's scene-op journal
   ]]
   self:RegisterConsoleCommand("net", "Controls the default networking session.", function(args) _Meta:Driver().TriggerEvent("network.command", table.concat(args, " ")) end, net_long_description)
 

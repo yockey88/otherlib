@@ -5,6 +5,7 @@
 #define OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 
 #include <bit>
+#include <cstring>
 
 #include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
@@ -81,6 +82,17 @@ namespace other {
           CORE_LOG_TRACE("{}[FIELD: {}] [NESTED] (offset: {})", std::string((level + 1) * 2, ' '), name, data.size());
           data.append_range(serialize_direct(field_value, level + 1));
         }
+        /// vectors of trivially-copyable elements ride as [u32 count][raw elements]
+        ///  (transform batches and snapshot tables)
+        else if constexpr (is_trivial_vector<member_t>) {
+          if (field_value.size() > std::numeric_limits<uint32_t>::max()) {
+            throw buffer_parsing_error("Trivial vector exceeds maximum supported element count");
+          }
+          CORE_LOG_TRACE("{}[FIELD: {}] [TRIVIAL VECTOR ({} elements)] (offset: {})", std::string((level + 1) * 2, ' '), name, field_value.size(), data.size());
+          const uint32_t count = static_cast<uint32_t>(field_value.size());
+          append_named_field_to_raw_buffer(name + "_count", count, data);
+          data.append_range(std::span(reinterpret_cast<const uint8_t*>(field_value.data()), field_value.size() * sizeof(typename member_t::value_type)));
+        }
         //
         else if constexpr (std::is_trivially_copyable_v<member_t>) {
           CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, field_value, get_value_type<member_t>(), data.size());
@@ -130,6 +142,20 @@ namespace other {
           member(value) = deserialized_value;
           remaining_data = remaining_data.subspan(consumed_size);
           CORE_LOG_TRACE("{}[FIELD: {}] [NESTED] (offset: {})", std::string((level + 1) * 2, ' '), name, offset);
+        }
+        //
+        else if constexpr (is_trivial_vector<member_t>) {
+          using element_t = typename member_t::value_type;
+          const uint32_t count = parse_named_field_from_raw_buffer<uint32_t>(name + "_count", remaining_data);
+          remaining_data = remaining_data.subspan(sizeof(uint32_t));
+          const size_t byte_count = static_cast<size_t>(count) * sizeof(element_t);
+          if (byte_count > remaining_data.size()) {
+            throw buffer_parsing_error("Trivial vector count for field '" + name + "' exceeds remaining data size");
+          }
+          member(value).resize(count);
+          std::memcpy(member(value).data(), remaining_data.data(), byte_count);
+          remaining_data = remaining_data.subspan(byte_count);
+          CORE_LOG_TRACE("{}[FIELD: {}] [TRIVIAL VECTOR ({} elements)] (offset: {})", std::string((level + 1) * 2, ' '), name, count, offset);
         }
         //
         else if constexpr (std::is_default_constructible_v<member_t>) {

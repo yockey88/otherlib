@@ -495,6 +495,17 @@ namespace other {
     phys_comp.shape = storage->physics->apply_shape(phys_comp.body, desc, scale, geo_ptr, fit_bounds);
   }
 
+  physics_body::settings scene::effective_body_settings(natural_t object_id, const physics_component& phys_comp) const {
+    physics_body::settings settings = phys_comp.settings;
+    /// replica mode: net-registered dynamic bodies build kinematic so interpolated
+    ///  poses drive them — authored settings untouched, role is runtime state
+    if (storage->network.role == replication_role::REPLICA &&
+        storage->network.net_of(object_id).has_value() && settings.body_type == physics_body::DYNAMIC) {
+      settings.body_type = physics_body::KINEMATIC;
+    }
+    return settings;
+  }
+
   void scene::rebuild_physics_body(entt::entity entity, physics_component& phys_comp) {
     PROFILE_SECTION("scene::rebuild_physics_body");
     object_handle& handle = storage->registry.get<object_handle>(entity);
@@ -507,7 +518,7 @@ namespace other {
       storage->physics->destroy_physics_body(phys_comp.body);
     }
 
-    phys_comp.body = storage->physics->create_physics_body(phys_comp.settings, get_world_transform(handle.id));
+    phys_comp.body = storage->physics->create_physics_body(effective_body_settings(handle.id, phys_comp), get_world_transform(handle.id));
     OTHER_ASSERT(phys_comp.body != nullptr, "Failed to rebuild physics body for object {}", handle.id);
     phys_comp.body->owner_object_id = handle.id;
     phys_comp.body->active = true;
@@ -521,9 +532,10 @@ namespace other {
           return;  /// physics-off profile
         }
 
-        /// authored body diverged from the built body (restore, inspector, C#) -> recreate;
-        /// the fresh body starts shapeless and falls through to the shape check below
-        if (!(phys_comp.settings == phys_comp.body->applied_settings)) {
+        /// effective body diverged from the built body (restore, inspector, C#,
+        /// replica-role change) -> recreate; the fresh body starts shapeless and
+        /// falls through to the shape check below
+        if (!(effective_body_settings(handle.id, phys_comp) == phys_comp.body->applied_settings)) {
           rebuild_physics_body(entity, phys_comp);
         }
 
@@ -1635,18 +1647,6 @@ namespace other {
     return result;
   }
 
-  void scene::connect_remote_session(integer_t session_id) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::connect_remote_session");
-
-    scene_object& root = root_object();
-
-    auto* net_ctx = get_component<scene_network_context>(&root);
-    OTHER_ASSERT(net_ctx != nullptr, "Scene network context component is not present on the root scene object.");
-
-    net_ctx->add_remote_session(session_id);
-  }
-
   scene::object_handle::operator scene_object*() const {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(object != nullptr, "Object handle is null, cannot convert to scene_object*.");
@@ -1801,7 +1801,7 @@ namespace other {
 
     object_handle& obj_handle = storage->registry.get<object_handle>(entity);
 
-    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings, get_world_transform(obj_handle.id));
+    physics_comp.body = storage->physics->create_physics_body(effective_body_settings(obj_handle.id, physics_comp), get_world_transform(obj_handle.id));
     OTHER_ASSERT(physics_comp.body != nullptr, "Failed to create physics body for entity {}", (natural_t)entity);
     physics_comp.body->owner_object_id = obj_handle.id;
     physics_comp.body->active = true;

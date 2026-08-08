@@ -9,6 +9,7 @@
 #include "serialization/scene_serializer.hpp"
 
 #include "object/audio_listener_component.hpp"
+#include "object/network_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/physics_joint_component.hpp"
@@ -217,41 +218,6 @@ namespace other {
     }
   }
 
-  void scene_system::synchronize_active_scene(natural_t scene_id) {
-    PROFILE_SECTION("scene_system::synchronize_active_scene");
-    bool network_thread_active = get_driver().network_enabled();
-    /// \todo should we assert instead of return?
-    /// OTHER_ASSERT(get_driver().network_enabled(), "Should not be attempting to synchronize scene because network thread is not active.");
-    if (!network_thread_active) {
-      return;
-    }
-
-    // /// if we are a client and are connected to the server send the load command, if we are client and
-    // ///  are not connected to a server we still set synchronized to false in case of a connection later
-    // ///  we know to begin synchronization
-    // if (network_thread_active && primary_role == driver_role::CLIENT) {
-    //   if (client_session_id.has_value()) {
-    //     constexpr bool is_empty = false;
-    //     constexpr bool requires_udp_binding = true;
-    //     send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-    //   }
-
-    //   active_scene->synchronized = false;
-    // }
-    // /// if we are a server and have clients connected send the load command to them
-    // else if (network_thread_active &&
-    //          primary_role == driver_role::SERVER && !app_list.other_apps.empty()) {
-    //   for (const auto& [other_app_id, other_app] : app_list.other_apps) {
-    //     if (!other_app.connected) {
-    //       continue;
-    //     }
-    //     constexpr bool is_empty = false;
-    //     constexpr bool requires_udp_binding = true;
-    //     send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-    //   }
-    // }
-  }
-
   void scene_system::unload_active_scene() {
     PROFILE_SECTION("scene_system::unload_active_scene");
     if (active_scene == nullptr) {
@@ -364,6 +330,7 @@ namespace other {
     component_reg->register_component_type<animation_component>("Animation");
     component_reg->register_component_type<audio_source_component>("Audio Source");
     component_reg->register_component_type<audio_listener_component>("Audio Listener");
+    component_reg->register_component_type<network_component>("Network");
   }
 
   void scene_system::handle_scene_load_event(const value& data) {
@@ -460,7 +427,6 @@ namespace other {
     if (try_activate && s->activate_on_load) {
       /// 'real activation'
       set_scene_to_active(s->id);
-      synchronize_active_scene(s->id);
     }
   }
 

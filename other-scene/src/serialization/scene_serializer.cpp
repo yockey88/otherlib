@@ -66,7 +66,8 @@ namespace other {
       return doc;
     }
 
-    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services) {
+    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services,
+                           ostd::map<natural_t, natural_t>* out_id_remap) {
       PROFILE_SECTION("instantiate_scene");
       s.get_storage().clear_color = doc.clear_color;
 
@@ -97,6 +98,10 @@ namespace other {
           }
           codec->apply(s, &object, component.payload, services);
         }
+      }
+
+      if (out_id_remap != nullptr) {
+        *out_id_remap = std::move(id_remap);
       }
     }
 

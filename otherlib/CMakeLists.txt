@@ -51,6 +51,8 @@ target_sources(otherlib
     src/driver/driver.cpp
 
     src/network/session/network_session.cpp
+    src/network/session/replication.cpp
+    src/network/session/scene_ops.cpp
 
     # src/object/...
 

@@ -34,8 +34,10 @@ namespace other {
 
     /// instantiates the document's objects into @p s through the normal creation APIs,
     /// so entt construct signals rebuild script objects and physics bodies; file ids
-    /// are remapped to freshly allocated runtime ids
-    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services);
+    /// are remapped to freshly allocated runtime ids (written to @p out_id_remap when
+    /// given — join snapshots adopt net identities through it)
+    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services,
+                           ostd::map<natural_t, natural_t>* out_id_remap = nullptr);
 
     /// -- document <-> bytes (.oscnb + snapshots) ---------------------------
 

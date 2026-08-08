@@ -127,6 +127,12 @@ namespace other {
     bool is_visible(natural_t id) const;
 
     void destroy_object(natural_t id);
+    void destroy_all_non_root_objects();
+
+    /// reconcile authored physics settings/shapes against the built bodies (restore rebuilds,
+    ///  inspector/C# edits, replica-role changes); runs on play, once per frame while playing,
+    ///  and whenever replication adopts or releases objects
+    void revalidate_physics();
 
     /// moves the object under a new parent, keeping its world placement; false on
     ///  refused moves (root, self, descendant cycle)
@@ -317,7 +323,9 @@ namespace other {
 
     static std::string as_string(const scene& s);
 
-    void connect_remote_session(integer_t session_id);
+    /// the scene's net-identity registry + replication role
+    scene_network_context& network() { return get_storage().network; }
+    const scene_network_context& network() const { return storage->network; }
 
     std::string name = "Untitled Scene";
     natural_t id = 0;
@@ -369,8 +377,6 @@ namespace other {
     // void on_update_physics_component(const entt::registry&, const entt::entity entity);
     void on_destroy_physics_component(const entt::registry&, const entt::entity entity);
 
-    void destroy_all_non_root_objects();
-
     /// blend the buffered fixed-step poses by alpha and write them into entity transforms;
     ///  runs once per rendered frame after the fixed-step loop
     void sync_physics_transforms(float alpha);
@@ -380,9 +386,9 @@ namespace other {
     /// hand kinematic bodies their entity pose as this step's sweep target
     void push_kinematic_targets(double step);
 
-    /// reconcile authored physics settings/shapes against the built bodies (restore rebuilds,
-    ///  inspector/C# edits, deferred geometry retries); runs on play and once per frame while playing
-    void revalidate_physics();
+    /// authored settings filtered through runtime replication role (replica
+    ///  dynamics build kinematic); the revalidation dirty-check compares this
+    physics_body::settings effective_body_settings(natural_t object_id, const physics_component& phys_comp) const;
     void rebuild_physics_body(entt::entity entity, physics_component& phys_comp);
     void apply_component_shape(entt::entity entity, physics_component& phys_comp);
 

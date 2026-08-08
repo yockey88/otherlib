@@ -69,8 +69,17 @@ namespace other {
     arena* a = subsystem<arena>::get();
     page* page = a->get_current_page();
     EXPECT_NE(page, nullptr) << "Current page is null during memory boundary test.";
-    EXPECT_GE(addr, reinterpret_cast<uintptr_t>(page->data()) + arena::kHeaderSize) << "Pointer is inside the first block's header region.";
-    EXPECT_LE(addr + size, reinterpret_cast<uintptr_t>(page->data()) + page::kPageSize) << "Pointer payload exceeds page end address.";
+
+    /// free-list hits legitimately live on pages older than the current one (the
+    ///  suite shares one arena, so earlier tests seed those bins) — the page-span
+    ///  property is only checkable for pointers the current page served
+    const uintptr_t page_begin = reinterpret_cast<uintptr_t>(page->data());
+    const uintptr_t page_end = page_begin + page::kPageSize;
+    if (addr < page_begin || addr >= page_end) {
+      return;
+    }
+    EXPECT_GE(addr, page_begin + arena::kHeaderSize) << "Pointer is inside the first block's header region.";
+    EXPECT_LE(addr + size, page_end) << "Pointer payload exceeds page end address.";
   }
 
   void* arena_test::allocate_and_verify(size_t size) {

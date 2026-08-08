@@ -16,6 +16,7 @@
 
 #include "driver/driver.hpp"
 #include "driver/systems/network_system.hpp"
+#include "driver/systems/scene_system.hpp"
 
 namespace other {
 
@@ -87,6 +88,9 @@ namespace other {
       steam_link->pump();
     }
     driver_mesh->tick(engine_now);
+    if (scene_replication != nullptr) {
+      scene_replication->tick(engine_now);
+    }
   }
 
   void peer_mesh_system::shutdown(driver_kernel* kernel) {
@@ -97,6 +101,8 @@ namespace other {
     /// mesh teardown still transmits BYEs — the adapter and network thread are
     ///  alive because this system shuts down ahead of them (reverse boot order)
     sibling<network_system>(*kernel).set_connection_taps(nullptr, nullptr);
+    scene_ops = nullptr;
+    scene_replication = nullptr;
     active_session = nullptr;
     steam_ctx = nullptr;
     driver_mesh = nullptr;
@@ -170,6 +176,24 @@ namespace other {
       });
       active_session = session.get();
       actor = std::move(session);
+
+      replication_config repl_cfg;
+      repl_cfg.snapshot_hz = static_cast<double>(get_driver().get_config_value<size_t>("networking.snapshot-hz", 20));
+      repl_cfg.interp_delay = milliseconds{ get_driver().get_config_value<size_t>("networking.interp-delay-ms", 100) };
+      scene_replication = make_scope<replication>(*active_session,
+        [this] { return sibling<scene_system>(get_driver().get_kernel()).get_active_scene(); }, repl_cfg);
+
+      scene_ops = make_scope<op_channel>(*active_session, [this] { return scene_replication->host_tick(); },
+                                         get_driver().get_config_value<size_t>("networking.op-journal-cap", 4096));
+      scene_ops->set_validator([this](uint16_t peer, const scene_op& op) { return validate_op_via_scripts(peer, op); });
+      scene_ops->set_applied_handler([this](const scene_op& op) {
+        dispatch_op_to_scripts("DispatchOpApplied", op.actor, std::string(op.name.begin(), op.name.end()), op.subject, op.payload);
+      });
+      scene_ops->set_rejected_handler([this](std::string_view op_name, uint16_t reason) {
+        if (scripting_environment* scripts = subsystem<scripting_environment>::get(); scripts != nullptr) {
+          scripts->call_static_dotnet_method<void>(kNetworkClass, "DispatchOpRejected", native_string(op_name), reason);
+        }
+      });
     } else {
       session_actor_source::taken custom = actors.take(actor_name);
       if (custom.actor == nullptr) {
@@ -302,9 +326,25 @@ namespace other {
       open_invite_dialog();
     } else if (verb == "status") {
       events.trigger_event("console.output", status_text());
+    } else if (verb == "journal") {
+      events.trigger_event("console.output", journal_text());
     } else {
-      events.trigger_event("console.output", std::string("usage: net host [port] | join <ip[:port]> | invite | leave | status"));
+      events.trigger_event("console.output", std::string("usage: net host [port] | join <ip[:port]> | invite | leave | status | journal"));
     }
+  }
+
+  std::string peer_mesh_system::journal_text() {
+    if (scene_ops == nullptr) {
+      return "networking inactive";
+    }
+    std::stringstream out;
+    out << "op journal (" << scene_ops->journal().size() << " entries)\n";
+    for (const scene_op& op : scene_ops->journal()) {
+      out << "  #" << op.op_id << "  tick " << op.tick << "  peer " << op.actor
+          << "  '" << std::string(op.name.begin(), op.name.end()) << "'"
+          << "  subject " << op.subject << "  " << op.payload.size() << "B\n";
+    }
+    return out.str();
   }
 
   std::string peer_mesh_system::status_text() {
@@ -335,6 +375,12 @@ namespace other {
   }
 
   void peer_mesh_system::on_session_event(session_event ev, uint16_t arg) {
+    if (scene_replication != nullptr) {
+      scene_replication->on_session_event(ev, arg);
+    }
+    if (scene_ops != nullptr) {
+      scene_ops->on_session_event(ev, arg);
+    }
     event_system& events = *get_driver().get_event_system();
     scripting_environment* scripts = subsystem<scripting_environment>::get();
     switch (ev) {
@@ -360,6 +406,33 @@ namespace other {
         }
         break;
     }
+  }
+
+  op_result peer_mesh_system::validate_op_via_scripts(uint16_t peer, const scene_op& op) {
+    scripting_environment* scripts = subsystem<scripting_environment>::get();
+    if (scripts == nullptr) {
+      return {};  // no gameplay loaded: accept — the envelope is audit either way
+    }
+    PROFILE_SECTION("peer_mesh_system::validate_op_via_scripts");
+    pending_event_payload.assign(op.payload.begin(), op.payload.end());
+    const nbool32 accepted = scripts->call_static_dotnet_method<nbool32>(
+      kNetworkClass, "DispatchOpRequest", peer, native_string(std::string_view(reinterpret_cast<const char*>(op.name.data()), op.name.size())),
+      static_cast<uint64_t>(op.subject), static_cast<int32_t>(op.payload.size()));
+    pending_event_payload.clear();
+    return { .accepted = accepted != 0, .reason = accepted != 0 ? uint16_t{ 0 } : uint16_t{ 1 } };
+  }
+
+  void peer_mesh_system::dispatch_op_to_scripts(std::string_view method, uint16_t actor, const std::string& op_name,
+                                                natural_t subject, std::span<const uint8_t> payload) {
+    scripting_environment* scripts = subsystem<scripting_environment>::get();
+    if (scripts == nullptr) {
+      return;
+    }
+    PROFILE_SECTION("peer_mesh_system::dispatch_op_to_scripts");
+    pending_event_payload.assign(payload.begin(), payload.end());
+    scripts->call_static_dotnet_method<void>(kNetworkClass, method, actor, native_string(op_name),
+                                             static_cast<uint64_t>(subject), static_cast<int32_t>(payload.size()));
+    pending_event_payload.clear();
   }
 
   void peer_mesh_system::dispatch_game_event(uint16_t sender_peer, std::string_view event_name, std::span<const uint8_t> payload) {

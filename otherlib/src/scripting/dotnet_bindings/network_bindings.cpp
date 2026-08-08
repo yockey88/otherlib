@@ -90,5 +90,28 @@ namespace other {
       return static_cast<int32_t>(system->copy_pending_event_payload(dst, static_cast<size_t>(capacity)));
     }
 
+    nbool32 native_network_spawn(uint64_t object_id, uint16_t owner_peer) {
+      peer_mesh_system* system = mesh_system();
+      return system != nullptr && system->replicator() != nullptr &&
+             system->replicator()->spawn_object(object_id, owner_peer);
+    }
+
+    nbool32 native_network_sync_component(uint64_t object_id, native_string component_key) {
+      peer_mesh_system* system = mesh_system();
+      return system != nullptr && system->replicator() != nullptr &&
+             system->replicator()->sync_component(object_id, FNV(static_cast<std::string>(component_key)));
+    }
+
+    nbool32 native_network_is_mine(uint64_t object_id) {
+      peer_mesh_system* system = mesh_system();
+      return system != nullptr && system->replicator() != nullptr && system->replicator()->is_mine(object_id);
+    }
+
+    nbool32 native_network_request_op(native_string op_name, uint64_t subject_net_id, const uint8_t* payload, int32_t length) {
+      peer_mesh_system* system = mesh_system();
+      return system != nullptr && system->ops() != nullptr &&
+             system->ops()->request(static_cast<std::string>(op_name), subject_net_id, payload_span(payload, length));
+    }
+
   }  // namespace bindings
 }  // namespace other
