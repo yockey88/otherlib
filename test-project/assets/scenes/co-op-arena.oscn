@@ -1,0 +1,90 @@
+# other environment scene document
+# the Mode 1 anchor: a fully authored co-op scene — host on play, one pawn cloned
+# per joining peer, a shared crate that replicates. no code anywhere.
+[scene]
+schema-version = 1
+name = "co-op-arena"
+clear-color = [ 0.2, 0.22, 0.233, 1.0 ]
+
+[[objects]]
+id = 1
+name = "session"
+[objects.components.network-settings]
+session_mode = "host"
+spawn_template = "player-template"
+max_peers = 4
+
+[[objects]]
+id = 2
+name = "Floor"
+[objects.components.transform]
+local_position = [ 0.0, -5.0, 0.0 ]
+local_scale = [ 1.0, 1.0, 1.0 ]
+local_rotation_quat = [ 0.0, 0.0, 0.0, 0.0 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.render]
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 0
+[objects.components.physics.settings.shape]
+fit_render_bounds = true
+
+[[objects]]
+id = 3
+name = "player-template"
+visible = false
+[objects.components.transform]
+local_position = [ 0.0, 2.0, 0.0 ]
+local_scale = [ 0.55, 0.55, 0.55 ]
+local_rotation_quat = [ 0.0, 0.0, 0.0, 0.0 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.render]
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
+visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 2
+[objects.components.physics.settings.shape]
+shape_kind = 4
+[objects.components.network]
+owner_peer = 0
+replicate_transform = true
+despawn_on_owner_leave = true
+
+[[objects]]
+id = 4
+name = "shared-crate"
+[objects.components.transform]
+local_position = [ 2.0, 3.0, 2.0 ]
+local_scale = [ 0.7, 0.7, 0.7 ]
+local_rotation_quat = [ 0.0, 0.0, 0.0, 0.0 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.render]
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 2
+[objects.components.physics.settings.shape]
+shape_kind = 4
+[objects.components.network]
+owner_peer = 0
+replicate_transform = true
+despawn_on_owner_leave = false

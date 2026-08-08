@@ -1,9 +1,8 @@
 /**
  * \file tests/harness/src/harness_scenario.hpp
  *
- * the test harness runs exactly one scenario per process inside a real engine driver.
- * scenarios are selected by config key `harness.scenario`; today only "soak" exists,
- * but the interface is the seam for future harness work (fuzzing, replay, stress, ...).
+ * runs exactly one scenario per process inside a real engine driver, selected by config key
+ *  `harness.scenario`; today only "soak" exists — seam for future work (fuzzing, replay, stress)
  **/
 #ifndef OTHER_TESTS_HARNESS_SCENARIO_HPP
 #define OTHER_TESTS_HARNESS_SCENARIO_HPP
@@ -32,9 +31,8 @@ namespace other {
 
     virtual void scene_activated(driver& host, natural_t scene_id) {}
 
-    /// called from the driver's on_shutdown hook; returns true if the scenario passed.
-    ///  the process exit code cannot carry the verdict (other_main returns SUCCESS for
-    ///  any clean run), so scenarios must persist their verdict in a report file
+    /// returns true if the scenario passed; exit code can't carry the verdict (other_main
+    ///  always returns SUCCESS), so scenarios must persist it in a report file
     virtual bool finalize(driver& host) = 0;
   };
 

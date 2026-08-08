@@ -437,9 +437,7 @@ namespace other {
     }
   }
 
-  // minimum size in bytes to serialize a value of type T,
-  // type tag, 4 byte size, and the value itself, strings and buffers could be empty
-  // so minimum is smaller than sizeof(value_type) + sizeof(uint32_t) + sizeof(T)
+  // min size = type tag + u32 length + value; strings/buffers can be empty, so it's less than naive sizeof(T)
   template <typename T>
     requires(!is_stringlike_type<T> && !is_buffer_type<T>)
   static inline natural_t get_type_minimum_size() {

@@ -1,10 +1,8 @@
 /**
  * \file serialization/scene_document.hpp
  *
- * plain-data intermediate every scene persistence path speaks: live scenes, .oscn (toml),
- * .oscnb (binary), in-memory snapshots, and the oecli scene tool all convert through this.
- * component state is carried as field-tagged binary payloads (see scene_field_codec.hpp),
- * so there is exactly one canonical encoding of component state.
+ * plain-data intermediate every scene persistence path converts through (live scenes, .oscn, .oscnb,
+ * snapshots, cli); component state rides field-tagged binary payloads (scene_field_codec.hpp) — one canonical encoding
  */
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_DOCUMENT_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_DOCUMENT_HPP

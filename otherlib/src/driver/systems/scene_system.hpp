@@ -35,7 +35,6 @@ namespace other {
     scene* get_scene(natural_t id);
 
     void set_scene_to_active(natural_t scene_id);
-    void synchronize_active_scene(natural_t scene_id);
     void unload_active_scene();
 
     void push_scene_object_to_context_stack(scene_object* object);

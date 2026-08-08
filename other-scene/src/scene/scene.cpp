@@ -284,10 +284,8 @@ namespace other {
       comp.scene_stop();
     });
 
-    /// end of the disable pass: the restore invalidates every runtime id, so the
-    ///  surviving managed instances drop their native bindings here and are rebound
-    ///  during the rebuild — Awake/Remove never fire on a play-stop cycle. the root
-    ///  survives the restore untouched, so its binding stays valid
+    /// end of the disable pass: restore invalidates every runtime id, so surviving managed instances
+    ///  drop native bindings here and rebind during rebuild (Awake/Remove never fire on a play-stop cycle)
     if (!play_snapshot.empty()) {
       scene_object& root = root_object();
       storage->registry.view<script_component>().each([&root](entt::entity entity, script_component& comp) {
@@ -495,6 +493,17 @@ namespace other {
     phys_comp.shape = storage->physics->apply_shape(phys_comp.body, desc, scale, geo_ptr, fit_bounds);
   }
 
+  physics_body::settings scene::effective_body_settings(natural_t object_id, const physics_component& phys_comp) const {
+    physics_body::settings settings = phys_comp.settings;
+    /// replica mode: net-registered dynamic bodies build kinematic so interpolated
+    ///  poses drive them — authored settings untouched, role is runtime state
+    if (storage->network.role == replication_role::REPLICA &&
+        storage->network.net_of(object_id).has_value() && settings.body_type == physics_body::DYNAMIC) {
+      settings.body_type = physics_body::KINEMATIC;
+    }
+    return settings;
+  }
+
   void scene::rebuild_physics_body(entt::entity entity, physics_component& phys_comp) {
     PROFILE_SECTION("scene::rebuild_physics_body");
     object_handle& handle = storage->registry.get<object_handle>(entity);
@@ -507,7 +516,7 @@ namespace other {
       storage->physics->destroy_physics_body(phys_comp.body);
     }
 
-    phys_comp.body = storage->physics->create_physics_body(phys_comp.settings, get_world_transform(handle.id));
+    phys_comp.body = storage->physics->create_physics_body(effective_body_settings(handle.id, phys_comp), get_world_transform(handle.id));
     OTHER_ASSERT(phys_comp.body != nullptr, "Failed to rebuild physics body for object {}", handle.id);
     phys_comp.body->owner_object_id = handle.id;
     phys_comp.body->active = true;
@@ -521,9 +530,9 @@ namespace other {
           return;  /// physics-off profile
         }
 
-        /// authored body diverged from the built body (restore, inspector, C#) -> recreate;
-        /// the fresh body starts shapeless and falls through to the shape check below
-        if (!(phys_comp.settings == phys_comp.body->applied_settings)) {
+        /// effective body diverged from the built body (restore, inspector, C#, replica-role change)
+        /// -> recreate; the fresh body starts shapeless and falls through to the shape check below
+        if (!(effective_body_settings(handle.id, phys_comp) == phys_comp.body->applied_settings)) {
           rebuild_physics_body(entity, phys_comp);
         }
 
@@ -689,9 +698,8 @@ namespace other {
 
   namespace {
 
-    /// resolve the component's clip, advance its clock, sample the working pose, build the
-    ///  model's palette. runs after every script surface so state scripts set lands in the
-    ///  same frame's pose
+    /// resolves the component's clip, advances its clock, samples the working pose, builds the
+    ///  model's palette; runs after every script surface so state set this frame lands in this frame's pose
     void tick_animation(animation_component& anim, render_component& render, double delta_time, scope<asset_handler>& asset_handler) {
       PROFILE_SECTION("tick_animation");
       model_source* source = render.obj_model.source;
@@ -1463,9 +1471,8 @@ namespace other {
           render.obj_model = model_src->produce_model();
         }
 
-        /// effective material resolution: component override wins when its asset is registered,
-        ///  else the model's imported material per submesh, else nullptr = layout defaults at
-        ///  bind time. the key keeps batching stable through the override's async load window.
+        /// effective material: component override if registered, else model's imported material per
+        ///  submesh, else nullptr = layout defaults; the key keeps batching stable through async load
         const material* override_material = nullptr;
         natural_t material_key = 0;
         if (render.material_asset_id != 0 && asset_handler->asset_exists(render.material_asset_id)) {
@@ -1635,18 +1642,6 @@ namespace other {
     return result;
   }
 
-  void scene::connect_remote_session(integer_t session_id) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::connect_remote_session");
-
-    scene_object& root = root_object();
-
-    auto* net_ctx = get_component<scene_network_context>(&root);
-    OTHER_ASSERT(net_ctx != nullptr, "Scene network context component is not present on the root scene object.");
-
-    net_ctx->add_remote_session(session_id);
-  }
-
   scene::object_handle::operator scene_object*() const {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(object != nullptr, "Object handle is null, cannot convert to scene_object*.");
@@ -1801,7 +1796,7 @@ namespace other {
 
     object_handle& obj_handle = storage->registry.get<object_handle>(entity);
 
-    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings, get_world_transform(obj_handle.id));
+    physics_comp.body = storage->physics->create_physics_body(effective_body_settings(obj_handle.id, physics_comp), get_world_transform(obj_handle.id));
     OTHER_ASSERT(physics_comp.body != nullptr, "Failed to create physics body for entity {}", (natural_t)entity);
     physics_comp.body->owner_object_id = obj_handle.id;
     physics_comp.body->active = true;

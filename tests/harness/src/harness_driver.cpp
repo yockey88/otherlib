@@ -5,7 +5,10 @@
 
 #include "core/logger.hpp"
 
+#include "fuzz_scenario.hpp"
+#include "network_scenario.hpp"
 #include "soak_scenario.hpp"
+#include "stress_scenario.hpp"
 
 namespace other {
 
@@ -13,8 +16,17 @@ namespace other {
     if (scenario_name == "soak") {
       return make_scope<soak_scenario>();
     }
+    if (scenario_name == "network") {
+      return make_scope<network_scenario>();
+    }
+    if (scenario_name == "fuzz") {
+      return make_scope<fuzz_scenario>();
+    }
+    if (scenario_name == "stress") {
+      return make_scope<stress_scenario>();
+    }
 
-    /// future scenarios (fuzzing, replay, stress, ...) register here
+    /// future scenarios (replay, ...) register here
     CORE_LOG_ERROR("[HARNESS] unknown scenario '{}', falling back to 'soak'", scenario_name);
     return make_scope<soak_scenario>();
   }

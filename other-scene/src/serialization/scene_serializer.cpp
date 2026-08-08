@@ -66,37 +66,76 @@ namespace other {
       return doc;
     }
 
-    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services) {
+    namespace {
+
+      /// the shared instantiation loop: records with parent_file_id 0 land under
+      /// @p root_parent (nullptr = scene root)
+      void instantiate_records(scene& s, const scene_document& doc, scene_object* root_parent,
+                               const codec_services& services, ostd::map<natural_t, natural_t>& id_remap) {
+        for (const object_record& record : doc.objects) {
+          scene_object* parent = root_parent;
+          if (record.parent_file_id != 0) {
+            const auto it = id_remap.find(record.parent_file_id);
+            if (it == id_remap.end()) {
+              CORE_LOG_ERROR("scene document object '{}' references unknown parent {:#x}; parenting to root", record.name, record.parent_file_id);
+            } else {
+              parent = s.find_object(it->second);
+            }
+          }
+
+          scene_object& object = s.create_object(record.name, parent);
+          id_remap[record.file_id] = object.id;
+          object.visible = record.visible;
+          for (const std::string& tag : record.tags) {
+            s.add_object_tag(object.id, tag);
+          }
+
+          for (const component_record& component : record.components) {
+            const component_codec* codec = find_component_codec(component.key_hash);
+            if (codec == nullptr) {
+              CORE_LOG_WARN("scene document object '{}' carries unknown component {:#018x}; skipped", record.name, component.key_hash);
+              continue;
+            }
+            codec->apply(s, &object, component.payload, services);
+          }
+        }
+      }
+
+    }  // namespace
+
+    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services,
+                           ostd::map<natural_t, natural_t>* out_id_remap) {
       PROFILE_SECTION("instantiate_scene");
       s.get_storage().clear_color = doc.clear_color;
 
       ostd::map<natural_t, natural_t> id_remap = {};
-      for (const object_record& record : doc.objects) {
-        scene_object* parent = nullptr;
-        if (record.parent_file_id != 0) {
-          const auto it = id_remap.find(record.parent_file_id);
-          if (it == id_remap.end()) {
-            CORE_LOG_ERROR("scene document object '{}' references unknown parent {:#x}; parenting to root", record.name, record.parent_file_id);
-          } else {
-            parent = s.find_object(it->second);
-          }
-        }
+      instantiate_records(s, doc, nullptr, services, id_remap);
+      if (out_id_remap != nullptr) {
+        *out_id_remap = std::move(id_remap);
+      }
+    }
 
-        scene_object& object = s.create_object(record.name, parent);
-        id_remap[record.file_id] = object.id;
-        object.visible = record.visible;
-        for (const std::string& tag : record.tags) {
-          s.add_object_tag(object.id, tag);
-        }
+    scene_document capture_object_subtree(scene& s, natural_t root_object_id, const codec_services& services) {
+      PROFILE_SECTION("capture_object_subtree");
+      scene_document doc = {};
+      doc.schema_version = scene_document::kCurrentSchemaVersion;
+      scene_object* root = s.find_object(root_object_id);
+      if (root == nullptr) {
+        CORE_LOG_ERROR("capture_object_subtree: no object {}", root_object_id);
+        return doc;
+      }
+      doc.name = root->name;
+      capture_object_recursive(s, root_object_id, /*parent_file_id=*/0, services, doc);
+      return doc;
+    }
 
-        for (const component_record& component : record.components) {
-          const component_codec* codec = find_component_codec(component.key_hash);
-          if (codec == nullptr) {
-            CORE_LOG_WARN("scene document object '{}' carries unknown component {:#018x}; skipped", record.name, component.key_hash);
-            continue;
-          }
-          codec->apply(s, &object, component.payload, services);
-        }
+    void instantiate_subtree(scene& s, const scene_document& doc, scene_object* parent, const codec_services& services,
+                             ostd::map<natural_t, natural_t>* out_id_remap) {
+      PROFILE_SECTION("instantiate_subtree");
+      ostd::map<natural_t, natural_t> id_remap = {};
+      instantiate_records(s, doc, parent, services, id_remap);
+      if (out_id_remap != nullptr) {
+        *out_id_remap = std::move(id_remap);
       }
     }
 

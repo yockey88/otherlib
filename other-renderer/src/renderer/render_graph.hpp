@@ -22,9 +22,7 @@ namespace other {
 
   class render_graph {
    public:
-    /// \todo can we use the graph structure from core/graph.hpp instead?
-    ///        this has special implementation considerations because of the
-    ///        rendering passes and their resources but maybe we can still do it?
+    /// \todo can we use core/graph.hpp instead? rendering passes/resources may complicate it
     struct graph {
       ostd::map<natural_t, frame_node> nodes;
       ostd::map<natural_t, std::set<natural_t>> edges;

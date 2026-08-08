@@ -159,9 +159,8 @@ namespace other {
     PROFILE_SECTION("toml_writer::table");
     const ostd::vector<std::string> segments = split_dotted_path(dotted_path);
 
-    /// walk the mirror, descending through the last element of any table-array segment;
-    ///  intermediate tables are created implicitly, the final table must not already be
-    ///  an explicit header (per-array-element, so "[objects.x]" is fine once per [[objects]])
+    /// descends the mirror, entering the last element for table-array segments;
+    ///  intermediate tables auto-create, but the final table can't already be an explicit header
     toml::table* node = &mirror;
     std::string decorated_path;
     for (size_t i = 0; i < segments.size(); ++i) {

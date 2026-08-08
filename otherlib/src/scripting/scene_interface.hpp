@@ -42,9 +42,8 @@ namespace other {
     static point_light attach_point_light_to_object(scene* scene_ptr, natural_t id, const point_light& light);
     static direction_light attach_direction_light_to_object(scene* scene_ptr, natural_t id, const direction_light& light);
 
-    /// immediate-mode draws over the renderer draw streams, valid every frame regardless
-    ///   of scene playback; in_scene targets the depth-tested scene overlay, otherwise the
-    ///   editor debug overlay (dropped quietly when the driver has no debug view)
+    /// immediate-mode draws over renderer draw streams, valid every frame; in_scene
+    ///  picks the depth-tested scene overlay vs the editor debug overlay
     static void draw_line(const glm::vec3& a, const glm::vec3& b, const glm::vec4& color, bool in_scene);
     static void draw_triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec4& color, bool in_scene);
     static void draw_point(const glm::vec3& p, const glm::vec4& color, bool in_scene);

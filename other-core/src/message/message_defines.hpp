@@ -37,11 +37,8 @@ namespace other {
     /// notification messages
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
-
-    /// control messages
-    PING,
-    PONG,
-    VERSION_HANDSHAKE,
+    CONNECTION_OPENED,
+    CONNECTION_CLOSED,
 
     /// command messages
     LISTEN_CONNECTION,

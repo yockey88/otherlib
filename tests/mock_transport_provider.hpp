@@ -38,7 +38,7 @@ namespace other {
     ~mock_transport_provider() override = default;
 
     MOCK_METHOD(std::string, name, (), (const, override));
-    MOCK_METHOD(void, tx_data, (natural_t connection_id, std::span<const uint8_t> data), (override));
+    MOCK_METHOD(void, tx_data, (natural_t connection_id, ostd::vector<uint8_t>&& data), (override));
     MOCK_METHOD(void, close, (natural_t connection_id), (override));
 
     MOCK_METHOD(void, on_registered_packet_sink, (packet_sink * sink), (override));
@@ -56,9 +56,9 @@ namespace other {
 
     MOCK_METHOD(void, on_begin_shutdown, (), (override));
     MOCK_METHOD(void, on_rx_data, (natural_t connection_id, std::span<const uint8_t> data), (override));
-    MOCK_METHOD(void, on_connection_accepted, (natural_t listener_id, const binding_point& endpoint), (override));
-    MOCK_METHOD(void, on_connection_socket_closed, (natural_t connection_id), (override));
-    MOCK_METHOD(void, on_connection_socket_broken, (natural_t connection_id), (override));
+    MOCK_METHOD(void, on_connection_accepted, (natural_t listener_id, natural_t conn_id, const binding_point& remote), (override));
+    MOCK_METHOD(void, on_connection_established, (natural_t conn_id, const binding_point& remote), (override));
+    MOCK_METHOD(void, on_connection_socket_closed, (natural_t connection_id, connection_close_reason reason), (override));
   };
 
 }  // namespace other

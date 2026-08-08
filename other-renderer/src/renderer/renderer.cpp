@@ -529,9 +529,8 @@ namespace other {
 
   namespace {
 
-    /// a draw is transparent when its effective material authors a vec4 base_color with
-    ///  alpha < 1, or any live instance tint carries alpha < 1 — both fold into the packed
-    ///  base_color at bind time and come out as fragment alpha in the forward pass
+    /// a draw is transparent when its material's base_color alpha < 1 or any live instance tint
+    ///  alpha < 1 — both fold into the packed base_color, surfacing as fragment alpha in the forward pass
     bool draw_call_is_transparent(const render_data& data, natural_t index) {
       const material* mat = index < data.draw_materials.size() ? data.draw_materials[index] : nullptr;
       if (mat != nullptr) {
@@ -582,9 +581,8 @@ namespace other {
     ///  consume one half, the blended forward pass the other
     if (set == draw_set::kTransparent && scene_data->primary_camera != nullptr) {
       PROFILE_SECTION("renderer::execute_draw_calls--sort_transparent");
-      /// painter's order against the viewport camera (viewport rendering swaps primary_camera
-      ///  before each pipeline run): farthest first. the key is the first live instance's
-      ///  translation — ordering instances inside one batch is instancing-rework territory
+      /// painter's order against the viewport camera: farthest first, keyed by the first live
+      ///  instance's translation — ordering instances within one batch is instancing-rework territory
       const glm::vec3 cam_pos = scene_data->primary_camera->position;
       std::sort(scene_data->transparent_draws.begin(), scene_data->transparent_draws.end(), [&](natural_t a, natural_t b) {
         const glm::vec3 pa = glm::vec3(scene_data->model_buffers[a].model_matrices[0][3]);

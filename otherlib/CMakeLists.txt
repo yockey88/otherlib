@@ -1,16 +1,3 @@
-set(OTHERLIB_VERSION_MAJOR "1")
-set(OTHERLIB_VERSION_MINOR "0")
-set(OTHERLIB_VERSION_PATCH "0")
-configure_version_header(
-  "otherlib_version.hpp"
-  "OTHERLIB"
-  "OTHERLIB"
-  "${OTHERLIB_VERSION_MAJOR}"
-  "${OTHERLIB_VERSION_MINOR}"
-  "${OTHERLIB_VERSION_PATCH}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/otherlib_version.hpp"
-)
-
 set(OCMD_FILE_FORMAT_VERSION_MAJOR "0")
 set(OCMD_FILE_FORMAT_VERSION_MINOR "1")
 set(OCMD_FILE_FORMAT_VERSION_PATCH "0")
@@ -50,6 +37,10 @@ target_sources(otherlib
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
+    src/network/session/network_session.cpp
+    src/network/session/replication.cpp
+    src/network/session/scene_ops.cpp
+
     # src/object/...
 
     src/project/project.cpp
@@ -74,6 +65,7 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/event_bindings.cpp
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
+    src/scripting/dotnet_bindings/steam_bindings.cpp
     src/scripting/interfaces/networking_interfaces.cpp
     src/scripting/interfaces/rendering_interfaces.cpp
     src/scripting/interface_registry.cpp
@@ -151,9 +143,6 @@ target_sources(otherlib
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
 
-    src/network/tcp/connection.cpp
-    src/network/tcp/tcp_transport_provider.cpp
-
     src/other.cpp
 )
 
@@ -188,7 +177,7 @@ target_link_directories(otherlib PUBLIC
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
 ## other_cli rides along so cli tools stay invocable from inside any running environment
-target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_audio other_scripting other_network other_core other_cli)
+target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_audio other_scripting other_network other_steam other_core other_cli)
 
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)

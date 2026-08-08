@@ -61,25 +61,21 @@ namespace other {
     resource_handle get_texture(natural_t handle) const;
     void remove_texture(natural_t handle);
 
-    /// material assets keyed by asset path hash; pure cpu data (no gpu resource). the
-    ///  stored revision is monotonic per handle across remove/add cycles so pipeline pack
-    ///  caches invalidate on refresh (the refresh sequence runs the unload half first, which
-    ///  is why add still asserts on duplicates as programmer error)
+    /// material assets keyed by asset path hash; pure cpu data. revision is monotonic per handle
+    ///  across remove/add so pack caches invalidate on refresh (unload runs first, so add still asserts on duplicates)
     void add_material(natural_t handle, material mat);
     const material* get_material(natural_t handle) const;
     void remove_material(natural_t handle);
 
-    /// standalone animation clips keyed by asset path hash; pure cpu data, immutable after
-    ///  registration (playback state lives with the player). same add/get/remove +
-    ///  refresh-replace contract as materials; embedded clips stay on their model_source
+    /// standalone animation clips keyed by asset path hash, immutable after registration (playback
+    ///  state lives with the player); same refresh contract as materials — embedded clips stay on model_source
     void add_animation(natural_t handle, animation_clip clip);
     const animation_clip* get_animation(natural_t handle) const;
     void remove_animation(natural_t handle);
 
     enum class fallback_texture : uint8_t { WHITE, FLAT_NORMAL };
-    /// 1x1 stand-ins bound for material texture slots with no loaded texture — an untextured
-    ///  material samples white and multiplies by its params, so there are zero shader
-    ///  variants. created lazily on first use, destroyed in unload_backend.
+    /// 1x1 stand-ins for material texture slots with no loaded texture (samples white * params,
+    ///  so zero shader variants); created lazily on first use, destroyed in unload_backend
     resource_handle get_fallback_texture(fallback_texture kind);
 
    protected:

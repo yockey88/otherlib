@@ -77,9 +77,8 @@ namespace other {
   }
 
   void file_system::shutdown_file_system() {
-    /// mounts and their files hold the event system by reference; dropping them here
-    ///  keeps a re-initialized environment (tests, repeat runs) from firing watch
-    ///  events into a dead event system
+    /// mounts hold the event system by reference; dropping them here keeps a
+    ///  re-initialized environment (tests, repeat runs) from firing watch events into a dead one
     std::lock_guard lock(fs_mutex);
     mounts.clear();
     toplevel_files.clear();
@@ -486,10 +485,8 @@ namespace other {
     filepath abs_path = std::filesystem::absolute(path);
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_regular_file(abs_path), "Cannot register local file: path '{}' does not exist or is not a regular file", abs_path.string());
 
-    /// register under the deepest existing mount so the file's canonical virtual path —
-    //  and with it stable_id — matches what the resolver computed at resolve time.
-    //  minting a new mount per parent-directory name made virtualize() output depend on
-    //  load history and collide across same-named directories.
+    /// register under the deepest existing mount so virtual_path/stable_id match the resolver;
+    //  minting a mount per parent dir made virtualize() output depend on load history and collide
     const resolved_path rp = deep_search_for_mount(abs_path);
     if (rp.is_valid()) {
       ref<directory> mount = get_mount(rp.mount_name);

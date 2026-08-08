@@ -1,9 +1,7 @@
 /**
  * \file ui/asset-editor/asset_editor_registry.hpp
- *
- * Factory registry for creating asset editors.  Keyed by asset::type.
- * Supports script overrides via register_script_editor() so custom
- * editors can be registered from Lua/C# at runtime.
+ *   Factory registry for asset editors, keyed by asset::type. Supports script overrides via
+ *   register_script_editor() so Lua/C# can register custom editors at runtime.
  **/
 #ifndef OTHERLIB_UI_ASSET_EDITOR_REGISTRY_HPP
 #define OTHERLIB_UI_ASSET_EDITOR_REGISTRY_HPP

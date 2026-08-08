@@ -126,9 +126,8 @@ namespace other {
   TEST_F(physics_shape_tests, hull_and_mesh_build_from_geometry) {
     scene s("GeometryShapes");
 
-    /// static mesh floor from raw triangles (the scene-side extraction path needs a render
-    ///  model; the physics_world entry point takes spans directly). jolt mesh triangles are
-    ///  SINGLE-SIDED — the fixture emits both windings so the test can't fail on convention
+    /// static mesh floor built from raw triangles (physics_world entry point takes spans
+    ///  directly); jolt triangles are single-sided, so the fixture emits both windings
     ostd::vector<glm::vec3> positions = {
       { -20.f, 0.f, -20.f }, { 20.f, 0.f, -20.f }, { 20.f, 0.f, 20.f }, { -20.f, 0.f, 20.f },
     };

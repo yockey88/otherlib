@@ -51,9 +51,8 @@ namespace other {
       }
     };
 
-    /// a single cli tool (create, open, ...); tools report user mistakes through the returned
-    ///  tool_result and never assert/terminate on bad input, because in-environment hosts
-    ///  (editor console, driver code) must survive a failed invocation
+    /// a single cli tool (create, open, ...); reports user mistakes via tool_result and never
+    ///  asserts/terminates on bad input, since in-environment hosts (editor console, drivers) must survive it
     class tool {
      public:
       tool() = default;

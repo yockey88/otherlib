@@ -194,11 +194,8 @@ namespace other {
     std::string get_resource_name(const resource_handle& handle) const;
 
    protected:
-    /// there is probably a better name for this since not only is this not ever gonna be a native window
-    ///   but it is in fact always an SDL_Window*
-    /// we also need to consider the fact that some rendering APIs may want to manage the window themselves?
-    /// this is very tough though since we want to have a common window manager interface for all rendering APIs
-    ///   and also may want to have more than one window per application in the future
+    /// misnamed: this is always an SDL_Window*, never a native handle; some rendering APIs may want
+    ///  to manage windows themselves, complicating a shared window-manager interface (incl. multi-window)
     SDL_Window* native_window();
     void set_gpu_context(void* context);
 

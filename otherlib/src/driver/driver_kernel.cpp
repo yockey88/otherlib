@@ -27,7 +27,7 @@ namespace other {
 
   void driver_kernel::load_profile(const std::string_view profile_name) {
     PROFILE_SECTION("driver_kernel::load_profile");
-    /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it handles the network-disabled case internally
+    /// network system always initializes; other subsystems depend on it and it no-ops when disabled
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
     add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
     add_system<peer_mesh_system>(driver_system_type::PEER_MESH_DRIVER_SYSTEM);

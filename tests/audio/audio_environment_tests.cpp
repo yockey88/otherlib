@@ -1,9 +1,8 @@
 /**
  * \file tests/audio/audio_environment_tests.cpp
  *
- * headless audio engine tests — every case runs in forced pump mode (noDevice
- * engine, manually advanced), so results are deterministic and identical on
- * machines with no audio hardware
+ * headless tests — every case runs in forced pump mode (noDevice, manually advanced),
+ *  so results are deterministic with no audio hardware required
  **/
 #include <filesystem>
 

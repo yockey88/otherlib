@@ -13,10 +13,8 @@
 
 namespace other {
 
-  /// the material block layout a render pipeline declares in its TOML ([materials.layout]);
-  ///  the pipeline owns the GLSL that reads the block, so it owns the ABI — offsets and the
-  ///  element size are computed std430 here, which retires the hand-maintained element_size
-  ///  for the material binding
+  /// material block layout a render pipeline declares in its TOML ([materials.layout]); pipeline
+  ///  owns the GLSL/ABI, so offsets + element size are computed std430 here, not hand-maintained
   struct material_layout {
     struct param {
       std::string name;
@@ -38,9 +36,8 @@ namespace other {
     uint32_t instance_capacity = 100;  //< instance slots per draw block (kMaxMaterials today)
     opt<uint32_t> base_color_offset;   //< vec4 param named "base_color" — per-instance tint fold target
 
-    /// computes std430 offsets (vec3 aligns to 16, scalars pack to 4) + element_size +
-    ///  base_color_offset; layout declarations are engine-owned pipeline contracts, so
-    ///  malformed ones are fatal
+    /// computes std430 offsets (vec3 aligns to 16, scalars pack to 4) + element_size + base_color_offset;
+    ///  layout declarations are engine-owned pipeline contracts, so malformed ones are fatal
     void finalize();
 
     /// reported once per (material, revision) because callers cache packs; receives the

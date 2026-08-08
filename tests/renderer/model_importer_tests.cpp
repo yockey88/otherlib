@@ -71,9 +71,8 @@ namespace other {
     EXPECT_TRUE(any_weighted);
   }
 
-  /// regression anchor for the remap table: a mesh assimp cannot give
-  ///  normals (points-only) sits BETWEEN two good meshes; before the table, every consumer
-  ///  indexing submeshes by assimp mesh index desynced
+  /// regression anchor: a normals-less (points-only) mesh sits between two good meshes; before
+  ///  the remap table, every consumer indexing submeshes by assimp mesh index desynced
   TEST_F(model_importer_tests, skipped_mesh_remap) {
     model_import_result result = import(filepath{ "tests/resources/models/skipped-mesh-remap.gltf" });
     ASSERT_TRUE(result.data.has_value()) << result.error;

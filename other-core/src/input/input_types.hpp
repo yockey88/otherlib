@@ -16,9 +16,8 @@ namespace other {
     NUM_DEVICE_TYPES,
   };
 
-  /// Logical key codes. These represent the *meaning* of a key independent
-  /// of physical layout (i.e. QWERTY 'W' is always KEY_W even on AZERTY).
-  /// Mapped 1:1 from SDL_Keycode at the boundary.
+  /// logical key codes: the *meaning* of a key independent of physical layout (QWERTY
+  ///  'W' is always KEY_W even on AZERTY); mapped 1:1 from SDL_Keycode at the boundary
   enum class key_code : uint16_t {
     UNKNOWN = 0,
 
@@ -173,9 +172,8 @@ namespace other {
     NUM_MOUSE_BUTTONS,
   };
 
-  /// Unified gamepad button enum covering Xbox / PlayStation / generic.
-  /// Names are layout-neutral; the display name is resolved at the UI layer
-  /// based on the connected controller type.
+  /// unified gamepad button enum (Xbox/PlayStation/generic); names are layout-neutral,
+  ///  display name resolves at the UI layer based on controller type
   enum class gamepad_button : uint8_t {
     FACE_DOWN = 0,  // Xbox A  / PS Cross
     FACE_RIGHT,     // Xbox B  / PS Circle

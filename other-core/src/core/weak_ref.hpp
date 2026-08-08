@@ -8,12 +8,8 @@
 
 namespace other {
 
-  /// non-owning observer of a ref-counted object:
-  ///  - does NOT keep the object logically alive: once the last strong ref releases,
-  ///    the weak_ref reports expired and lock() returns null (no resurrection)
-  ///  - DOES pin the storage: the allocation (and therefore the destructor) is not
-  ///    released until the last weak_ref goes away, so observing expiry is never a
-  ///    use-after-free
+  /// non-owning observer: does NOT keep the object alive (expires when the last strong
+  ///  ref releases, no resurrection) but DOES pin storage, so checking expiry is never a UAF
   template <typename T>
   class weak_ref {
    public:
@@ -86,9 +82,8 @@ namespace other {
     bool operator==(std::nullptr_t) const { return object == nullptr; }
     bool operator!=(std::nullptr_t) const { return object != nullptr; }
 
-    /// null if the object has expired; otherwise a strong ref that is guaranteed valid
-    ///  (the count is taken atomically, so a concurrent last-strong-release either loses
-    ///   to the lock or makes it return null)
+    /// null if expired; otherwise a guaranteed-valid strong ref (atomic count take avoids
+    ///  a race with a concurrent last-strong-release)
     static ref<T> lock(const weak_ref& weak) {
       T* p = weak.object;
       if (p == nullptr || !p->try_increment()) {

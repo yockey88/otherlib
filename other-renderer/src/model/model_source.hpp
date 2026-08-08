@@ -31,9 +31,8 @@ namespace other {
 
     model produce_model(const std::string& name = "", std::span<const uint32_t> submesh_idxs = {});
 
-    /// value-set materials promoted from model_data::materials at load time, index-aligned
-    ///  with submesh.material_index — derived data owned by the model, not assets or files;
-    ///  a suzanne drops into a scene textured with zero authored .omat files
+    /// value-set materials promoted from model_data::materials at load, index-aligned with
+    ///  submesh.material_index — owned by the model, not assets or files
     const ostd::vector<material>& imported_materials() const { return imported; }
     ostd::vector<material>& imported_materials() { return imported; }
     void set_imported_materials(ostd::vector<material> materials) { imported = std::move(materials); }

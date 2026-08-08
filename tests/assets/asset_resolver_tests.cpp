@@ -1,10 +1,8 @@
 /**
  * \file tests/assets/asset_resolver_tests.cpp
  *
- * contract under test: asset_resolver builds a leaves-first dependency snapshot
- *  from an SDK-style csproj (implicit compile glob, default excludes, produces-edge
- *  assembly artifact) and re_resolve yields correct deltas for the hot-reload flows:
- *  modified .cs, added .cs, deleted .cs, manifest self-edit, and excluded-path noise.
+ * contract: builds a leaves-first dependency snapshot from an SDK-style csproj; re_resolve
+ *  yields correct deltas for hot-reload (modified/added/deleted .cs, manifest edit, excluded noise)
  **/
 #include <fstream>
 #include <thread>
@@ -21,12 +19,8 @@
 
 namespace other {
 
-  /// hermetic fake project mirroring SpaceSim.csproj's shape (SDK-style, no <Compile>
-  /// items, conditional <Reference HintPath> on $(Configuration)):
-  ///   <temp>/fake-proj/FakeProj.csproj
-  ///   <temp>/fake-proj/scripts/a.cs
-  ///   <temp>/fake-proj/scripts/b.cs
-  ///   <temp>/fake-proj/bin/Debug/junk.cs      (excluded by the implicit glob)
+  /// hermetic fake project mirroring SpaceSim.csproj (SDK-style, conditional HintPath):
+  ///  fake-proj/{FakeProj.csproj, scripts/{a,b}.cs, bin/Debug/junk.cs (excluded by glob)}
   class asset_resolver_tests : public other_test {
    protected:
     static constexpr std::string_view kMountName = "fakeproj";
@@ -79,9 +73,8 @@ namespace other {
         extra_items);
     }
 
-    /// a freshly deleted file can hold its name hostage for a few ms on windows
-    ///  (delete-pending under an external scanner's handle); a silent write loss here
-    ///  surfaces later as a bogus missing-asset edge — retry briefly, then insist
+    /// windows may hold a freshly-deleted filename hostage briefly (scanner handle);
+    ///  retry the open rather than silently losing the write
     static void write_file(const filepath& path, std::string_view contents) {
       std::ofstream out(path);
       for (int attempt = 0; !out.is_open() && attempt < 40; ++attempt) {
@@ -198,9 +191,8 @@ namespace other {
     EXPECT_EQ(snap.find(b_stable), nullptr);
   }
 
-  /// bug-exclude-tripwire regression: excluded paths must classify-and-continue.
-  /// unknown excluded noise (obj churn) is an empty delta; the known produces-edge
-  /// artifact (the built dll) is a modified node despite matching bin/**
+  /// regression: excluded paths classify-and-continue; unknown noise is an empty delta,
+  ///  but the known produces-edge dll is still modified despite matching bin/**
   TEST_F(asset_resolver_tests, excluded_paths_do_not_assert) {
     asset_resolver resolver;
     const std::array roots{ csproj_path() };

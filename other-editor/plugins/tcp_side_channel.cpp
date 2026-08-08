@@ -32,4 +32,4 @@ class OTHER_CLASS tcp_side_channel : public other::packet_sink {
 };
 
 OTHER_PROVIDES(tcp_side_channel, other::packet_sink, "tcp_recorder", OTHER_PARAMS(OTHER_PARAM("transport", "tcp")))
-OTHER_PLUGIN(tcp_recorder, "0.0.1", "N/A", "records TCP traffic for debugging purposes")
+OTHER_PLUGIN(tcp_recorder, "0.1.0", "N/A", "records TCP traffic for debugging purposes")

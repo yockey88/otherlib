@@ -1,9 +1,8 @@
 /**
  * \file model/pose.hpp
  *
- * pure animation runtime primitives: local-space poses, clip-to-skeleton bindings,
- * sampling, blending, palette building. plain data in, plain data out — nothing here
- * knows scenes, assets, or graphs.
+ * pure animation runtime primitives: poses, sampling, blending, palettes.
+ * plain data in/out — nothing here knows scenes, assets, or graphs.
  **/
 #ifndef OTHER_RENDERER_MODEL_POSE_HPP
 #define OTHER_RENDERER_MODEL_POSE_HPP
@@ -33,8 +32,7 @@ namespace other {
   };
 
   /// bound tracks overwrite their joint's TRS; unbound joints keep whatever @p out holds
-  ///  (reset_to_bind first for a full-body sample; skip it for partial/layered blends).
-  ///  time clamps to the key range — wrapping is the caller's policy
+  ///  (reset_to_bind first for a full-body sample). time clamps to key range; wrapping is caller's policy
   void sample_clip(const animation_clip& clip, const clip_binding& binding, float time, pose& out);
 
   /// component-wise lerp (positions/scales) + normalized slerp (rotations); a and b

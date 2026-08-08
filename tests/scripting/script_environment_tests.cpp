@@ -44,9 +44,8 @@ namespace other {
     }
   }
 
-  /// the unload/reload halves of a script assembly refresh: invalidation must unhook the
-  ///  behavior instance from its parent's C# behavior list (not just the native records) and
-  ///  reattach must rebuild it, otherwise stale instances keep running after a hot reload
+  /// unload/reload halves of an assembly refresh: invalidation must unhook the behavior from its
+  ///  parent's C# behavior list (not just native records), or reattach resurrects stale instances
   TEST_F(script_environment_tests, behavior_invalidate_and_reattach) {
     auto* env = subsystem<scripting_environment>::get();
     ASSERT_NE(env, nullptr);
@@ -87,9 +86,8 @@ namespace other {
     EXPECT_NO_FATAL_FAILURE(env->destroy_object(parent_id));
   }
 
-  /// the managed-reflection pipeline behind the behavior inspector: GetFields/GetProperties
-  ///  must enumerate public members (the BindingFlags regression returned none), the
-  ///  snapshot walks each behavior's own dotnet type, and field edits round-trip by name
+  /// managed-reflection pipeline behind the behavior inspector: GetFields/GetProperties must
+  ///  enumerate public members (BindingFlags regression); snapshot walks each behavior's own type
   TEST_F(script_environment_tests, behavior_snapshot_lists_fields_and_roundtrips) {
     auto* env = subsystem<scripting_environment>::get();
     ASSERT_NE(env, nullptr);
@@ -169,10 +167,8 @@ namespace other {
     EXPECT_NO_FATAL_FAILURE(env->destroy_object(parent_id));
   }
 
-  /// scene snapshot restore (editor undo/redo, play/stop) tears an object down through a
-  ///  bare destroy_object on the parent's slot and rebuilds it under the same names; the
-  ///  behavior slots and their managed objects must be released with the parent or the
-  ///  rebuild collides with the leaked names and leaks the old instances
+  /// snapshot restore (undo/redo, play/stop) destroys the parent slot and rebuilds under the
+  ///  same names; behavior slots must release with it or the rebuild collides with leaked names
   TEST_F(script_environment_tests, destroy_parent_releases_behaviors_for_rebuild) {
     auto* env = subsystem<scripting_environment>::get();
     ASSERT_NE(env, nullptr);

@@ -17,9 +17,8 @@ namespace other {
     constexpr uint32_t kMaxCartesianExtent = 2048;
     constexpr uint32_t kMaxRingExtent = 256;
     constexpr uint32_t kMaxLayerExtent = 16;
-    /// cylindrical off-plane layers thin their rings to the major cadence, then their boundary
-    ///   ring, past this circle count, so the whole stack costs at most one extra maxed-out polar
-    ///   grid worth of lines
+    /// cylindrical off-plane layers thin rings to the major cadence + boundary ring past this
+    ///   circle count, capping the stack at one extra maxed-out polar grid worth of lines
     constexpr uint32_t kMaxOffPlaneRingCircles = 256;
     /// cylindrical shell verticals thin the same way, on the same emitted-line budget
     constexpr uint32_t kMaxShellVerticalLines = kMaxOffPlaneRingCircles * kRingSegments;
@@ -144,9 +143,8 @@ namespace other {
 
     if (grid.coordinate_system == GRID_COORDINATES_CYLINDRICAL) {
       PROFILE_SECTION("emit_grid_lines--cylindrical_layers");
-      /// off-plane layers repeat the full polar pattern so the lattice reads above and below the
-      ///   base plane, thinning rings to the major cadence and finally the boundary ring once the
-      ///   stack outgrows the budget
+      /// off-plane layers repeat the full polar pattern (lattice reads above/below the base plane),
+      ///   thinning rings to the major cadence then the boundary ring once the stack outgrows budget
       const uint32_t layers = clamped_layer_extent(grid);
       uint32_t ring_step = 1;
       if (2u * layers * rings > kMaxOffPlaneRingCircles && grid.major_line_every > 0) {

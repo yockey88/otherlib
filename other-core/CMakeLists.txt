@@ -1,3 +1,14 @@
+## regenerated from the root VERSION file on configure
+configure_version_header(
+  "core/version.hpp"
+  "OTHER_CORE_CORE"
+  "OTHER_ENVIRONMENT"
+  "${PROJECT_VERSION_MAJOR}"
+  "${PROJECT_VERSION_MINOR}"
+  "${PROJECT_VERSION_PATCH}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/core/version.hpp"
+)
+
 add_library(other_core STATIC)
 target_compile_definitions(other_core PUBLIC SPDLOG_USE_STD_FORMAT=1 "ASIO_STANDALONE" "ASIO_HAS_STD_INVOKE_RESULT")
 
@@ -52,7 +63,6 @@ target_sources(other_core
 		src/math/dynamic_vector.cpp
 
 		src/serialization/reflection.cpp
-		src/serialization/parser_combinators.cpp
 		src/serialization/serialization.cpp
 		src/serialization/toml_writer.cpp
 

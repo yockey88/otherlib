@@ -15,23 +15,8 @@
 
 namespace other {
 
-  /**
-   * \note: opcodes are 32 bit integers of the form --xxxxxx where -- is the category/type, and xxxxxx are the opcode parameters which can take the form:
-   * - xx0000 for opcodes with one register operand
-   * - xxyy00 for opcodes with two register operands
-   * - xxyyzz for opcodes with three register operands
-   * - nnnnxx for opcodes with one 16-bit immediate/address operand and one register operand
-   * - nnnn00 for opcodes with one 16-bit immediate/address operand and no register operand
-   * - xxnnnn for opcodes with one 16-bit immediate/address operand and one register operand
-   * - 00nnnn for opcodes with one 16-bit immediate/address operand and no register operand
-   *
-   * normalized_operand usage:
-   *  - reg1 operand is for first register (xx)
-   *  - reg2 operand is for second register (yy) if present
-   *  - reg3 operand is for third register (zz) if present
-   *  - value1 is for first 16-bit immediate/address operand (nnnn) if present
-   *  - value2 is for second 16-bit immediate/address operand (nnnn) if present
-   */
+  /** \note opcodes are 32-bit ints: --xxxxxx (category + up to 3 reg bytes, or a 16-bit
+   *   immediate/address + optional register) **/
   // type to make parsing easier
   struct normalized_operand {
     operand_kind kind = operand_kind::INVALID;

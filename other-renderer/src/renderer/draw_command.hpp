@@ -72,9 +72,8 @@ namespace other {
     constexpr auto operator<=>(const mesh_key&) const = default;
   };
 
-  /// which half of the frame's draw-list partition a scene pass consumes: opaque draws feed
-  ///  the gbuffer/shadow/voxelize passes, transparent draws only the blended forward pass.
-  ///  (k-prefixed because wingdi.h claims OPAQUE and TRANSPARENT as macros)
+  /// which half of the draw-list partition a scene pass consumes (opaque feeds gbuffer/shadow/voxelize,
+  ///  transparent only the blended forward pass); k-prefixed because wingdi.h claims OPAQUE/TRANSPARENT
   enum class draw_set : uint8_t {
     kOpaque,
     kTransparent,

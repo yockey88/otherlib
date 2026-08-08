@@ -26,9 +26,8 @@ namespace other {
     BLOB_LITERAL,
   };
 
-  // these are the protoype operations that the opcode builder
-  //   will use to attempt to parse the parameters into specific opcode formats, this allows compiler to rewrite certain load/write instructions
-  //   to handle data-labels/code-labels/weird environment redirection cases, without having to add more opcodes to the vm, and also allows for better error handling during compilation
+  // prototype ops the opcode builder resolves into specific opcode formats; lets the
+  //  compiler rewrite load/write for labels/redirection without adding real vm opcodes
   enum class canonical_opcode : uint8_t {
     /// 0
     STOPDEV_OP = 0,

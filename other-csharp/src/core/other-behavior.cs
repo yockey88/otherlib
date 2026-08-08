@@ -135,9 +135,8 @@ namespace Other.Core
     protected abstract void LateUpdate();
     protected abstract void FixedUpdate();
 
-    /// physics callbacks are virtual no-ops: behaviors opt in by overriding. fired on the
-    /// fixed tick the contact changed; an exit is not guaranteed if either body was
-    /// destroyed the same tick
+    /// physics callbacks are virtual no-ops: behaviors opt in by overriding. an exit is not
+    /// guaranteed if either body was destroyed the same tick
     protected virtual void CollisionEnter(CollisionInfo info) {}
     protected virtual void CollisionExit(CollisionInfo info) {}
     protected virtual void TriggerEnter(CollisionInfo info) {}

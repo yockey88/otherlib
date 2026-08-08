@@ -12,10 +12,7 @@
 
 namespace other {
 
-  /// hermetic on-disk tree:
-  ///   <temp>/root-file.txt
-  ///   <temp>/sub/nested.txt
-  ///   <temp>/sub/deep/leaf.lua
+  /// hermetic on-disk tree: <temp>/{root-file.txt, sub/nested.txt, sub/deep/leaf.lua}
   class filesystem_tests : public other_test {
    protected:
     static constexpr std::string_view kMountName = "fstest";

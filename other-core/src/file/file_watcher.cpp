@@ -10,9 +10,8 @@
 
 namespace other {
 
-  /// '/'-separated paths relative to @p root; the filter prunes excluded subtrees
-  //  (bin/, obj/, .*/), which is the rebuild-loop safety mechanism — do not drop it.
-  //  iteration tolerates transient races (files vanishing mid-scan) via error codes.
+  /// '/'-separated paths relative to @p root; filter prunes excluded subtrees (bin/, obj/,
+  //  .*/) — the rebuild-loop safety mechanism, do not drop; tolerates transient races via error codes
   void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, ostd::vector<file_watcher::file_time>& out) {
     std::error_code ec;
     for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {

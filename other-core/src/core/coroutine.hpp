@@ -18,24 +18,8 @@ namespace other {
   using suspend_never = std::suspend_never;
 
   /// C++ coroutines crash course
-  /**
-    coroutine<return-type> function_name(parameters...) {
-      auto* frame = new coroutine_frame(std::forward<parameters...>(parameters));
-      auto return_object = coroutine_frame->promise.get_return_object();
-      co_await coroutine_frame->promise.initial_suspend();
-      try
-      {
-          <body-statements>
-      }
-      catch (...)
-      {
-          coroutine_frame->promise.unhandled_exception();
-      }
-      co_await coroutine_frame->promise.final_suspend();
-      delete coroutine_frame;
-      return return_object;
-    }
-  */
+  /** desugars to: alloc frame, get_return_object(), try body (catch -> unhandled_exception)
+      between initial_suspend/final_suspend, then delete frame and return the result */
 
   struct task {
     struct awaiter;

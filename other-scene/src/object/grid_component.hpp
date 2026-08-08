@@ -73,9 +73,8 @@ namespace other {
   /// stacked plane layers the in-scene grid pass draws for @p grid (cylindrical: 2 * layers + 1, else 1)
   uint32_t grid_draw_layer_count(const grid_component& grid);
 
-  /// packs plane layer @p layer (see grid_draw_layer_count) of @p grid into a procedural grid
-  ///   submission for renderer::submit_grid, oriented by @p world; cylindrical layers off the base
-  ///   plane are offset along the plane normal and draw the full polar pattern without the axes
+  /// packs plane layer @p layer (see grid_draw_layer_count) of @p grid into a submission for
+  ///   renderer::submit_grid, oriented by @p world; off-base cylindrical layers offset along the normal, no axes
   grid_draw_data make_grid_draw_data(const grid_component& grid, const glm::mat4& world, uint32_t layer = 0);
 
   /// world axis identity color for a plane basis axis (X = red, Y = green, Z = blue)

@@ -141,11 +141,8 @@ namespace other {
       fs->initialize_directory_structure(kDefaultMounts);
     }
 
-    /// mock setup for tests uploading a known number of model sources (each upload = one
-    ///  mesh create + a vertex/index buffer pair, in that order). every resource is a
-    ///  FRESH object carrying its minted handle, like the real backend: mesh_key batching,
-    ///  destroy_model, and the per-object reference counts all depend on per-resource
-    ///  identity (a shared static aliases the counts and trips the decrement assert)
+    /// mock for N model uploads (each = one mesh create + vertex/index buffer pair); each
+    ///  resource must be a FRESH object (a shared static aliases ref counts and trips asserts)
     void set_up_mock_rendering_api_for_model_uploads(event_system& events, int model_count) {
       using ::testing::_;
       scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
@@ -562,9 +559,8 @@ worker_count = {}
     audio_config audio_cfg{};
     audio_cfg.force_pump_mode = true;
     ASSERT_TRUE(env->initialize(audio_cfg));
-    /// full destroy, not just shutdown(): the minimal profile never owns audio, and
-    ///  clip_revisions is high-water by design — only a fresh instance keeps the
-    ///  revision assertions below valid under --gtest_repeat
+    /// full destroy, not just shutdown(): minimal profile never owns audio, and clip_revisions
+    ///  is high-water — only a fresh instance keeps revision assertions valid under --gtest_repeat
     struct env_guard {
       ~env_guard() { subsystem<audio_environment>::shutdown(); }
     } ___env_guard;
@@ -774,9 +770,8 @@ worker_count = {}
     /// the fill is NOT destructive: the palette survives for the next frame's prepare
     EXPECT_EQ(rig_a_render->obj_model.bone_matrices.size(), 2u);
 
-    /// a live palette drives the object's AABB: union of each joint's bind-space
-    ///  influenced bounds through its palette matrix, then the world transform —
-    ///  the box follows the animation instead of freezing at the bind pose
+    /// a live palette drives the object's AABB: union of each joint's bind-space bounds through
+    ///  its palette matrix, then the world transform — follows the animation, not the bind pose
     {
       const model_data& src = rig_a_render->obj_model.source->source_data();
       bounding_box expected = bounding_box::empty;
@@ -809,9 +804,8 @@ worker_count = {}
     std::filesystem::remove_all(rig_dir, ec);
   }
 
-  /// tick and draw fill composed end-to-end: embedded clip resolved from the loaded glb,
-  ///  sampled by scene::update, landing in the draw's bone buffer — and the play/stop
-  ///  snapshot restores the pre-play clock
+  /// tick and draw fill composed end-to-end: embedded clip resolved, sampled by scene::update,
+  ///  landing in the draw's bone buffer; play/stop snapshot restores the pre-play clock
   TEST_F(animation_draw_tests, animation_tick_feeds_draw_palette) {
     dtor ___destructor_guard;
 

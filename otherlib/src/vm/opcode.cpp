@@ -315,28 +315,7 @@ namespace other {
   }
   /// group 4 end -----------------
 
-  /// group 5 start ---------------
-  /// group 5 end -----------------
-  /// group 6 start ---------------
-  /// group 6 end -----------------
-  /// group 7 start ---------------
-  /// group 7 end -----------------
-  /// group 8 start ---------------
-  /// group 8 end -----------------
-  /// group 9 start ---------------
-  /// group 9 end -----------------
-  /// group A start ---------------
-  /// group A end -----------------
-  /// group B start ---------------
-  /// group B end -----------------
-  /// group C start ---------------
-  /// group C end -----------------
-  /// group D start ---------------
-  /// group D end -----------------
-  /// group E start ---------------
-  /// group E end -----------------
-  /// group F start ---------------
-  /// group F end -----------------
+  /// groups 5-F reserved (unused)
 
   namespace detail {
 

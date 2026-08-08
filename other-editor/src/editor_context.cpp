@@ -10,9 +10,8 @@ namespace other {
 
   namespace {
 
-    /// a snapshot-pair edit: undo restores `before`, redo restores `after`. the scene is
-    ///  resolved at invoke time through the context — never a captured scene pointer —
-    ///  and the selection is carried across by name because restore reassigns runtime ids
+    /// a snapshot-pair edit: undo restores `before`, redo restores `after`; scene resolved at
+    ///  invoke time (never a captured pointer), selection carried by name since restore reassigns runtime ids
     edit make_snapshot_edit(editor_context* ctx, ostd::vector<uint8_t> before, ostd::vector<uint8_t> after) {
       auto restore = [ctx](const ostd::vector<uint8_t>& snapshot) {
         scene* s = ctx->current_selection.scene_ptr;

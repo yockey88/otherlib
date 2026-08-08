@@ -18,16 +18,8 @@ def _print_failure_details(test_suites, test_failures):
     failures = int(suite[2])
     test_suite_content = suite[3]
     if failures > 0:
-      # passing unskipped test:
-      #     <testcase name="..." file="..." line="..." status="..." time="..." timestamp="..." classname="..." />
-      # skipped test:
-      #     <testcase name="..." file="..." line="..." status="skipped" time="..." timestamp="..." classname="...">
-      #       <skipped message="..."><![CDATA[...]]></skipped>
-      #     </testcase>
-      # failed test:
-      #     <testcase name="..." file="..." line="..." status="..." time="..." timestamp="..." classname="...">
-      #       <failure message="..."><![CDATA[...]]></failure>
-      #     </testcase>
+      # testcase shapes the regex below must handle: self-closing (passed), <skipped>, and
+      #  <failure> children
       failure_pattern = re.compile(
         r'<testcase\b[^>]*\bname="([^"]+)"[^>]*>' r'(?:(?!<testcase\b|</testcase>).)*?'
         r'<failure\b[^>]*(?:>(.*?)</failure>|/>)' r'(?:(?!<testcase\b|</testcase>).)*?</testcase>',

@@ -13,6 +13,7 @@
 #include "physics_world/physics_world.hpp"
 #include "renderer/renderer.hpp"
 
+#include "scene/scene_network_context.hpp"
 #include "scene/scene_tree.hpp"
 
 namespace other {
@@ -33,6 +34,9 @@ namespace other {
     scope<lua_sandbox> sandbox;
 
     physics_world* physics = nullptr;
+
+    /// net-identity registry + replication role; session-scoped runtime state
+    scene_network_context network;
 
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
     std::optional<render_data> render_data_cache = std::nullopt;

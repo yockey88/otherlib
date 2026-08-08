@@ -128,9 +128,7 @@ namespace other {
     // Skew.x /= Scale.z;
 
 #if _DEBUG
-    // At this point, the matrix (in rows[]) is orthonormal.
-    // Check for a coordinate system flip.  If the determinant
-    // is -1, then negate the matrix and the scaling factors.
+    // debug-only: asserts right-handedness rather than negating on a coordinate-system flip
     vec3 Pdum3 = cross(row[1], row[2]);  // v3Cross(row[1], row[2], Pdum3);
     OTHER_ASSERT(dot(row[0], Pdum3) >= static_cast<T>(0), "Matrix decomposition requires a right-handed coordinate system.");
 #endif

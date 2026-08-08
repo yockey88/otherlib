@@ -1,8 +1,7 @@
 /**
  * \file cli/tools/dev_common.hpp
- *   Shared plumbing for the developer-workflow tools (build, test, run, install,
- *   package): the flag surface they all accept, the source-tree guard, attached
- *   subprocess execution with dry-run support, and built-executable lookup.
+ *   Shared plumbing for the dev-workflow tools (build/test/run/install/package): shared
+ *   flags, source-tree guard, attached subprocess execution, built-executable lookup.
  **/
 #ifndef OTHER_CLI_TOOLS_DEV_COMMON_HPP
 #define OTHER_CLI_TOOLS_DEV_COMMON_HPP
@@ -21,9 +20,8 @@ namespace other {
       bool dry_run = false;
     };
 
-    /// tries to consume a shared dev flag at args[i] (--config/-c, --env-root,
-    ///  --dry-run), advancing i past flag values; nullopt means "not a shared flag,
-    ///  the tool parses it itself", an error result means the flag was malformed
+    /// tries to consume a shared dev flag at args[i] (--config/-c, --env-root, --dry-run);
+    ///  nullopt = "not a shared flag", error result = the flag was malformed
     opt<tool_result> try_parse_dev_flag(tool_context& ctx, std::span<const std::string> args, size_t& i, dev_tool_options& options);
 
     /// the dev tools drive cmake and launch build outputs, which only makes sense
@@ -34,20 +32,12 @@ namespace other {
     ///  under --dry-run); the returned result carries the child's exit code
     tool_result run_attached(const tool_context& ctx, process_launch launch, bool dry_run);
 
-    /// cmake overwrites outputs in place (build relinks them, install copies over
-    ///  them), which fails on windows when an output is this very process's image
-    ///  (oecli building or installing oecli, an editor-hosted build relinking
-    ///  other_editor): a running image is locked against writes and deletes, but not
-    ///  renames. when this executable lives under output_root it is renamed aside and
-    ///  an identical copy is left at its path; the copy is unlocked, and it keeps the
-    ///  write time so up-to-date checks still hold. moved-aside images stay locked
-    ///  until their process exits, so each call only sweeps the leftovers of earlier
-    ///  runs. verb names the operation in messages ("build", "install")
+    /// windows locks a running exe against write/delete but not rename; if this process's own
+    ///  image sits under output_root it's renamed aside and copied back, so cmake can overwrite the original
     void sidestep_running_executable(const tool_context& ctx, const filepath& output_root, std::string_view verb, bool dry_run);
 
-    /// finds a built executable under <root>/build/<output_dir>/<config>/, honoring an
-    ///  explicit config or probing build_config_probe_order(); an empty path means
-    ///  nothing is built, resolved_config receives the config that matched
+    /// finds a built executable under <root>/build/<output_dir>/<config>/ (explicit config or
+    ///  build_config_probe_order()); empty path = nothing built, resolved_config gets the match
     filepath find_built_executable(const environment_paths& env, const filepath& output_dir, std::string_view executable_name,
                                    const opt<std::string>& config, std::string& resolved_config);
 

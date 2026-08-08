@@ -1,11 +1,5 @@
-###
-##  CPack packaging for the Other Environment SDK.
-##
-##  Drives the install rules into distributable artifacts under build/packages/
-##  (invoked through `oecli package`, or cpack directly from the build directory).
-##  ZIP works everywhere; the NSIS generator produces the Windows installer and
-##  needs NSIS (makensis) on the machine: oecli package -G "NSIS;ZIP"
-##
+## cpack packaging: drives install rules into build/packages/ (via oecli package).
+##  NSIS installer needs makensis; zip works everywhere: oecli package -G "NSIS;ZIP"
 set(CPACK_PACKAGE_NAME "OtherEnvironment")
 set(CPACK_PACKAGE_VENDOR "Other Environment")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Other Environment - a game development framework for C++")

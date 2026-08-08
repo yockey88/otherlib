@@ -33,9 +33,8 @@ namespace other {
 
     process_result launch_process(const process_launch& launch);
 
-    /// resolves a bare program name (cmake, cpack, ...) through the system PATH;
-    ///  launch_process takes the executable path literally, so PATH-found programs
-    ///  must be resolved through this first
+    /// resolves a bare program name (cmake, cpack, ...) through the system PATH; launch_process
+    ///  takes the executable path literally, so PATH-found programs must be resolved through this first
     opt<filepath> find_program_on_path(std::string_view name);
 
   }  // namespace cli

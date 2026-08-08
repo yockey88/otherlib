@@ -1,10 +1,8 @@
 /**
  * \file tests/assets/file_watcher_tests.cpp
  *
- * contract under test: file watchers debounce by mtime but keep firing across
- *  repeated modifications; directory watchers diff their subtree per poll
- *  (CREATED/DELETED) and domain filters prune excluded paths — the mechanism
- *  that keeps build output from re-entering the resolver.
+ * contract: file watchers debounce by mtime but keep firing across modifications; directory
+ *  watchers diff subtree per poll (CREATED/DELETED) and domain filters prune excluded paths
  **/
 #include <fstream>
 
@@ -102,9 +100,8 @@ namespace other {
     watcher->poll();
     EXPECT_EQ(count_events(file_event::type::MODIFIED), 1u);
 
-    /// once the window passes, the pending change surfaces. the bump is measured from
-    //  the fresh write's real mtime, so push far enough to clear the stored (future)
-    //  timestamp from the first accepted write regardless of test wall-clock speed
+    /// once the window passes, the pending change surfaces; bump is measured from the
+    //  fresh write's real mtime, pushed far enough to clear the first write's stored timestamp
     bump_write_time(target, std::chrono::milliseconds(2000));
     watcher->poll();
     EXPECT_EQ(count_events(file_event::type::MODIFIED), 2u);

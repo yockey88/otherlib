@@ -23,16 +23,12 @@ namespace other {
 
     dotnet_object* dotnet_object = nullptr;
 
-    /// set when this object was registered with the C# NativeObjectManager
-    ///  (scene objects are, behaviors are not) so detach only unregisters what
-    ///  was actually attached
+    /// set when this object was registered with the C# NativeObjectManager (scene objects
+    ///  are, behaviors are not) so detach only unregisters what was actually attached
     bool dotnet_native_registered = false;
 
-    /// behavior dotnet_objects attached to this script_object.
-    /// these are managed objects created through dotnet_host that represent
-    /// user scripts (SceneBehavior subclasses, etc.) added via attach_dotnet_behavior.
-    /// the corresponding C# Behavior instances are also stored in the parent
-    /// OtherObject's behavior list.
+    /// behavior dotnet_objects attached to this script_object: managed user-script instances
+    ///  added via attach_dotnet_behavior; also mirrored in the parent OtherObject's behavior list
     struct behavior_handle {
       std::string type_name;
       integer_t script_object_id = -1;  ///< the script_object ID for this behavior in the pool

@@ -66,6 +66,7 @@ namespace other {
                                                                       .opaque_handle = opaque_handle,
                                                                     });
     OTHER_ASSERT(success, "Failed to register connection route for ID {}", connection_id);
+    publish_route_count();
     CORE_LOG_DEBUG("Registered connection route for ID {} with provider '{}'", connection_id, provider->name());
   }
 
@@ -75,11 +76,41 @@ namespace other {
                                                                   .opaque_handle = opaque_handle,
                                                                 });
     OTHER_ASSERT(success, "Failed to register listener route for ID {}", listener_id);
+    publish_route_count();
     CORE_LOG_DEBUG("Registered listener route for ID {} with provider '{}'", listener_id, provider->name());
   }
 
-  void network_thread::mark_route_recently_closed(natural_t connection_id) {
-    recently_closed_connections.push_back(connection_id);
+  void network_thread::retire_connection_route(natural_t connection_id) {
+    active_connections.erase(connection_id);
+    active_listeners.erase(connection_id);
+    retired_connections.push_back(connection_id);
+    publish_route_count();
+  }
+
+  void network_thread::publish_route_count() {
+    route_count.store(active_connections.size() + active_listeners.size(), std::memory_order_relaxed);
+  }
+
+  void network_thread::notify_connection_opened(natural_t connection_id, const binding_point& remote, natural_t listener_id, bool outbound) {
+    message msg(NOTIFICATION, CONNECTION_OPENED);
+    notification_connection_opened data{
+      .remote = remote,
+      .connection_id = connection_id,
+      .listener_id = listener_id,
+      .outbound = static_cast<uint8_t>(outbound ? 1 : 0),
+    };
+    msg.data = serialize_direct(data);
+    send_to_driver(std::move(msg));
+  }
+
+  void network_thread::notify_connection_closed(natural_t connection_id, uint16_t reason) {
+    message msg(NOTIFICATION, CONNECTION_CLOSED);
+    notification_connection_closed data{
+      .connection_id = connection_id,
+      .reason = reason,
+    };
+    msg.data = serialize_direct(data);
+    send_to_driver(std::move(msg));
   }
 
   void network_thread::send_to_driver(message&& msg) {
@@ -107,6 +138,21 @@ namespace other {
     send_to_driver(std::move(shutdown_msg));
   }
 
+  void network_thread::drain_retired_connections() {
+    if (retired_connections.empty()) {
+      return;
+    }
+    PROFILE_SECTION("network_thread::drain_retired_connections");
+    /// runs right after poll(): any handler a closed connection still had queued has
+    ///  executed, so providers can destroy (or defer once more if one is mid-flight)
+    std::deque<natural_t> retired = std::move(retired_connections);
+    retired_connections.clear();
+    for (const natural_t connection_id : retired) {
+      CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
+      providers.for_each([&](transport_provider& p) { p.connection_removed(connection_id); });
+    }
+  }
+
   void network_thread::pump_thread() {
     PROFILE_SECTION("network_thread::pump_thread");
     /// seq_cst against tombstone stores: once a writer samples the epoch after erasing,
@@ -121,23 +167,7 @@ namespace other {
       }
     }
 
-    if (current_state.shutdown_pending) {
-      PROFILE_SECTION("network_thread::pump_thread--shutdown_cleanup");
-      // we should allow user to re-open a connection with the same ID,
-      // we should only actually close these on shutdown
-      for (natural_t connection_id : recently_closed_connections) {
-        CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
-        providers.for_each([&](transport_provider& p) { p.connection_removed(connection_id); });
-
-        active_connections.erase(connection_id);
-        active_listeners.erase(connection_id);
-      }
-      recently_closed_connections.clear();
-
-      const bool connections_shutdown = active_connections.empty();
-      const bool listeners_shutdown = active_listeners.empty();
-      current_state.shutdown_ready = connections_shutdown && listeners_shutdown;
-    }
+    drain_retired_connections();
 
     {
       PROFILE_SECTION("network_thread::pump_thread--provider_tick");
@@ -146,14 +176,26 @@ namespace other {
 
     {
       PROFILE_SECTION("network_thread::pump_thread--message_pump");
-      auto msg = bus.receive_message(microseconds(1));
-      try {
-        process_message(std::move(msg));
-      } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Error processing message in network thread: {}", e.what());
-      } catch (...) {
-        CORE_LOG_ERROR("Unknown error processing message in network thread");
+      /// non-blocking drain: the old single blocking receive capped throughput at one
+      ///  message per pump behind a ~1ms condvar floor
+      for (size_t i = 0; i < kMaxBusMessagesPerPump; ++i) {
+        opt<message> msg = bus.try_receive_message();
+        if (!msg.has_value()) {
+          break;
+        }
+        try {
+          process_message(std::move(msg));
+        } catch (const std::exception& e) {
+          CORE_LOG_ERROR("Error processing message in network thread: {}", e.what());
+        } catch (...) {
+          CORE_LOG_ERROR("Unknown error processing message in network thread");
+        }
       }
+    }
+
+    if (current_state.shutdown_pending) {
+      PROFILE_SECTION("network_thread::pump_thread--shutdown_check");
+      current_state.shutdown_ready = active_connections.empty() && active_listeners.empty() && retired_connections.empty();
     }
 
     if (current_state.shutdown_ready) {
@@ -161,9 +203,6 @@ namespace other {
       if (current_state.shutdown_complete) {
         return;
       }
-
-      active_connections.clear();
-      active_listeners.clear();
 
       natural_t ack_response_id = ack_list.get_pending_ack_response({ COMMAND, SHUTDOWN_REQUEST });
       if (ack_response_id != 0) {
@@ -184,45 +223,35 @@ namespace other {
 
   void network_thread::process_message(opt<message>&& msg) {
     PROFILE_SECTION("network_thread::process_message");
-    if (msg.has_value()) {
-      CORE_LOG_TRACE("[NETWORK THREAD RX: {}]", message_header{ msg->category, msg->id });
-      switch (msg->category) {
-        case CONTROL:
-          switch (msg->id) {
-            case PING: handle_control_ping(std::move(*msg)); break;
-            default:
-              throw std::runtime_error(std::format("Network thread received unknown CONTROL message ID {:#06x}", msg->id));
-          }
-          break;
-
-        case COMMAND:
-          switch (msg->id) {
-            case SHUTDOWN_REQUEST: handle_command_shutdown_request(std::move(*msg)); break;
-            case LISTEN_CONNECTION: handle_command_listen_connection(std::move(*msg)); break;
-            case CONNECT_CONNECTION: handle_command_connect_connection(std::move(*msg)); break;
-            case TX_DATA: handle_command_tx_data(std::move(*msg)); break;
-            default:
-              throw std::runtime_error(std::format("Network thread received unknown COMMAND message ID {:#06x}", msg->id));
-          }
-          break;
-
-        case REQUEST:
-          switch (msg->id) {
-            case ACK: handle_request_ack_process_msg(std::move(*msg)); break;
-            default:
-              throw std::runtime_error(std::format("Network thread received unknown REQUEST message ID {:#06x}", msg->id));
-          }
-          break;
-
-        default:
-          throw std::runtime_error(std::format("Network thread received message with unknown category {:#06x}", msg->category));
-      }
-    } else {
-      /// no message received, just continue
+    if (!msg.has_value()) {
+      return;
     }
-  }
 
-  void network_thread::handle_control_ping(message&& msg) {
+    CORE_LOG_TRACE("[NETWORK THREAD RX: {}]", message_header{ msg->category, msg->id });
+    switch (msg->category) {
+      case COMMAND:
+        switch (msg->id) {
+          case SHUTDOWN_REQUEST: handle_command_shutdown_request(std::move(*msg)); break;
+          case LISTEN_CONNECTION: handle_command_listen_connection(std::move(*msg)); break;
+          case CONNECT_CONNECTION: handle_command_connect_connection(std::move(*msg)); break;
+          case CLOSE_CONNECTION: handle_command_close_connection(std::move(*msg)); break;
+          case TX_DATA: handle_command_tx_data(std::move(*msg)); break;
+          default:
+            throw std::runtime_error(std::format("Network thread received unknown COMMAND message ID {:#06x}", msg->id));
+        }
+        break;
+
+      case REQUEST:
+        switch (msg->id) {
+          case ACK: handle_request_ack_process_msg(std::move(*msg)); break;
+          default:
+            throw std::runtime_error(std::format("Network thread received unknown REQUEST message ID {:#06x}", msg->id));
+        }
+        break;
+
+      default:
+        throw std::runtime_error(std::format("Network thread received message with unknown category {:#06x}", msg->category));
+    }
   }
 
   void network_thread::handle_command_shutdown_request(message&& msg) {
@@ -252,6 +281,19 @@ namespace other {
   }
 
   void network_thread::handle_command_connect_connection(message&& msg) {
+    PROFILE_SECTION("network_thread::handle_command_connect_connection");
+    command_connect_connection request = deserialize_direct<command_connect_connection>(msg.data).first;
+
+    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == request.transport_hash; });
+    if (provider == nullptr) {
+      throw invalid_provider_network_error(std::format("No transport provider with {:#010x} to connect @ {}:{}", request.transport_hash, request.endpoint.ip, request.endpoint.port));
+    }
+
+    if (active_connections.find(request.connection_id) != active_connections.end()) {
+      throw network_error(std::format("Connection with ID {} already exists", request.connection_id));
+    }
+
+    provider->start_connect(request.connection_id, request.endpoint);
   }
 
   void network_thread::handle_command_close_connection(message&& msg) {
@@ -260,13 +302,18 @@ namespace other {
 
     natural_t connection_id = request.connection_id;
     auto conn_itr = active_connections.find(connection_id);
-    if (conn_itr == active_connections.end()) {
-      CORE_LOG_WARN("Received request to close unknown connection ID {}", connection_id);
+    if (conn_itr != active_connections.end()) {
+      conn_itr->second.provider->close(connection_id);
       return;
     }
 
-    transport_provider* provider = conn_itr->second.provider;
-    provider->close(connection_id);
+    auto listener_itr = active_listeners.find(connection_id);
+    if (listener_itr != active_listeners.end()) {
+      listener_itr->second.provider->close(connection_id);
+      return;
+    }
+
+    CORE_LOG_WARN("Received request to close unknown connection ID {}", connection_id);
   }
 
   void network_thread::handle_command_tx_data(message&& msg) {
@@ -280,7 +327,9 @@ namespace other {
       return;
     }
 
-    itr->second.provider->tx_data(connection_id, std::span<const uint8_t>(request.data.data(), request.data.size()));
+    /// ownership rides through: the payload deserialized off the bus reaches the
+    ///  provider without another copy
+    itr->second.provider->tx_data(connection_id, std::move(request.data));
   }
 
   bool network_thread::immediately_acknowledge_message(const message_header& header) {

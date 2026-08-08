@@ -211,9 +211,8 @@ namespace other {
       }
     }
 
-    /// prefix accumulates the transforms of every non-joint ancestor this walk skips;
-    ///  recorded as skeleton::root_transform at the first root joint so build_palette can
-    ///  put them back in front of the chain
+    /// prefix accumulates transforms of every non-joint ancestor this walk skips;
+    ///  recorded as skeleton::root_transform at the first root joint for build_palette
     void traverse_node(const aiNode* node, int16_t parent_idx, const glm::mat4& prefix, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       OTHER_ASSERT(node != nullptr, "aiNode is null");
 
@@ -275,10 +274,8 @@ namespace other {
 
       traverse_node(scene->mRootNode, -1, glm::mat4(1.f), bctx, skel, ctx);
 
-      /// aiBone::mOffsetMatrix maps MESH space -> bone space, so palettes land in SCENE
-      ///  space; folding inverse(mesh node global) into root_transform brings them back to
-      ///  vertex-buffer space and makes root_transform * bind_chain * offset == identity
-      ///  for any consistent export (mixamo hangs its axis fix on the mesh node)
+      /// aiBone::mOffsetMatrix maps mesh space -> bone space; folding inverse(mesh node global)
+      ///  into root_transform restores vertex-buffer space: root_transform*bind_chain*offset == identity
       if (const aiNode* mesh_node = find_first_rigged_mesh_node(scene, scene->mRootNode)) {
         glm::mat4 mesh_global{ 1.f };
         for (const aiNode* n = mesh_node; n != nullptr; n = n->mParent) {
@@ -497,9 +494,8 @@ namespace other {
       data.nodes.emplace_back();
       traverse_assimp_nodes(ctx.scene->mRootNode, 0, ctx, data, 0);
 
-      /// joints without mesh rigging (animation-channel / helper joints) drive their node's
-      ///  submeshes directly as rigid attachments: identity inverse_bind, full-weight influence.
-      ///  mesh-rigged joints keep the aiBone offset matrices pass 4 assigned
+      /// joints without mesh rigging drive their node's submeshes as rigid attachments
+      ///  (identity inverse_bind, full-weight influence); mesh-rigged joints keep pass-4 offsets
       for (mesh_node& node : data.nodes) {
         const int16_t joint_idx = data.skel.find_joint(FNV(node.name));
         if (joint_idx < 0 || bctx.rigged_names.contains(node.name)) {

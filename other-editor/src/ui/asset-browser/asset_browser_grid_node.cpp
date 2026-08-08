@@ -3,9 +3,6 @@
  **/
 #include "ui/asset-browser/asset_browser_grid_node.hpp"
 
-/**
- * \file ui/asset-browser/asset_browser_grid_node.cpp
- **/
 #include <algorithm>
 #include <filesystem>
 #include <sstream>

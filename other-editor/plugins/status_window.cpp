@@ -17,4 +17,4 @@ class OTHER_CLASS status_window : public other::ui_window {
 };
 
 OTHER_PROVIDES(status_window, other::ui_window, "status_window")
-OTHER_PLUGIN("Status Window", "0.0.1", "N/A", "Provides nice runtime info while debugging")
+OTHER_PLUGIN("Status Window", "0.1.0", "N/A", "Provides nice runtime info while debugging")

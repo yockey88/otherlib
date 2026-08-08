@@ -61,18 +61,15 @@ namespace other {
     ostd::map<mesh_key, size_t> mesh_indices;
     ostd::frame_vector<mesh_key> mesh_keys;
     ostd::frame_vector<draw_call> draw_calls;
-    /// effective material per draw (component override, else the model's imported material,
-    ///  else nullptr = active layout defaults); pointers into renderer_backend registries and
-    ///  model sources stay valid for the frame the data was prepared for
+    /// effective material per draw (component override, else model's imported material, else
+    ///  nullptr = active layout defaults); registry/model-source pointers valid for the frame
     ostd::frame_vector<const material*> draw_materials;
     ostd::frame_vector<draw_instance_tints> draw_tints;
     ostd::frame_vector<gpu::model_matrix_buffer> model_buffers;
     ostd::frame_vector<gpu::bone_matrix_buffer> bone_buffers;
 
-    /// partition of the live draws in [0, num_draw_calls), rebuilt in renderer::begin_frame:
-    ///  a draw is transparent when its effective material authors a vec4 base_color with
-    ///  alpha < 1 or any live instance tint carries alpha < 1 (tints fold into the packed
-    ///  base_color at bind time, so either ends up as fragment alpha in the forward pass)
+    /// partition of live draws in [0, num_draw_calls), rebuilt in renderer::begin_frame: transparent
+    ///  when the material's or any live tint's base_color alpha < 1 (folds into fragment alpha)
     ostd::frame_vector<natural_t> opaque_draws;
     ostd::frame_vector<natural_t> transparent_draws;
   };
@@ -113,9 +110,8 @@ namespace other {
     void render(std::span<viewport> viewports);
     void end_frame();
 
-    /// emitters over the renderer-owned draw streams, valid from any point in the frame
-    ///   (including script ticks); streams accumulate until the frame is rendered and are
-    ///   cleared in end_frame
+    /// emitters over renderer-owned draw streams, valid any time in the frame (incl. script ticks);
+    ///   streams accumulate until rendered, cleared in end_frame
     debug_draw debug() {
       return debug_draw{ &draw_streams, builtin_debug_streams::kSet };
     }

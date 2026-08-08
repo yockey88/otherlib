@@ -1,13 +1,7 @@
 /**
  * \file main.cpp
- *   Standalone front end for the Other Environment CLI. Deliberately boots no engine
- *   subsystems so the tools stay instant and usable outside a running environment;
- *   in-environment hosts reach the same tools through other::cli::run / the registry.
- *
- *   The same file builds both cli flavors: with OTHER_CLI_DEV_TOOLS defined (the `oecli`
- *   target) it registers the source-tree developer workflow; without it (the
- *   `oecli_user` target, the oecli.exe that ships with the SDK) only the project and
- *   engine tools exist.
+ *   Boots no engine subsystems (tools stay instant); OTHER_CLI_DEV_TOOLS differentiates
+ *   the two flavors built from this file: oecli (dev workflow) vs oecli_user (SDK, ships without it).
  **/
 #include <algorithm>
 #include <array>
@@ -25,7 +19,6 @@
 
 namespace {
 
-  constexpr std::string_view kCliVersion = "0.2.0";
 #ifdef OTHER_CLI_DEV_TOOLS
   constexpr std::string_view kCliFlavor = "dev";
 #else
@@ -36,7 +29,7 @@ namespace {
 #endif
 
   void print_usage(const other::cli::tool_registry& registry) {
-    std::println("Other Environment CLI v{} [{}]", kCliVersion, kCliFlavor);
+    std::println("Other Environment CLI v{} [{}]", OTHER_ENVIRONMENT_VERSION_STRING, kCliFlavor);
     std::println("");
     std::println("usage: oecli <tool> [arguments...]");
     std::println("");
@@ -76,7 +69,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (args[0] == "-v" || args[0] == "--version") {
-    std::println("oecli v{} [{}] (Other Environment v{})", kCliVersion, kCliFlavor, OTHER_ENVIRONMENT_VERSION_STRING);
+    std::println("oecli v{} [{}]", OTHER_ENVIRONMENT_VERSION_STRING, kCliFlavor);
     return 0;
   }
 

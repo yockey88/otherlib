@@ -1,10 +1,8 @@
 /**
  * \file audio/audio_environment.hpp
  *
- * inert-gated audio capability + state owner: the miniaudio engine, the clip
- * registry, the voice pool, and the bus set. all calls are main-thread; the
- * device callback thread is miniaudio-internal and never touches engine state.
- * miniaudio itself is pimpl'd out of this header — consumers never pay for it.
+ * inert-gated audio capability + state owner: miniaudio engine, clip registry, voice pool, bus set.
+ * main-thread only (device callback thread never touches engine state); miniaudio pimpl'd out of this header.
  **/
 #ifndef OTHER_AUDIO_AUDIO_AUDIO_ENVIRONMENT_HPP
 #define OTHER_AUDIO_AUDIO_AUDIO_ENVIRONMENT_HPP
@@ -74,18 +72,15 @@ namespace other {
     ///  buffer — deterministic time for CI/tests; called by audio_system per tick
     void pump(double dt);
 
-    /// clip registry — keyed by asset path_hash; add asserts duplicate keys (refresh
-    ///  is unload-then-load), get-miss is a value, remove asserts no live voices
-    ///  still read the clip and logs on missing keys; revisions are high-water and
-    ///  survive remove so consumers can detect hot reloads
+    /// clip registry keyed by path_hash; add asserts duplicate keys, remove asserts no live
+    ///  voices still reference the clip; revisions survive remove so consumers detect hot reloads
     void add_clip(natural_t path_hash, audio_clip&& clip);
     const audio_clip* get_clip(natural_t path_hash) const;
     uint32_t clip_revision(natural_t path_hash) const;
     void remove_clip(natural_t path_hash);
 
-    /// voices — ids encode slot+generation; 0 == pool exhausted (warn, not assert);
-    ///  every other misuse of an id is a programmer error and asserts.
-    ///  streamed clips open from their source file through the resource manager
+    /// voice ids encode slot+generation; 0 == pool exhausted (warn, not assert), any other
+    ///  misuse asserts. streamed clips open from their source file through the resource manager
     voice_id start_voice(const voice_params& params);
     void stop_voice(voice_id id);
     void update_voice(voice_id id, const voice_dynamics& dynamics);

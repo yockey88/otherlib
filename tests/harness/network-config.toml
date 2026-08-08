@@ -1,0 +1,53 @@
+## engine + harness config for the peer-mesh network scenario; run: python cli.py test --network
+## in-process only (mesh + memory fabric, virtual clock); writes logs/network-report.json
+
+[application]
+name = "Other Network Harness"
+metadata = [
+  { key = "name", value = "Other Network Harness"},
+  { key = "description", value = "Deterministic peer-mesh network scenario over the memory fabric"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"}
+]
+core-log-level = "info"
+core-log-file = "logs/network-harness.log"
+
+[rendering]
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
+ui-layout-ini = "logs/network-harness-ui-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+
+[ui]
+enable = false
+
+[scripting]
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "other-lua-interop"
+
+[harness]
+scenario = "network"
+
+[harness.network]
+actors = 12
+seed = 1
+tick-us = 1000
+ticks-per-frame = 2000
+cross-link-stride = 4
+latency-min-us = 5000
+latency-max-us = 40000
+jitter-pct = 0.2
+steady-rounds = 150
+round-interval-ticks = 20
+drain-ticks = 300
+churn-rounds = 120
+datagram-frames = 400
+datagram-loss = 0.2
+datagram-loss-tolerance = 0.08
+max-establish-ticks = 400
+min-delivery-ratio = 1.0
+max-e2e-latency-us = 400000
+report-path = "logs/network-report.json"

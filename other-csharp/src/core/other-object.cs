@@ -71,6 +71,7 @@ namespace Other.Core
     {
       behavior.OnAddToObject(this);
       behaviors.Add(behavior);
+      Networking.ReplicatedSync.Track(behavior);
     }
 
     public void AddNativeBehavior(IntPtr native_handle)
@@ -93,6 +94,7 @@ namespace Other.Core
         if (behaviors[i].GetType().Name == class_name || behaviors[i].GetType().FullName == class_name)
         {
           behaviors[i].OnRemoveFromObject(this);
+          Networking.ReplicatedSync.Untrack(behaviors[i]);
           behaviors.RemoveAt(i);
         }
       }
@@ -101,6 +103,7 @@ namespace Other.Core
     public void RemoveBehavior(OtherBehavior behavior)
     {
       behavior.OnRemoveFromObject(this);
+      Networking.ReplicatedSync.Untrack(behavior);
       behaviors.Remove(behavior);
     }
 
@@ -113,9 +116,8 @@ namespace Other.Core
       behaviors.Clear();
     }
 
-    /// play/stop keeps managed instances alive while the native scene rebuilds; the old
-    /// native ids die in the restore, so the binding is reset at the end of the disable
-    /// pass and rebound once the restored native object exists
+    /// play/stop keeps managed instances alive while the native scene rebuilds; the native id
+    /// is reset at the end of the disable pass and rebound once the restored object exists
     public void ResetNativeHandle()
     {
       internal_handles.object_id = 0;

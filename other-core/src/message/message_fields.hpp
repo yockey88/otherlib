@@ -29,12 +29,37 @@ namespace other {
 
     CONNECTION_ID,
     NEW_CONNECTION_ID,
+    LISTENER_ID,
+    OUTBOUND,
 
     TRANSPORT_HASH,
 
     SINK_ID,
 
     DATA,
+
+    /// peer-mesh link control (other-network/src/peer_mesh/mesh_messages.hpp)
+    MAGIC,
+    PROTOCOL_NUM,
+    NODE_ID,
+    APP_HASH,
+    RELIABLE,
+    ORDERED,
+    MAX_FRAME_SIZE,
+    TIMESTAMP_US,
+    REASON,
+
+    /// session layer (otherlib/src/network/session/net_messages.hpp)
+    CLIENT_FLAGS,
+    PEER_ID,
+    HOST_TICK,
+    ROSTER_COUNT,
+    SENDER_PEER,
+    NET_ID,
+    KEY_HASH,
+    ELEMENT_COUNT,
+    OP_ID,
+    OP_FLAVOR,
   };
 
   constexpr static std::string_view kMessageFieldNames[] = {
@@ -57,12 +82,35 @@ namespace other {
 
     "connection-id",
     "new-connection-id",
+    "listener-id",
+    "outbound",
 
     "transport-hash",
 
     "sink-id",
 
     "data",
+
+    "magic",
+    "protocol-num",
+    "node-id",
+    "app-hash",
+    "reliable",
+    "ordered",
+    "max-frame-size",
+    "timestamp-us",
+    "reason",
+
+    "client-flags",
+    "peer-id",
+    "host-tick",
+    "roster-count",
+    "sender-peer",
+    "net-id",
+    "key-hash",
+    "element-count",
+    "op-id",
+    "op-flavor",
   };
 
   constexpr static value_type kMessageFieldTypes[] = {
@@ -85,11 +133,34 @@ namespace other {
 
     value_type::UINT64,  // CONNECTION_ID
     value_type::UINT64,  // NEW_CONNECTION_ID
+    value_type::UINT64,  // LISTENER_ID
+    value_type::UINT8,   // OUTBOUND
 
     value_type::UINT64,  // TRANSPORT_HASH
     value_type::UINT64,  // SINK_ID
 
     value_type::USER_TYPE,  // DATA
+
+    value_type::UINT32,  // MAGIC
+    value_type::UINT16,  // PROTOCOL_NUM
+    value_type::UINT64,  // NODE_ID
+    value_type::UINT64,  // APP_HASH
+    value_type::UINT8,   // RELIABLE
+    value_type::UINT8,   // ORDERED
+    value_type::UINT32,  // MAX_FRAME_SIZE
+    value_type::UINT64,  // TIMESTAMP_US
+    value_type::UINT16,  // REASON
+
+    value_type::UINT32,  // CLIENT_FLAGS
+    value_type::UINT16,  // PEER_ID
+    value_type::UINT64,  // HOST_TICK
+    value_type::UINT16,  // ROSTER_COUNT
+    value_type::UINT16,  // SENDER_PEER
+    value_type::UINT64,  // NET_ID
+    value_type::UINT64,  // KEY_HASH
+    value_type::UINT16,  // ELEMENT_COUNT
+    value_type::UINT64,  // OP_ID
+    value_type::UINT8,   // OP_FLAVOR
   };
 
 }  // namespace other

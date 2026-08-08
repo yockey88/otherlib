@@ -10,13 +10,8 @@
 
 namespace other {
 
-  /// fixed-capacity pointer registry: one mutating thread, any number of reader threads.
-  ///  readers iterate wait-free (no locks anywhere); writers publish with a store and
-  ///  retire with a tombstone. contract the owner must uphold:
-  ///   - insert/erase/reset/contains run on a single thread at a time (the writer)
-  ///   - erasing a slot does NOT make the object safe to destroy: a reader may still be
-  ///     using the pointer it loaded before the tombstone. destroy only after the reader
-  ///     has provably moved past (see network_thread::reclamation_epoch) or exited
+  /// fixed-capacity registry: one writer thread, N wait-free lock-free readers. erase only
+  ///  tombstones — destroy the pointee only once readers have moved past (reclamation_epoch)
   template <typename T, size_t Capacity>
   class slot_registry {
    public:

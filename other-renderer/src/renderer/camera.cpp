@@ -70,9 +70,8 @@ namespace other {
     this->position = position;
     direction = glm::normalize(target - position);
 
-    /// looking along world up (e.g. a straight-down map view) degenerates the basis and
-    ///   glm::lookAt (cross(direction, up) == 0 -> NaN view matrix); any perpendicular up is
-    ///   valid there, pick the one that keeps +X as screen right
+    /// looking along world up degenerates the basis (cross(direction, up) == 0 -> NaN view
+    ///   matrix); pick a perpendicular up that keeps +X as screen right
     glm::vec3 up_reference = world_up;
     if (glm::abs(glm::dot(direction, world_up)) > 0.999f) {
       up_reference = glm::vec3(0.f, 0.f, direction.y > 0.f ? 1.f : -1.f);

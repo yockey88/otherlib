@@ -1,11 +1,8 @@
 /**
  * \file tests/ref/weak_ref_tests.cpp
  *
- * contract under test (see core/weak_ref.hpp):
- *  - a weak_ref does NOT keep the object logically alive: once the last strong ref
- *    releases, expired() is true and lock() returns null (no resurrection)
- *  - a weak_ref DOES pin the storage: the destructor is deferred until the last
- *    weak_ref releases, so observing expiry is never a use-after-free
+ * contract (core/weak_ref.hpp): a weak_ref does NOT keep the object logically alive (expires
+ *  when the last strong ref releases) but DOES pin storage, so observing expiry is never a UAF
  **/
 #include "ref/weak_ref_tests.hpp"
 

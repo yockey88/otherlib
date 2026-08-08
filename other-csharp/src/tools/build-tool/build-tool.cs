@@ -76,11 +76,8 @@ namespace Other
       string templates_dir = Path.Combine(Core.Filesystem.GetInstallFolder(), "project/templates");
       foreach (string path in Directory.GetFiles(templates_dir))
       {
-        /// replace each template file name with corresponding destination file path as described here:
-        ///    1- .cpp/.hpp -> src/<project-name>.cpp/hpp
-        ///    2- CMakeLists1.txt -> CMakeLists.txt
-        ///    3- CMakeLists2.txt -> src/CMakeLists.txt
-        ///    4- .toml -> <project-name>.toml
+        /// maps each template filename to its destination path: .cpp/.hpp -> src/, CMakeLists*
+        ///  -> CMakeLists.txt, .toml -> <project-name>.toml
         string filename_no_ext = Path.GetFileNameWithoutExtension(path);
         string filename = Path.GetFileName(path);
         string ext = Path.GetExtension(path);

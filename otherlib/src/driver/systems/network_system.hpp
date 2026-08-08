@@ -12,8 +12,11 @@
 #include "data-structures/std_container.hpp"
 
 #include "network/acknowledgement_list.hpp"
+#include "network/net_address.hpp"
 #include "network/network_thread.hpp"
 #include "network/transport_provider.hpp"
+
+#include "steam/steam_context.hpp"
 
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
@@ -21,7 +24,6 @@
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
 #include "peer_mesh/packet_sink.hpp"
-#include "peer_mesh/peer_actor_host.hpp"
 
 namespace other {
 
@@ -46,12 +48,14 @@ namespace other {
     struct network_context {
       asio::io_context io_context;
       asio::signal_set signals;
-      natural_t netw_thread_heartbeat_timeout_id = 0;
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
 
       ostd::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
       ostd::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
+      /// providers whose posted net-io teardown never confirmed; destroyed only after
+      ///  the network thread has joined
+      ostd::vector<scope<transport_provider>> orphaned_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
       constexpr static uint32_t kPrimarySessionBindingPort = 49222;
@@ -88,8 +92,11 @@ namespace other {
     natural_t register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink);
     void unregister_transport_listener(natural_t sink_id);
 
-    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
-    natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
+    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp");
+    /// dials by kind-tagged address (empty transport resolves via kind, e.g. IP->tcp);
+    ///  returns conn id or 0 if refused. completion arrives via connection-opened/closed events
+    natural_t connect(const net_address& remote, const std::string_view transport_name = "");
+    void close(natural_t connection_id);
 
     void tx_data(natural_t connection_id, std::span<const uint8_t> data);
 
@@ -103,6 +110,17 @@ namespace other {
 
     bool network_active() const;
 
+    /// peer-mesh glue: exposes the net thread/providers for link-transport adapters to
+    ///  wrap, plus the only feed for accept attribution and dial failures
+    network_thread* thread();
+    transport_provider* find_provider(const std::string_view transport_name);
+    void set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
+                             std::function<void(const notification_connection_closed&)> on_close);
+
+    /// nullptr when steam.enabled is false; group-0 tick order pumps its callbacks
+    ///  before peer_mesh_system ticks the mesh
+    steam_context* steam() { return steam_ctx.get(); }
+
    private:
     signal_catcher signal_handler{ this };
 
@@ -110,6 +128,10 @@ namespace other {
     /// networking.force-disable, read once at init
     bool network_disabled = false;
     acknowledgement_list ack_list;
+    scope<steam_context> steam_ctx = nullptr;
+
+    std::function<void(const notification_connection_opened&)> connection_opened_tap;
+    std::function<void(const notification_connection_closed&)> connection_closed_tap;
 
     /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
     ///  providers/sinks can live in plugins that unload the moment unregister returns
@@ -128,24 +150,25 @@ namespace other {
 
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 
-    /// ack/timeout callbacks
+    /// ack/timeout/failure callbacks
     void on_ack_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_listen_at_endpoint(driver_kernel* kernel, message_header header);
+    void on_failed_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
+
+    void on_ack_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
+    void on_timeout_connect(driver_kernel* kernel, message_header header);
+    void on_failed_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
 
     void on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header);
 
-    // response/timeout callbacks
-    /// message handlers
-    /// notifications
+    /// message handlers (notifications below)
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
+    void handle_notification_connection_opened(driver_kernel* kernel, message&& msg);
+    void handle_notification_connection_closed(driver_kernel* kernel, message&& msg);
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);
-    /// control messages
-    /// command messages
-    /// request messages
-    /// response messages
   };
 
 }  // namespace other

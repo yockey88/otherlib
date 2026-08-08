@@ -61,17 +61,16 @@ namespace other {
   };
 
   /// notification messages
-  struct notification_connect_connection {
-    binding_point connection_endpoint;
-    binding_point endpoint;
+  struct notification_connection_opened {
+    binding_point remote;
     natural_t connection_id;
-    natural_t new_connection_id;
-    natural_t transport_hash;
+    natural_t listener_id;  // 0 for outbound connects
+    uint8_t outbound;       // 1 = this side dialed
   };
 
-  struct notification_close_connection {
+  struct notification_connection_closed {
     natural_t connection_id;
-    natural_t transport_hash;
+    uint16_t reason;  // connection_close_reason
   };
 
   /// control messages
@@ -134,17 +133,16 @@ OTHER_REFLECT(
   OTHER_MSG_FIELD(ack, ACK))
 
 OTHER_REFLECT(
-  other::notification_connect_connection,
-  OTHER_MSG_FIELD(connection_endpoint, CONNECTION_ENDPOINT),
-  OTHER_MSG_FIELD(endpoint, ENDPOINT),
+  other::notification_connection_opened,
+  OTHER_MSG_FIELD(remote, CONNECTION_ENDPOINT),
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(new_connection_id, NEW_CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
+  OTHER_MSG_FIELD(listener_id, LISTENER_ID),
+  OTHER_MSG_FIELD(outbound, OUTBOUND))
 
 OTHER_REFLECT(
-  other::notification_close_connection,
+  other::notification_connection_closed,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
+  OTHER_MSG_FIELD(reason, REASON))
 
 OTHER_REFLECT(
   other::command_listen_connection,

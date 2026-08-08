@@ -822,9 +822,8 @@ namespace other {
         float h = ImGui::GetFrameHeight();
         uint32_t flags = 0;
 
-        /// take from imgui_widgets.cpp: ImGui::ButtonEx()
-        ///  we replace the color and styling in the center of the function
-        // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+        /// adapted from ImGui::ButtonEx() (imgui_widgets.cpp), with custom color/styling
+        ///  swapped in mid-function
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         if (window->SkipItems) {
           return false;

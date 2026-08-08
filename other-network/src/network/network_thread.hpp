@@ -25,6 +25,9 @@ namespace other {
   class OTHER_CLASS network_thread : public thread {
    public:
     constexpr static size_t kMaxTransportProviders = 8;
+    /// bus messages drained per pump; non-blocking, so a quiet bus costs nothing and a
+    ///  flood cannot starve io polling
+    constexpr static size_t kMaxBusMessagesPerPump = 64;
 
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
@@ -37,10 +40,8 @@ namespace other {
       return new_id;
     }
 
-    /// registration/unregistration run on one thread (the main thread via network_system);
-    ///  the pump reads the registry wait-free. unregister only tombstones — the provider
-    ///  object may not be destroyed until reclamation_epoch() has advanced past the value
-    ///  sampled after the tombstone (network_system defers destruction on this contract)
+    /// registration runs on the main thread only; the pump reads the registry wait-free.
+    ///  unregister only tombstones — destruction waits for reclamation_epoch() to advance past it
     void register_provider(transport_provider* provider);
     void unregister_provider(transport_provider* provider);
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
@@ -53,13 +54,22 @@ namespace other {
 
     void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
     void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
-    void mark_route_recently_closed(natural_t connection_id);
+    /// routes die the moment a connection does; the object teardown behind them is
+    ///  deferred one pump so aborted asio handlers drain first
+    void retire_connection_route(natural_t connection_id);
+
+    /// driver-facing lifecycle notifications, network thread
+    void notify_connection_opened(natural_t connection_id, const binding_point& remote, natural_t listener_id, bool outbound);
+    void notify_connection_closed(natural_t connection_id, uint16_t reason);
 
     void send_to_driver(message&& msg);
 
     inline bool is_shutdown_pending() const { return current_state.shutdown_pending; }
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
+
+    /// route-table probe for tests; exact only between pumps
+    inline size_t active_route_count() const { return route_count.load(std::memory_order_relaxed); }
 
    private:
     struct state {
@@ -77,10 +87,11 @@ namespace other {
 
     std::atomic<natural_t> connection_id_counter = 1;
     std::atomic<uint64_t> pump_epoch = 0;
+    std::atomic<size_t> route_count = 0;
 
     ostd::map<natural_t, connection_route> active_connections;
     ostd::map<natural_t, listener_route> active_listeners;
-    std::deque<natural_t> recently_closed_connections;
+    std::deque<natural_t> retired_connections;
 
     slot_registry<transport_provider, kMaxTransportProviders> providers;
 
@@ -92,8 +103,9 @@ namespace other {
 
     void pump_thread() override;
     void process_message(opt<message>&& msg);
+    void drain_retired_connections();
+    void publish_route_count();
 
-    void handle_control_ping(message&& msg);
     void handle_command_shutdown_request(message&& msg);
     void handle_command_listen_connection(message&& msg);
     void handle_command_connect_connection(message&& msg);
@@ -102,9 +114,6 @@ namespace other {
 
     bool immediately_acknowledge_message(const message_header& header);
     void handle_request_ack_process_msg(message&& msg);
-
-    static inline natural_t max_connections = 1024;
-    natural_t current_connections = 0;
 
     microseconds get_message_timeout() override {
       return microseconds(10);

@@ -10,6 +10,7 @@
 #include "core/defines.hpp"
 #include "core/time.hpp"
 #include "data-structures/std_container.hpp"
+#include "event/event_system.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/tcp/tcp_transport_provider.hpp"
@@ -50,6 +51,13 @@ namespace other {
 
       net_context->net_thread->launch();
       net_context->net_thread_message_bus.register_thread();
+
+      /// degradation contract: init failure warns once and leaves the context
+      ///  UNAVAILABLE — tcp/memory untouched, CI (no client) never notices
+      if (get_driver().get_config_value<bool>("steam.enabled", false)) {
+        steam_ctx = make_scope<steam_context>();
+        steam_ctx->initialize(static_cast<uint32_t>(get_driver().get_config_value<size_t>("steam.app-id", 480)));
+      }
     }
 
     initialize_message_handlers();
@@ -58,6 +66,13 @@ namespace other {
   void network_system::late_initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::late_initialize");
+
+    /// late: this system boots ahead of the event driver system (group 0 vs 1)
+    event_system& events = *get_driver().get_event_system();
+    events.register_event("network.connection-opened");
+    events.register_event("network.connection-closed");
+    events.register_event("network.listen-failed");
+    events.register_event("network.connect-failed");
 
     auto register_interfaces_in_registry = [this](environment_registry& reg) {
       reg.register_interface<transport_provider>(
@@ -97,6 +112,10 @@ namespace other {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }
     }
+
+    if (steam_ctx != nullptr) {
+      steam_ctx->pump();
+    }
   }
 
   void network_system::shutdown(driver_kernel* kernel) {
@@ -104,10 +123,13 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     PROFILE_SECTION("network_system::shutdown");
     message_handlers.clear();
+    steam_ctx = nullptr;
 
     if (!network_disabled) {
       net_context->net_thread->wait_for_shutdown_complete();
       net_context->net_thread = nullptr;
+      /// thread joined: orphans from timed-out posted teardowns are finally safe to free
+      net_context->orphaned_transport_providers.clear();
       net_context->registered_transport_providers.clear();
       net_context = nullptr;
     }
@@ -178,11 +200,7 @@ namespace other {
     auto [itr, success] = net_context->registered_packet_sinks.emplace(id, std::move(sink));
     OTHER_ASSERT(success, "Failed to register packet sink with ID {}!", id);
 
-    uint64_t hash = FNV(
-      transport_name |
-      std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-      std::ranges::to<std::string>());
-    net_context->net_thread->register_transport_listener(hash, id, itr->second.get());
+    net_context->net_thread->register_transport_listener(transport_provider::hash_name(transport_name), id, itr->second.get());
 
     return id;
   }
@@ -199,10 +217,55 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
-    /// tombstone, wait out the pump, destroy before the owner module can unload
+    /// tombstone, wait out the pump, then tear down ON the net io: shutdown closes asio
+    ///  objects the network thread may be polling — running it from here would race
     net_context->net_thread->unregister_provider(itr->second.get());
     wait_for_pump_quiescence(net_context->net_thread->reclamation_epoch());
-    itr->second->shutdown();
+
+    transport_provider* provider = itr->second.get();
+    if (net_context->net_thread->is_running()) {
+      /// two posted phases: close sockets, then (after a full pump confirms drain) tear
+      ///  down objects — collapsing them would destroy connections with handlers still queued
+      auto phase = std::make_shared<std::atomic<int>>(0);
+      asio::post(net_context->net_thread->get_io_context(), [provider, phase]() {
+        provider->begin_shutdown();
+        phase->store(1, std::memory_order_release);
+      });
+
+      const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+      auto wait_for = [&](auto&& pred) {
+        while (!pred() && net_context->net_thread->is_running() && std::chrono::steady_clock::now() < deadline) {
+          std::this_thread::yield();
+        }
+        return pred();
+      };
+
+      bool torn_down = false;
+      if (wait_for([&] { return phase->load(std::memory_order_acquire) == 1; })) {
+        const uint64_t epoch = net_context->net_thread->reclamation_epoch();
+        wait_for([&] { return net_context->net_thread->reclamation_epoch() > epoch + 1; });
+        asio::post(net_context->net_thread->get_io_context(), [provider, phase]() {
+          provider->shutdown();
+          phase->store(2, std::memory_order_release);
+        });
+        torn_down = wait_for([&] { return phase->load(std::memory_order_acquire) == 2; });
+      }
+
+      if (!torn_down) {
+        if (!net_context->net_thread->is_running()) {
+          /// pump stopped before running the posts: no poll can race an inline teardown
+          provider->shutdown();
+        } else {
+          /// wedged pump: keep the object alive so the posted teardown cannot UAF;
+          ///  freed after the thread joins
+          CORE_LOG_WARN("Timed out waiting for posted teardown of provider '{}'; orphaning it.", provider->name());
+          net_context->orphaned_transport_providers.push_back(std::move(itr->second));
+        }
+      }
+    } else {
+      provider->shutdown();
+    }
+
     net_context->registered_transport_providers.erase(itr);
   }
 
@@ -228,21 +291,22 @@ namespace other {
     net_context->registered_packet_sinks.erase(itr);
   }
 
-  natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name, natural_t preferred_sink_id) {
+  natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is not initialized in network system.");
     PROFILE_SECTION("network_system::listen_at_endpoint");
+
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring listen at {}:{}: networking is disabled.", ep.ip, ep.port);
+      return 0;
+    }
 
     natural_t connection_id = net_context->net_thread->generate_connection_id();
     message msg(COMMAND, LISTEN_CONNECTION);
     command_listen_connection request{
       .endpoint = ep,
       .connection_id = connection_id,
-      .transport_hash = FNV(
-        transport_name |
-        std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-        std::ranges::to<std::string>()),
+      .transport_hash = transport_provider::hash_name(transport_name),
     };
     msg.data = serialize_direct(request);
 
@@ -251,31 +315,60 @@ namespace other {
     return connection_id;
   }
 
-  natural_t network_system::connect(const binding_point& ep, const std::string_view transport_name, natural_t preferred_sink_id) {
+  natural_t network_system::connect(const net_address& remote, const std::string_view transport_name) {
     ASSERT_MAIN_THREAD();
-    // natural_t connection_id = network_thread::generate_connection_id();
-    // auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
-    // if (!success) {
-    //   CORE_LOG_ERROR("Failed to create TCP connection for endpoint {}:{}", ep.ip, ep.port);
-    //   return 0;
-    // }
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::connect");
 
-    // message msg;
-    // msg.header = {
-    //   .category = COMMAND,
-    //   .id = CONNECT_CONNECTION,
-    // };
-    // command_connect_connection request{
-    //   .endpoint = ep,
-    //   .connection_id = connection_id,
-    //   .transport_hash = FNV(transport_name),
-    // };
-    // msg.data = serialize_direct(request);
+    if (net_context->net_thread == nullptr) {
+      CORE_LOG_WARN("Ignoring connect: networking is disabled.");
+      return 0;
+    }
 
-    // send_message(&get_driver().get_kernel(), std::move(msg));
+    std::string_view resolved = transport_name;
+    if (resolved.empty()) {
+      switch (remote.addressing) {
+        case net_address::kind::IP: resolved = "tcp"; break;
+        default: break;
+      }
+    }
+    /// only net-thread socket transports dial through the bus today; the main-thread
+    ///  provider home (memory, steam) joins this dispatch with the mesh driver glue
+    if (remote.addressing != net_address::kind::IP || resolved.empty()) {
+      CORE_LOG_WARN("connect refused: no dialable transport for address kind {}", static_cast<uint8_t>(remote.addressing));
+      return 0;
+    }
 
-    CORE_LOG_WARN("unimplemented network_system::connect called for endpoint {}:{}", ep.ip, ep.port);
-    return 0;
+    natural_t connection_id = net_context->net_thread->generate_connection_id();
+    message msg(COMMAND, CONNECT_CONNECTION);
+    command_connect_connection request{
+      .endpoint = remote.ip,
+      .connection_id = connection_id,
+      .transport_hash = transport_provider::hash_name(resolved),
+    };
+    msg.data = serialize_direct(request);
+
+    send_message(&get_driver().get_kernel(), std::move(msg));
+
+    return connection_id;
+  }
+
+  void network_system::close(natural_t connection_id) {
+    ASSERT_MAIN_THREAD();
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::close");
+
+    if (net_context->net_thread == nullptr) {
+      return;
+    }
+
+    message msg(COMMAND, CLOSE_CONNECTION);
+    command_close_connection request{
+      .connection_id = connection_id,
+      .transport_hash = 0,
+    };
+    msg.data = serialize_direct(request);
+    send_message(&get_driver().get_kernel(), std::move(msg));
   }
 
   void network_system::tx_data(natural_t connection_id, std::span<const uint8_t> data) {
@@ -347,6 +440,27 @@ namespace other {
     return net_context->net_thread != nullptr && net_context->net_thread->is_running();
   }
 
+  network_thread* network_system::thread() {
+    ASSERT_MAIN_THREAD();
+    return net_context != nullptr ? net_context->net_thread.get() : nullptr;
+  }
+
+  transport_provider* network_system::find_provider(const std::string_view transport_name) {
+    ASSERT_MAIN_THREAD();
+    if (net_context == nullptr) {
+      return nullptr;
+    }
+    auto itr = net_context->registered_transport_providers.find(transport_provider::hash_name(transport_name));
+    return itr != net_context->registered_transport_providers.end() ? itr->second.get() : nullptr;
+  }
+
+  void network_system::set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
+                                           std::function<void(const notification_connection_closed&)> on_close) {
+    ASSERT_MAIN_THREAD();
+    connection_opened_tap = std::move(on_open);
+    connection_closed_tap = std::move(on_close);
+  }
+
   void network_system::initialize_message_handlers() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::initialize_message_handlers");
@@ -358,11 +472,27 @@ namespace other {
           message_handler{
             [this](message_header h, std::span<const uint8_t> d) { on_ack_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
             [this](message_header h) { on_timeout_listen_at_endpoint(&get_driver().get_kernel(), h); },
+            [this](message_header h, std::span<const uint8_t> d) { on_failed_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
           },
         },
       });
       auto [titr, timeout_success] = message_handler_timeouts.insert({ message_header{ COMMAND, LISTEN_CONNECTION }, seconds(1) });
       OTHER_ASSERT(success, "Failed to insert message handler for LISTEN_CONNECTION");
+    }
+
+    {
+      auto [itr, success] = message_handlers.insert({
+        message_header{ COMMAND, CONNECT_CONNECTION },
+        {
+          message_handler{
+            [this](message_header h, std::span<const uint8_t> d) { on_ack_connect(&get_driver().get_kernel(), h, d); },
+            [this](message_header h) { on_timeout_connect(&get_driver().get_kernel(), h); },
+            [this](message_header h, std::span<const uint8_t> d) { on_failed_connect(&get_driver().get_kernel(), h, d); },
+          },
+        },
+      });
+      auto [titr, timeout_success] = message_handler_timeouts.insert({ message_header{ COMMAND, CONNECT_CONNECTION }, seconds(3) });
+      OTHER_ASSERT(success, "Failed to insert message handler for CONNECT_CONNECTION");
     }
 
     {
@@ -436,6 +566,8 @@ namespace other {
         switch (msg.id) {
           case NETWORK_THREAD_READY: handle_notification_network_thread_ready(kernel, std::move(msg)); break;
           case NETWORK_THREAD_SHUTDOWN_COMPLETE: handle_notification_network_thread_shutdown_complete(kernel, std::move(msg)); break;
+          case CONNECTION_OPENED: handle_notification_connection_opened(kernel, std::move(msg)); break;
+          case CONNECTION_CLOSED: handle_notification_connection_closed(kernel, std::move(msg)); break;
           default:
             CORE_LOG_ERROR("Server received unknown notification message ID {}", msg.id);
             break;
@@ -496,6 +628,29 @@ namespace other {
     CORE_LOG_ERROR("Timeout waiting for network thread to acknowledge listen at endpoint request");
   }
 
+  void network_system::on_failed_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
+    ASSERT_MAIN_THREAD();
+    CORE_LOG_ERROR("Network thread failed to listen (port in use or no provider)");
+    get_driver().get_event_system()->trigger_event("network.listen-failed");
+  }
+
+  void network_system::on_ack_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
+    ASSERT_MAIN_THREAD();
+    CORE_LOG_DEBUG("Network thread acknowledged connect request");
+  }
+
+  void network_system::on_timeout_connect(driver_kernel* kernel, message_header header) {
+    ASSERT_MAIN_THREAD();
+    CORE_LOG_ERROR("Timeout waiting for network thread to acknowledge connect request");
+    get_driver().get_event_system()->trigger_event("network.connect-failed");
+  }
+
+  void network_system::on_failed_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
+    ASSERT_MAIN_THREAD();
+    CORE_LOG_ERROR("Network thread failed to start a connect (no such transport provider)");
+    get_driver().get_event_system()->trigger_event("network.connect-failed");
+  }
+
   void network_system::on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
@@ -523,6 +678,26 @@ namespace other {
     get_driver().confirm_network_thread_shutdown();
   }
 
+  void network_system::handle_notification_connection_opened(driver_kernel* kernel, message&& msg) {
+    ASSERT_MAIN_THREAD();
+    notification_connection_opened data = deserialize_direct<notification_connection_opened>(msg.data).first;
+    CORE_LOG_DEBUG("Connection {} opened ({}, remote {}:{})", data.connection_id, data.outbound != 0 ? "outbound" : "inbound", data.remote.ip, data.remote.port);
+    get_driver().get_event_system()->trigger_event("network.connection-opened", data.connection_id);
+    if (connection_opened_tap != nullptr) {
+      connection_opened_tap(data);
+    }
+  }
+
+  void network_system::handle_notification_connection_closed(driver_kernel* kernel, message&& msg) {
+    ASSERT_MAIN_THREAD();
+    notification_connection_closed data = deserialize_direct<notification_connection_closed>(msg.data).first;
+    CORE_LOG_DEBUG("Connection {} closed (reason {})", data.connection_id, data.reason);
+    get_driver().get_event_system()->trigger_event("network.connection-closed", data.connection_id);
+    if (connection_closed_tap != nullptr) {
+      connection_closed_tap(data);
+    }
+  }
+
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {
     ASSERT_MAIN_THREAD();
     acknowledgement_ack ack_data = deserialize_direct<acknowledgement_ack>(msg.data).first;
@@ -530,8 +705,9 @@ namespace other {
       CORE_LOG_DEBUG("Received acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
       ack_list.handle_ack(ack_data.ack_id, ack_data.acked_header, {});
     } else {
+      /// a failed operation on the network thread is data for the caller, never fatal
       CORE_LOG_WARN("Received failure acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
-      OTHER_ASSERT(false, "Received failure acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
+      ack_list.handle_failure(ack_data.ack_id, ack_data.acked_header, {});
     }
   }
 }  // namespace other

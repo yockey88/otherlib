@@ -71,10 +71,8 @@ namespace other {
       case canonical_opcode::JNE_OP: return 1;
       case canonical_opcode::CALL_OP: return 1;
       case canonical_opcode::RET_OP: return 1;
-      // syscall and invoke can take the syscall id and an
-      // address pointing to a defined argument-structure
-      // this is in addition to the natural calling convention of passing arguments in registers,
-      // so we give it a parity of 2 to allow for both styles
+      // syscall/invoke can take an id + an address to an argument struct, in addition to
+      // normal register-passed args; parity 2 supports both calling styles
       case canonical_opcode::SYSCALL_OP: return 2;
       case canonical_opcode::INVOKE_OP: return 2;
       // 3

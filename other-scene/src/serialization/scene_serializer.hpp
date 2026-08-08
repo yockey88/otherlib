@@ -1,9 +1,8 @@
 /**
  * \file serialization/scene_serializer.hpp
  *
- * scene <-> scene_document <-> (.oscn toml | .oscnb binary). the binary form doubles
- * as the in-memory snapshot wire format (scene::capture_snapshot / restore_snapshot),
- * which is what play/stop restore, editor undo/redo, and future state replication ride.
+ * scene <-> scene_document <-> (.oscn toml | .oscnb binary); the binary form doubles as the in-memory
+ * snapshot wire format (capture/restore_snapshot) used by play/stop restore, undo/redo, and replication
  **/
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_SERIALIZER_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_SERIALIZER_HPP
@@ -16,6 +15,7 @@
 namespace other {
 
   class scene;
+  struct scene_object;
 
   namespace serialization {
 
@@ -32,10 +32,20 @@ namespace other {
     /// not captured — scenes construct their own root
     scene_document capture_scene(scene& s, const codec_services& services);
 
-    /// instantiates the document's objects into @p s through the normal creation APIs,
-    /// so entt construct signals rebuild script objects and physics bodies; file ids
-    /// are remapped to freshly allocated runtime ids
-    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services);
+    /// instantiates the document's objects into @p s via normal creation APIs (entt construct signals
+    /// rebuild scripts/physics); file ids remap to fresh runtime ids, written to @p out_id_remap for join snapshots
+    void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services,
+                           ostd::map<natural_t, natural_t>* out_id_remap = nullptr);
+
+    /// -- object subtrees (spawn templates, duplicate-object, prefabs) ------
+
+    /// one object and its descendants through the same codecs; the subtree root's
+    /// record carries parent_file_id 0
+    scene_document capture_object_subtree(scene& s, natural_t root_object_id, const codec_services& services);
+
+    /// instantiates the document's records under @p parent (nullptr = scene root)
+    void instantiate_subtree(scene& s, const scene_document& doc, scene_object* parent, const codec_services& services,
+                             ostd::map<natural_t, natural_t>* out_id_remap = nullptr);
 
     /// -- document <-> bytes (.oscnb + snapshots) ---------------------------
 
@@ -52,9 +62,8 @@ namespace other {
     scene_parse_result load_scene_document(const filepath& path);
     bool save_scene_document(const scene_document& doc, const filepath& path);
 
-    /// every asset reference the document's component payloads carry, as stored;
-    /// the scene's hook script is separate (scene_document::script, relative to the
-    /// scene file's directory). engine-free — this is what manifest parsing rides
+    /// every asset reference the document's component payloads carry, as stored (hook script is
+    /// separate: scene_document::script); engine-free — this is what manifest parsing rides
     ostd::vector<component_asset_ref> collect_scene_asset_refs(const scene_document& doc);
 
   }  // namespace serialization

@@ -7,11 +7,8 @@
 
 namespace other {
 
-  /// \note relaxed works from increment b/c you already own a reference to the object,
-  //          so you've established a happens-before relationship and the ref is safe to increment
-  //        decrement requires acq_rel to avoid two threads racing to decrement count to 0 and then
-  //          both seeing a count of 0 after decrement which would lead to double-free
-  //        count needs to see the most up-to-date value of ref_count to know when it hits 0, so it needs acquire semantics
+  /// \note increment is relaxed (already own a ref = happens-before established);
+  //  decrement needs acq_rel to avoid a double-free race and see the count hit 0
 
   void ref_counted::view_increment() const {
     views.fetch_add(1, std::memory_order_relaxed);

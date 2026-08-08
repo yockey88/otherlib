@@ -1,10 +1,8 @@
 /**
  * \file tests/renderer/material_tests.cpp
  *
- * contract under test: .omat parsing is pure cpu and error-result based (files are data,
- *  never asserts), material_layout computes std430 offsets + the element size that retires
- *  the hand-maintained TOML element_size, and packing folds defaults, values, unknown-param
- *  warnings, and per-instance tints correctly.
+ * contract: .omat parsing is pure cpu + error-result based (never asserts); material_layout
+ *  computes std430 offsets/element size, and packing folds defaults, values, warnings, tints
  **/
 #include <filesystem>
 #include <fstream>
@@ -215,9 +213,8 @@ namespace other {
   }
 
   TEST_F(material_tests, default_pipeline_layout_derivation) {
-    /// the shipped pipeline TOML is the ABI anchor: its declared layout must derive the
-    /// element size the shipped GLSL block was written against (48 std430) and size the
-    /// per-draw material binding from it — the hand-written element_size key is gone
+    /// the shipped pipeline TOML is the ABI anchor: its layout must derive the element size the
+    ///  GLSL block was written against (48 std430) and size the per-draw binding from it
     const pipeline_definition def = read_pipeline_definition_from_file(filepath{ "resources/editor-assets/default-pipeline.toml" });
     ASSERT_TRUE(def.materials.has_value());
     EXPECT_EQ(def.materials->element_size, 48u);

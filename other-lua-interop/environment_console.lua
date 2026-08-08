@@ -205,6 +205,19 @@ function _Console:new()
   ]]
   self:RegisterConsoleCommand("scene", "Performs various operations on the current scene.", function(...) _Meta:Driver():SceneCommand(...) end, scene_long_description)
 
+  local net_long_description = [[
+  [net Command]
+    Controls the default networking session.
+    Usage:
+      net host [port]           Hosts a session (networking.transport picks tcp or steam)
+      net join <ip[:port]>      Joins a session at the given address
+      net invite                Opens the steam overlay invite dialog (steam sessions)
+      net leave                 Leaves the current session
+      net status                Prints session role, roster, steam state, per-link state
+      net journal               Dumps the session's scene-op journal
+  ]]
+  self:RegisterConsoleCommand("net", "Controls the default networking session.", function(args) _Meta:Driver().TriggerEvent("network.command", table.concat(args, " ")) end, net_long_description)
+
   setmetatable(obj, self)
   return obj
 end

@@ -273,13 +273,8 @@ namespace other {
     virtual void on_connection_closed(natural_t connection_id) {}
 
     virtual void on_rendering_pipeline_loaded(natural_t asset_id, const pipeline_definition& definition) {}
-    /// acknowledgments
-    /// control messages
-    /// command messages
-    /// request messages
-    /// response messages
-    /// session events
-    /// error alerts
+    /// planned message categories (unimplemented): acks, control, command,
+    ///  request, response, session events, error alerts
 
     template <typename T>
       requires std::derived_from<T, driver_system>

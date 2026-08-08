@@ -1,12 +1,6 @@
 ###
-##  Other Environment CLI
-##
-##  other_cli - the tool library. Depends only on other_core so it can be linked both by
-##    the standalone executable and into otherlib, which is what makes every tool
-##    invocable from inside a running environment (editor console, drivers, plugins)
-##    via other::cli::run(...).
-##  oecli - the standalone command line front end.
-##
+## other_cli - tool library (only depends on other_core), linked into otherlib so every tool
+##   is invocable from inside a running environment too; oecli - the standalone cli front end.
 add_library(other_cli STATIC)
 target_sources(other_cli
   PRIVATE
@@ -28,15 +22,8 @@ target_include_directories(other_cli
 )
 target_link_libraries(other_cli PUBLIC other_core)
 
-## two front ends build from the same main.cpp, differentiated by OTHER_CLI_DEV_TOOLS:
-##  oecli - the developer cli. Registers the source-tree workflow tools (run, build,
-##    test, install, package) next to the project workflow; only meaningful inside a
-##    build tree and never installed (unless OTHER_INSTALL_DEV_CLI opts in).
-##  oecli_user - the user cli that ships with the SDK, still named oecli.exe but built
-##    into other-cli/user/<config>/ so the two never collide. Project and engine tools
-##    only; the developer tools stay unregistered.
-## Both link otherlib for the engine-level tools (scene compile/decompile/info need the
-##  scene component codecs); neither boots subsystems, so tools stay instant.
+## two front ends from one main.cpp via OTHER_CLI_DEV_TOOLS: oecli adds the dev workflow
+##   (build/test/install/package); oecli_user ships in the SDK, built to user/<config> to avoid collision.
 add_executable(oecli src/main.cpp)
 target_compile_definitions(oecli PRIVATE OTHER_CLI_DEV_TOOLS)
 

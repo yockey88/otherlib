@@ -7,8 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-/// JPH_* ABI defines come from other-physics/CMakeLists.txt (target_compile_definitions)
-///  and must match how the prebuilt extern/jolt binaries were built
+/// JPH_* ABI defines come from other-physics/CMakeLists.txt; must match the prebuilt extern/jolt binaries
 // clang-format off
 #include <Jolt/Jolt.h>
 #include <Jolt/RegisterTypes.h>
@@ -93,9 +92,8 @@ namespace other {
     virtual bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
   };
 
-  /// queues contact transitions from jolt's worker threads for the main-thread drain.
-  /// kBegin/kTriggerBegin carry engine body ids (read off the bodies' user data); kEnd events
-  /// only have backend BodyIDs available and are resolved by the drain
+  /// queues contact transitions from jolt's worker threads for the main-thread drain. kBegin/
+  ///  kTriggerBegin carry engine body ids; kEnd only has backend BodyIDs, resolved by the drain
   class contact_listener final : public JPH::ContactListener {
    public:
     void OnContactAdded(const JPH::Body& body_a, const JPH::Body& body_b, const JPH::ContactManifold& manifold, JPH::ContactSettings&) override {
@@ -781,19 +779,16 @@ namespace other {
     }
     job_system = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, static_cast<int>(worker_threads));
 
-    // Create mapping table from object layer to broadphase layer
-    // Note: As this is an interface, PhysicsSystem will take a reference to this so this instance needs to stay alive!
-    // Also have a look at BroadPhaseLayerInterfaceTable or BroadPhaseLayerInterfaceMask for a simpler interface.
+    // maps object layers to broadphase layers; PhysicsSystem keeps a reference, so this
+    //  instance must stay alive (see BroadPhaseLayerInterfaceTable/Mask for alternatives)
     bp_layer_interface = new BPLayerInterfaceImpl();
 
-    // Create class that filters object vs broadphase layers
-    // Note: As this is an interface, PhysicsSystem will take a reference to this so this instance needs to stay alive!
-    // Also have a look at ObjectVsBroadPhaseLayerFilterTable or ObjectVsBroadPhaseLayerFilterMask for a simpler interface.
+    // filters object vs broadphase layers; PhysicsSystem keeps a reference, so this instance
+    //  must stay alive (see ObjectVsBroadPhaseLayerFilterTable/Mask for alternatives)
     object_vs_broadphase_layer_filter = new ObjectVsBroadPhaseLayerFilterImpl();
 
-    // Create class that filters object vs object layers
-    // Note: As this is an interface, PhysicsSystem will take a reference to this so this instance needs to stay alive!
-    // Also have a look at ObjectLayerPairFilterTable or ObjectLayerPairFilterMask for a simpler interface.
+    // filters object vs object layers; PhysicsSystem keeps a reference, so this instance
+    //  must stay alive (see ObjectLayerPairFilterTable/Mask for alternatives)
     object_layer_pair_filter = new ObjectLayerPairFilterImpl();
   }
 

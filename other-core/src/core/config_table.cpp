@@ -180,7 +180,12 @@ namespace other {
 #endif
 
     config_table config = {};
-    config.table.get() = toml::parse(contents);
+    try {
+      config.table.get() = toml::parse(contents);
+    } catch (const std::exception& e) {
+      std::println(std::cerr, "Configuration parse error: {}", e.what());
+      return std::nullopt;
+    }
 
     toml::node_view driver_path = config.table.get().at_path("application.driver");
     driver = driver_path.as_string() == nullptr ? "" : driver_path.as_string()->get();
