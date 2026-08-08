@@ -1,13 +1,8 @@
 /**
  * \file network/transport_conformance_tests.cpp
  *
- * the transport conformance battery: one set of expectations, run over the in-tree
- * transports. reliable profile: memory (mesh_sim_fixture legs live in
- * peer_mesh_tests.cpp) + real localhost tcp via the dual-instance harness. datagram
- * profile: memory-datagram + real localhost udp. byte rows exercise providers alone;
- * framing rows exercise the mesh riding the transport. row 13
- * (session_join_refused_on_datagram_link) waits for the session actor in M2 — link
- * caps propagation, its precondition, is proven here.
+ * transport conformance battery, run over in-tree transports (reliable: memory+tcp; datagram:
+ *  memory-datagram+udp); byte rows exercise providers alone, framing rows exercise the mesh
  */
 #include <algorithm>
 #include <numeric>

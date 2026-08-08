@@ -60,13 +60,11 @@ namespace OtherCsBindings
     private static readonly Dictionary<Int32, AssemblyLoadContext> contexts = new();
     private static readonly Dictionary<Int32, List<Int32>> context_members = new();
     private static readonly Dictionary<Int32, Assembly> assemblies = new();
-    /// each engine-loaded assembly gets its own collectible AssemblyLoadContext: .NET can only
-    ///  unload whole contexts, never single assemblies, so per-assembly unload (script hot
-    ///  reload) requires per-assembly contexts
+    /// each assembly gets its own collectible AssemblyLoadContext: .NET can only unload whole
+    ///  contexts, never single assemblies, so hot reload needs per-assembly contexts
     private static readonly Dictionary<Int32, AssemblyLoadContext> assembly_alcs = new();
-    /// GCHandles are tracked as their IntPtr representation so entries can be removed when the
-    ///  native side frees a handle — GCHandle struct copies go stale after Free and must never
-    ///  be double-freed
+    /// GCHandles are tracked as IntPtr so entries can be removed when native frees a handle —
+    ///  struct copies go stale after Free and must never be double-freed
     private static readonly Dictionary<Int32, HashSet<IntPtr>> handles = new();
     private static readonly Dictionary<IntPtr, Int32> handle_owners = new();
 
@@ -176,13 +174,8 @@ namespace OtherCsBindings
       return null;
     }
 
-    /// the runtime forbids non-collectible assemblies from referencing collectible ones, and
-    ///  this handler is also attached to the (non-collectible) default context: when a
-    ///  collectible context resolves a reference, the binder consults the default context
-    ///  FIRST — handing it a collectible assembly poisons the whole bind. Returning null lets
-    ///  resolution fall through to the requesting assembly's own context, where a
-    ///  collectible→collectible reference is legal. Reflection lookups pass context == null
-    ///  and create no reference edge, so they may see every assembly.
+    /// the default context is consulted first and must never resolve a collectible assembly;
+    ///  returning null lets resolution fall through to the collectible requester's own context
     private static bool IsResolvable(AssemblyLoadContext? requesting_context, Assembly asm)
     {
       if (requesting_context == null || requesting_context.IsCollectible)
@@ -229,9 +222,8 @@ namespace OtherCsBindings
         return -1;
       }
 
-      /// the context created here is a logical group: member assemblies are loaded into their
-      ///  own per-assembly contexts (see LoadManagedAssembly) so they can be unloaded one at a
-      ///  time — this context itself never contains engine assemblies
+      /// logical group only: member assemblies get their own per-assembly contexts (see
+      ///  LoadManagedAssembly) so each can be unloaded individually
       var alc = new AssemblyLoadContext(name, true);
       alc.Resolving += ResolveAssembly;
 
@@ -320,9 +312,8 @@ namespace OtherCsBindings
           return -1;
         }
 
-        /// load into a dedicated collectible context so this assembly can be unloaded (and hot
-        ///  reloaded) individually — assemblies resolve each other through the Resolving
-        ///  handler, which searches across every context
+        /// dedicated collectible context so this assembly can be unloaded/hot-reloaded alone;
+        ///  cross-assembly resolution goes through the Resolving handler across all contexts
         var alc = new AssemblyLoadContext($"{group_alc.Name}:{Path.GetFileNameWithoutExtension(path)}", true);
         alc.Resolving += ResolveAssembly;
 
@@ -385,10 +376,8 @@ namespace OtherCsBindings
       }
     }
 
-    /// unloads one engine-loaded assembly for real: releases its GCHandles and cached
-    ///  reflection objects (both would otherwise root the assembly forever), then unloads its
-    ///  dedicated context. A subsequent LoadManagedAssembly yields a fresh instance — this is
-    ///  the unload half of script hot reload.
+    /// releases GCHandles and cached reflection objects (both would otherwise root the assembly
+    ///  forever), then unloads its context — the unload half of script hot reload
     private static void UnloadAssemblyById(Int32 asm_id)
     {
       if (!assemblies.Remove(asm_id, out var asm))
@@ -459,9 +448,8 @@ namespace OtherCsBindings
       handle_owners[ptr] = asm_id;
     }
 
-    /// must be called wherever a registered handle is freed, otherwise the stale entry would
-    ///  be freed a second time on assembly unload — after the handle slot has been recycled,
-    ///  that would free an unrelated live handle
+    /// must be called wherever a registered handle is freed, otherwise assembly unload double-
+    ///  frees the stale entry, potentially freeing an unrelated recycled handle
     internal static void UnregisterHandle(IntPtr ptr)
     {
       if (!handle_owners.Remove(ptr, out var asm_id))

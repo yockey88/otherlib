@@ -20,9 +20,8 @@ namespace other {
 
     void set_job_system(job_system* jobs);
 
-    /// delivery entry points, called from the owning transport's thread. the default
-    ///  implementations job-hop to the main thread; implementations that need ordered
-    ///  same-thread delivery (the mesh's transport adapters) override these directly
+    /// delivery entry points, called from the owning transport's thread. defaults job-hop to
+    ///  the main thread; implementations needing ordered same-thread delivery override directly
     virtual void rx_data(natural_t conn_id, std::span<const uint8_t> data);
     virtual void connection_opened(natural_t conn_id);
     virtual void connection_closed(natural_t conn_id);

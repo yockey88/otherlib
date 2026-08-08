@@ -17,9 +17,8 @@ namespace other {
     PROFILE_SECTION("input_system::initialize");
     CORE_LOG_INFO("Initializing input system.");
 
-    /// SDL_INIT_GAMEPAD implies SDL_INIT_JOYSTICK
-    /// we do this in case the other environment has inputs configured for gamepad
-    ///   even without a render backend loaded.
+    /// SDL_INIT_GAMEPAD implies SDL_INIT_JOYSTICK; done in case gamepad inputs are
+    ///  configured even without a render backend loaded
     {
       PROFILE_SECTION("input_system::initialize--sdl");
       if (!SDL_WasInit(SDL_INIT_GAMEPAD)) {

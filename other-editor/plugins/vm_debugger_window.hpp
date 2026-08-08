@@ -35,6 +35,6 @@ class vm_debugger_window : public ui_window {
 };
 
 OTHER_PROVIDES(vm_debugger_window, ui_window, "vm_debugger", OTHER_PARAMS(OTHER_PARAM("name", "vm-debugger")))
-OTHER_PLUGIN(tcp_recorder, "0.0.1", "N/A", "records TCP traffic for debugging purposes")
+OTHER_PLUGIN(tcp_recorder, "0.1.0", "N/A", "records TCP traffic for debugging purposes")
 
 #endif  // OTHER_EDITOR_PLUGINS_VM_DEBUGGER_WINDOW_HPP

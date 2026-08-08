@@ -53,9 +53,7 @@ namespace Other.Toolset
 
     public void CreateDefaultCsproj(NativeString path)
     {
-      // check if file exists
-      // if so error and return
-      // if not create a default csproj file with the name and working directory
+      // errors and returns if the file already exists, else creates a default csproj
       string csproj_path = path.ToString()!;
 
       if (System.IO.File.Exists(csproj_path))

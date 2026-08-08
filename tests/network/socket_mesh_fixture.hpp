@@ -83,9 +83,8 @@ namespace other {
     std::vector<natural_t> closed;
   };
 
-  /// one process-half of a socket conversation: bus + network thread + tcp/udp
-  ///  providers + link-transport adapters + one mesh. two instances on localhost are
-  ///  the dual-endpoint harness the conformance battery runs on
+  /// one process-half of a socket conversation: bus + network thread + tcp/udp providers +
+  ///  link-transport adapters + one mesh; two localhost instances form the conformance harness
   struct socket_net_instance {
     message_bus bus;
     network_thread thread{ bus };

@@ -14,9 +14,8 @@ namespace other {
     }
 
     static filepath environment_build_root() {
-      /// dev builds run out of <repo>/build/...; walk up from the exe to 'build'.
-      /// installed builds have no such ancestor -> empty, and only the install
-      /// prefix classifies. bounded walk: a filesystem root has no parent.
+      /// dev builds run under <repo>/build/...; walk up from the exe looking for 'build'.
+      ///  installed builds have no such ancestor (empty -> install prefix classifies instead)
       filepath dir = get_current_exe_directory();
       while (!dir.empty() && dir != dir.parent_path()) {
         if (dir.filename() == "build") {

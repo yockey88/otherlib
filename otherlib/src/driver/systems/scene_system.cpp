@@ -386,9 +386,8 @@ namespace other {
       return s.asset_id == scene_asset_id;
     });
     if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
-      /// resolver-dispatched scene documents are tracked file assets (snapshot nodes)
-      //  with no graph scene attached; only assets born through add_scene_asset must
-      //  resolve to a graph scene here
+      /// resolver-dispatched scene documents are snapshot-node file assets with no graph
+      ///  scene; only assets born through add_scene_asset resolve to one
       auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
       const asset* scene_asset = assets.get_asset(scene_asset_id);
       if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {
@@ -417,12 +416,8 @@ namespace other {
       }
     }
 
-    /**
-     * \note (is this still relevant?):
-     *    - scene must be active to be bound to the native scripting interfaces so we activate it to run the creation script, and then restore the old one.
-     *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
-     *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
-     **/
+    /** \note briefly activates the scene to run its creation script (no event/network
+     *   side effects), then restores the prior state **/
 
     CORE_LOG_DEBUG("Scene asset loaded: {}", s->name);
     CORE_LOG_DEBUG("try_activate: {}, activate_on_load: {}", try_activate, s->activate_on_load);

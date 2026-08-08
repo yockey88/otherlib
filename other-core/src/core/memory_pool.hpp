@@ -142,10 +142,8 @@ namespace other {
 
     storage_type pool;
 
-    /// high-water allocation cursor
-    /// slots below it are handed out first
-    /// freed slots below it are only reused once it reaches Max
-    /// never decremented freed slots are found by scanning object_flags
+    /// high-water allocation cursor; slots below it are handed out first, freed slots
+    ///  are only reused once it reaches Max (never decremented; scan object_flags for free ones)
     size_t num_objects = 0;
 
     /// number of currently-allocated objects; drives is_full/size()

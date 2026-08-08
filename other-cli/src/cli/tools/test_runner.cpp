@@ -20,8 +20,9 @@ namespace other {
       constexpr std::string_view kTestUsage =
         R"(usage: test [options...]
 
-  Runs the Other Environment unit test suites (gtest) or the soak harness from a
-  source tree build. Build the suites first with: build --tests
+  Runs the Other Environment unit test suites (gtest) or one of the harness
+  scenarios (soak/network/fuzz/stress) from a source tree build.
+  Build the suites first with: build --tests
 
   options:
     -s,  --seed <seed>        seed for gtest shuffle (default: random)
@@ -35,12 +36,15 @@ namespace other {
          --soak               run the soak harness and validate logs/soak-report.json
          --network            run the network harness scenario and validate
                               logs/network-report.json (the tag-pipeline gate)
+         --fuzz               run the parser fuzz harness and validate
+                              logs/fuzz-report.json (the tag-pipeline gate)
+         --stress             run the frame-load stress harness and validate
+                              logs/stress-report.json (the tag-pipeline gate)
          --env-root <path>    explicit source tree root
          --dry-run            print the launch instead of running it)";
 
-      /// harness runs share one shape: launch the scenario driver against a config,
-      ///  then read the verdict out of its report (the driver exits 0 for any clean
-      ///  run; the verdict lives in the report — the harness_scenario contract)
+      /// harness runs share one shape: launch the scenario driver, then read the verdict from its
+      ///  report; the driver exits 0 for any clean run — the verdict lives in the report (the contract)
       tool_result run_harness_scenario(tool_context& ctx, const dev_tool_options& options,
                                        std::string_view label, const filepath& scenario_config,
                                        std::string_view report_name) {
@@ -101,6 +105,16 @@ namespace other {
                                     filepath("tests") / "harness" / "network-config.toml", "network-report.json");
       }
 
+      tool_result run_fuzz_harness(tool_context& ctx, const dev_tool_options& options) {
+        return run_harness_scenario(ctx, options, "fuzz",
+                                    filepath("tests") / "harness" / "fuzz-config.toml", "fuzz-report.json");
+      }
+
+      tool_result run_stress_harness(tool_context& ctx, const dev_tool_options& options) {
+        return run_harness_scenario(ctx, options, "stress",
+                                    filepath("tests") / "harness" / "stress-config.toml", "stress-report.json");
+      }
+
     }  // namespace
 
     std::string_view test_runner_tool::usage() const {
@@ -118,6 +132,8 @@ namespace other {
       bool break_on_failure = false;
       bool soak = false;
       bool network = false;
+      bool fuzz = false;
+      bool stress = false;
 
       for (size_t i = 0; i < args.size(); ++i) {
         if (opt<tool_result> shared = try_parse_dev_flag(ctx, args, i, options); shared.has_value()) {
@@ -157,6 +173,10 @@ namespace other {
           soak = true;
         } else if (arg == "--network") {
           network = true;
+        } else if (arg == "--fuzz") {
+          fuzz = true;
+        } else if (arg == "--stress") {
+          stress = true;
         } else {
           return tool_result::error(std::format("unknown argument '{}'\n{}", arg, kTestUsage));
         }
@@ -171,6 +191,12 @@ namespace other {
       }
       if (network) {
         return run_network_harness(ctx, options);
+      }
+      if (fuzz) {
+        return run_fuzz_harness(ctx, options);
+      }
+      if (stress) {
+        return run_stress_harness(ctx, options);
       }
 
       std::string resolved_config = "";

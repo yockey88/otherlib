@@ -20,11 +20,8 @@ namespace other {
   class glob_set;
 
   /// represents a directory node in the engine's virtual filesystem
-  /**
-   * directories can contain both child directories and file handles.
-   * a mounted directory maps a name to a real or virtual directory tree,
-   * allowing path resolution through the `mount_name://path/to/file` scheme.
-   **/
+  /** directories hold child directories + file handles; a mounted directory maps a name
+      to a real or virtual tree via the `mount_name://path/to/file` scheme **/
   struct directory : public ref_counted {
     directory(event_system& events, const std::string_view name, const filepath& path,
               file_type type = file_type::LOCAL, mount_scope scope = mount_scope::ENGINE,

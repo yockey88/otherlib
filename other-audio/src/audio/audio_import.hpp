@@ -1,9 +1,8 @@
 /**
  * \file audio/audio_import.hpp
  *
- * pure import helpers for the AUDIO asset pipeline: sidecar parsing and
- * decode/probe into an audio_clip. any-thread safe (standalone decoder per
- * call, never the engine); files are data — failures come back as results
+ * import helpers for the audio pipeline: sidecar parsing + decode/probe into an audio_clip.
+ * any-thread safe (standalone decoder per call); failures come back as results, not asserts.
  **/
 #ifndef OTHER_AUDIO_AUDIO_AUDIO_IMPORT_HPP
 #define OTHER_AUDIO_AUDIO_AUDIO_IMPORT_HPP

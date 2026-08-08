@@ -14,10 +14,8 @@
 
 namespace other {
 
-  /// the byte-mover surface a mesh consumes — bytes in, bytes out, no frames, no
-  ///  interpretation. the memory fabric implements it directly; the driver adapts the
-  ///  transport_provider machinery onto it (network_system glue). connection ids are
-  ///  allocated by the implementation and unique within it
+  /// the byte-mover surface a mesh consumes — bytes in, bytes out, no frames, no interpretation.
+  ///  connection ids are allocated by the implementation and unique within it
   class link_transport {
    public:
     struct callbacks {

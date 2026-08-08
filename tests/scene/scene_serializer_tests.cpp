@@ -195,17 +195,15 @@ namespace other {
 
     expect_test_scene_state(s);
 
-    /// stop's restore reassigns runtime ids: a pre-play id must resolve to null (not a
-    ///  live object, not UB), and the object's name is its stable identity across the
-    ///  restore — the contract editor selection re-resolution depends on
+    /// stop's restore reassigns runtime ids: a pre-play id must resolve to null (not live, not
+    ///  UB); the object's name is its stable identity, which editor selection re-resolves on
     EXPECT_EQ(s.find_object(pre_play_parent_id), nullptr);
     scene_object* restored_parent = s.find_object(std::string_view{ "Parent" });
     ASSERT_NE(restored_parent, nullptr);
     EXPECT_NE(restored_parent->id, pre_play_parent_id);
 
-    /// stop is a disable, not a remove: the script object (and its managed instance)
-    ///  survives the restore and is rebound to the re-created scene object, so
-    ///  Awake/Remove stay reserved for load/unload/reload
+    /// stop is a disable, not a remove: the script object survives and rebinds to the
+    ///  re-created scene object; Awake/Remove stay reserved for load/unload/reload
     script_component* restored_script = s.try_get_component<script_component>(restored_parent->id);
     ASSERT_NE(restored_script, nullptr);
     EXPECT_EQ(restored_script->script_object_id, pre_play_script_id);

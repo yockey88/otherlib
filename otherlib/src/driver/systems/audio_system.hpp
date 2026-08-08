@@ -17,24 +17,18 @@ namespace other {
   ///  reconcile against clips keyed however they like (identity fn)
   using asset_hash_fn = std::function<natural_t(natural_t)>;
 
-  /// the reconciler's memory between ticks: which voice each object owns. entity
-  ///  destruction (including play/stop's teardown-rebuild) leaves voices with no
-  ///  surviving component to carry the handle — the sweep over this map is what
-  ///  stops them. tree ids are high-water so reuse is rare; the divergence guard
-  ///  in the reconciler covers the wrap case
+  /// per-tick voice ownership map; sweeping it stops voices whose owning entity
+  ///  was destroyed (tree ids are high-water, so id reuse is rare)
   struct audio_reconcile_state {
     ostd::map<natural_t, voice_id> bound;
   };
 
-  /// desired-state reconciliation: components (and one-shots) describe what should
-  ///  be audible, this diffs that against live voices. play/stop restore, hot
-  ///  reload (revision compare), entity deletion, and failed loads are all the
-  ///  same code path. gameplay sources are silent while the scene isn't playing
+  /// diffs desired component audio state against live voices; play/stop, hot-reload,
+  ///  deletion, and failed loads share this path. silent while scene isn't playing
   void reconcile_scene_audio(scene* active_scene, audio_environment* env, const asset_hash_fn& hash_of_asset, double dt, audio_reconcile_state& state);
 
-  /// ticks right after the scene system so voices read the frame's final world
-  ///  transforms; owns pump-mode time advancement and voice reconciliation. the
-  ///  audio_environment subsystem owns the device/engine/registry state itself
+  /// ticks after scene system so voices read final world transforms; owns pump-mode
+  ///  timing + reconciliation. audio_environment owns the device/engine state
   class OTHER_CLASS audio_system : public core_system<audio_system> {
    public:
     audio_system(driver* driver_instance)

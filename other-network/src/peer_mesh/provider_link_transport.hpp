@@ -20,12 +20,8 @@
 
 namespace other {
 
-  /// adapts a net-thread-homed transport_provider onto the byte-mover seam a mesh
-  ///  consumes. main-thread object: dial/listen/tx/close ride the bus as commands; rx
-  ///  bytes and lifecycle come back through a conn-scoped packet sink into an ordered
-  ///  queue drained by pump(). the bus owner must feed CONNECTION_OPENED/CLOSED
-  ///  notifications through handle_bus_message (accept attribution and dial failures
-  ///  arrive only that way — adapters on a shared provider self-filter by ownership)
+  /// adapts a net-thread-homed transport_provider onto the mesh's byte-mover seam. main-thread
+  ///  object: commands ride the bus, rx/lifecycle return via a conn-scoped sink into an ordered queue drained by pump()
   class provider_link_transport final : public link_transport {
    public:
     provider_link_transport(network_thread& thread, transport_provider& provider, const link_caps& caps, bool stream);

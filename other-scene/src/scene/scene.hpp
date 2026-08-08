@@ -129,9 +129,8 @@ namespace other {
     void destroy_object(natural_t id);
     void destroy_all_non_root_objects();
 
-    /// reconcile authored physics settings/shapes against the built bodies (restore rebuilds,
-    ///  inspector/C# edits, replica-role changes); runs on play, once per frame while playing,
-    ///  and whenever replication adopts or releases objects
+    /// reconciles authored physics settings/shapes against built bodies (restore, inspector/C# edits,
+    ///  replica-role changes); runs on play, per frame while playing, and on replication adopt/release
     void revalidate_physics();
 
     /// moves the object under a new parent, keeping its world placement; false on
@@ -413,9 +412,8 @@ namespace other {
     /// state captured by play() and restored by reset() when the scene stops
     ostd::vector<uint8_t> play_snapshot = {};
 
-    /// stop is a disable, not a remove, managed script instances survive the restore
-    /// ids are stored here between the teardown and the by-name rebind
-    /// objects created during play are swept as real removals at the end of restore_snapshot
+    /// stop is a disable, not a remove: managed script instances survive, their ids held here
+    /// between teardown and by-name rebind; objects created during play are swept as real removals
     bool preserving_script_objects = false;
     ostd::vector<integer_t> preserved_script_objects = {};
   };

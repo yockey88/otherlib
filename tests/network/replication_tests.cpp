@@ -46,9 +46,8 @@ namespace other {
       return cfg;
     }
 
-    /// one sim mesh, a host and a client seat, a scene + replication stack per seat.
-    ///  the dtor clears session observers before members unwind (mesh teardown fires
-    ///  ENDED; the replications die first)
+    /// one sim mesh, host + client seat, scene + replication stack per seat; dtor clears
+    ///  session observers before members unwind (mesh teardown fires ENDED first)
     struct repl_sim {
       mesh_sim_fixture sim;
       scene host_scene{ "host-world" };

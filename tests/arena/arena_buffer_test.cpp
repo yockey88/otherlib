@@ -127,10 +127,7 @@ namespace other {
       glm::mat4 transform = glm::mat4(1.f);
       glm::vec4 vector = glm::vec4(1.f);
 
-      /// after first write:
-      ///   capacity == sizeof(glm::mat4) * 64 == 64 * 64 == 4096
-      ///   size == 64
-      /// then we shouldn't have to resize again in this test there should be no more resizes
+      /// first write grows capacity to sizeof(glm::mat4) * 64 == 4096; no further resizes expected
       EXPECT_NO_FATAL_FAILURE(buffer.buffer_data(transform));
       EXPECT_EQ(buffer.max_size(), sizeof(glm::mat4) * 64);
       EXPECT_EQ(buffer.size(), sizeof(glm::mat4));
@@ -202,10 +199,7 @@ namespace other {
     glm::mat4 transform = glm::mat4(1.f);
     glm::vec4 vector = glm::vec4(1.f);
 
-    /// after first write:
-    ///   capacity == sizeof(glm::mat4) * 64 == 64 * 64 == 4096
-    ///   size == 64
-    /// then we shouldn't have to resize again in this test there should be no more resizes
+    /// first write grows capacity to sizeof(glm::mat4) * 64 == 4096; no further resizes expected
     EXPECT_NO_FATAL_FAILURE(buffer.buffer_data(transform));
     EXPECT_EQ(buffer.max_size(), sizeof(glm::mat4) * 64);
     EXPECT_EQ(buffer.size(), sizeof(glm::mat4));

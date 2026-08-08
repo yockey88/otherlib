@@ -116,9 +116,8 @@ namespace Other.Core
       behaviors.Clear();
     }
 
-    /// play/stop keeps managed instances alive while the native scene rebuilds; the old
-    /// native ids die in the restore, so the binding is reset at the end of the disable
-    /// pass and rebound once the restored native object exists
+    /// play/stop keeps managed instances alive while the native scene rebuilds; the native id
+    /// is reset at the end of the disable pass and rebound once the restored object exists
     public void ResetNativeHandle()
     {
       internal_handles.object_id = 0;

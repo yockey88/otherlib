@@ -38,9 +38,8 @@ namespace other {
 
     edit_stack editing_history;
 
-    /// snapshot-based scene edit coalescing: continuous widget edits (inspector drags)
-    ///  open a session on the first notify and commit one {baseline, after} snapshot
-    ///  pair once the widgets go quiet; discrete ops use commit_discrete_scene_edit
+    /// snapshot-based edit coalescing: continuous widget edits open a session on first notify,
+    ///  committing one {baseline, after} pair once quiet; discrete ops use commit_discrete_scene_edit
     struct scene_edit_tracker {
       constexpr static uint32_t kIdleFramesToCommit = 12;
 

@@ -1,9 +1,5 @@
-## engine + harness configuration for the peer-mesh network scenario.
-## run from the repo root:  python cli.py test --network
-##
-## the scenario is fully in-process (mesh + memory fabric, virtual clock) — no
-## project loads, no sockets; it finishes in a handful of driver frames and writes
-## logs/network-report.json for analysis + the tag-pipeline verdict.
+## engine + harness config for the peer-mesh network scenario; run: python cli.py test --network
+## in-process only (mesh + memory fabric, virtual clock); writes logs/network-report.json
 
 [application]
 name = "Other Network Harness"

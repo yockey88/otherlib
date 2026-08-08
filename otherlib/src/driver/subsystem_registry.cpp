@@ -324,10 +324,7 @@ namespace other {
 
   namespace detail {
 
-    /**
-     * @note exceptions are fine here because we just want to log error and exit
-     *        all of this is technically before entry so it's fine that we are a little out of bounds
-     *        of the "no exceptions" rule since
+    /** @note exceptions ok here — pre-entry code, outside the "no exceptions" rule; just log and exit
      **/
 
     spdlog::sink_ptr stdout_sink_fn(const config_table& config) {

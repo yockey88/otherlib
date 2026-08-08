@@ -17,10 +17,8 @@
 namespace other {
   namespace cli {
 
-    /// oecli runs without a driver, but the scene document layer constructs engine
-    ///  component types whose containers allocate through the arena, and its error
-    ///  paths log — so the two memory/log subsystems must be live before any codec
-    ///  runs. inside a running environment they already are and this is a no-op.
+    /// scene documents allocate via the arena and log errors, so those two subsystems
+    ///  must be live before any codec runs; a no-op inside an already-running environment
     void ensure_cli_runtime() {
       PROFILE_SECTION("ensure_cli_runtime");
       if (subsystem<logger>::inert) {

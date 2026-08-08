@@ -9,9 +9,8 @@
 
 namespace other {
 
-  /// authored intent: "this is a networked thing". runtime net_id lives in the
-  ///  scene's network context — nothing session-scoped serializes.
-  ///  (u32/bool fields keep it scriptable through the generic field ABI)
+  /// authored intent ("this is a networked thing"); runtime net_id lives in the scene's network
+  ///  context — nothing session-scoped serializes (u32/bool fields keep it scriptable via the field ABI)
   struct network_component {
     uint32_t owner_peer = 0;  // 0 = host
     bool replicate_transform = true;

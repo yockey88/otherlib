@@ -6,9 +6,8 @@ on:
       configuration:
         required: true
         type: string
-      ## the extensive tier runs on tag builds/releases: everything the standard tier
-      ##  runs plus the soak harness (and, as they land, the rest of the integration
-      ##  test pipeline)
+      ## extensive tier runs on tag builds/releases: standard tier tests plus soak
+      ##  harness (more integration stages to land later)
       extensive:
         required: false
         type: boolean
@@ -40,9 +39,8 @@ jobs:
     - name: Run Unit Tests
       run: python ${{ github.workspace }}/cli.py test -c ${{ inputs.configuration }}
 
-    ## integration pipeline stages (extensive tier only — tag builds, never PRs).
-    ##  GPU-dependent stages may need a self-hosted runner once they exercise the
-    ##  renderer for real.
+    ## integration pipeline stages (extensive tier only — tag builds, never PRs);
+    ##  GPU-dependent stages may need a self-hosted runner eventually
     - name: Run Soak Harness
       if: ${{ inputs.extensive }}
       run: python ${{ github.workspace }}/cli.py test --soak -c ${{ inputs.configuration }}
@@ -53,6 +51,16 @@ jobs:
       if: ${{ inputs.extensive }}
       run: python ${{ github.workspace }}/cli.py test --network -c ${{ inputs.configuration }}
 
+    ## parser fuzz gate: malformed input must reject gracefully on every parsing seam
+    - name: Run Fuzz Harness
+      if: ${{ inputs.extensive }}
+      run: python ${{ github.workspace }}/cli.py test --fuzz -c ${{ inputs.configuration }}
+
+    ## frame-load stress gate over the stress-arena scene (also the human tracy target)
+    - name: Run Stress Harness
+      if: ${{ inputs.extensive }}
+      run: python ${{ github.workspace }}/cli.py test --stress -c ${{ inputs.configuration }}
+
     - name: Upload Harness Reports
       uses: actions/upload-artifact@v4
       if: ${{ always() && inputs.extensive }}
@@ -61,6 +69,8 @@ jobs:
         path: |
           logs/network-report.json
           logs/soak-report.json
+          logs/fuzz-report.json
+          logs/stress-report.json
 
     - name: Check Test Results
       if: always()

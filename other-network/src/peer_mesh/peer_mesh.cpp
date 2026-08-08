@@ -380,9 +380,8 @@ namespace other {
       return;
     }
 
-    /// a frame on link L is at L.local's seat: deliver only when this seat IS the
-    ///  destination — a resident dst elsewhere in the mesh must still be reached over
-    ///  links (hops and partitions stay real in one-mesh simulations)
+    /// a frame on link L is at L.local's seat: deliver only when this seat IS the destination —
+    ///  a resident dst elsewhere in the mesh must still be reached over links (hops stay real)
     if (dst == record->local) {
       peer_mesh_actor* destination = actor(dst);
       if (destination == nullptr) {

@@ -1,15 +1,32 @@
 name: "Release Verification"
 
-## the extensive tier: PRs run the unit suite (pull-request-verification.yml); version
-##  tags run every build config through the full test pipeline and package the
-##  release artifacts (windows installer + sdk zip)
+## PRs run the unit suite (pull-request-verification.yml); version tags run the
+##  full test pipeline and package release artifacts (installer + sdk zip)
 on:
   push:
     tags: [ "v*" ]
   workflow_dispatch:
 
 jobs:
+  ## a tag can only ship the version the sources declare (VERSION file, VERSIONING.md)
+  version-gate:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Verify tag matches VERSION
+      shell: pwsh
+      run: |
+        $version = (Get-Content VERSION -Raw).Trim()
+        Write-Host "source version: $version"
+        if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "v$version") {
+          Write-Error "tag '${{ github.ref_name }}' does not match VERSION 'v$version'"
+          exit 1
+        }
+
   extensive-tests:
+    needs: version-gate
     strategy:
       fail-fast: false
       matrix:

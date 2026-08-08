@@ -58,10 +58,8 @@ namespace other {
           root / "build" / "tests" / "harness",
         };
 
-        /// EVERY config's existing output dirs get their family-correct dlls, not
-        ///  just the config that was built: a config whose last build predates a
-        ///  staging-list change (or ran under an older oecli) heals on the next
-        ///  build of ANY config instead of missing dlls until its own rebuild
+        /// EVERY config's output dirs get dlls, not just the one built: a config whose staging
+        ///  predates a list change (or an older oecli) self-heals on the next build of ANY config
         constexpr std::array<std::pair<std::string_view, bool>, 4> configs = { {
           { "Debug", /*debug_family=*/true },
           { "Release", false },
@@ -88,9 +86,8 @@ namespace other {
                 continue;
               }
 
-              /// the vendored dlls never change in place, so a same-sized copy is current;
-              ///  this also keeps the pass from rewriting dlls a running process (often
-              ///  oecli itself) holds loaded
+              /// vendored dlls never change in place, so a same-sized copy is current; this also avoids
+              ///  rewriting dlls a running process (often oecli itself) holds loaded
               const filepath staged = destination / dll.filename();
               std::error_code ec;
               if (std::filesystem::exists(staged) && std::filesystem::file_size(staged, ec) == std::filesystem::file_size(dll, ec)) {

@@ -18,9 +18,8 @@ namespace other {
   struct audio_source_component {
     natural_t clip_asset_id = 0;  /// AUDIO asset; portable path in .oscn via the codec
 
-    bool playing = false;  /// desired state; authored true == autoplay on scene play.
-                           ///  flipped back to false when a non-looping voice finishes
-                           ///  (the pollable completion signal for scripts)
+    bool playing = false;  /// desired state; true == autoplay on scene play; flipped back to false
+                           ///  when a non-looping voice finishes (pollable completion signal for scripts)
     bool looping = false;
     float volume = 1.f;  /// multiplier over the clip's sidecar default gain
     float pitch = 1.f;
@@ -32,9 +31,8 @@ namespace other {
     float max_distance = 500.f;
     float doppler_factor = 1.f;  /// 0 disables
 
-    /// runtime state, never reflected: rebuilt by the reconciler whenever identity
-    ///  changes, so codec restores and hot reloads need no ceremony. voice_id is a
-    ///  core alias — no audio include here
+    /// runtime state, never reflected: rebuilt by the reconciler whenever identity changes, so
+    ///  codec restores/hot reloads need no ceremony; voice_id is a core alias (no audio include here)
     voice_id voice = 0;
     natural_t bound_clip_id = 0;
     uint32_t bound_clip_revision = 0;

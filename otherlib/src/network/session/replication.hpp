@@ -22,11 +22,8 @@ namespace other {
     float transform_epsilon = 1e-6f;
   };
 
-  /// host-authoritative replication over the default session — the shipped default
-  ///  configuration, not a protocol law (D19): owner_peer/IsMine/COMPONENT_STATE/
-  ///  the handler registry are the seams other authority models build against.
-  ///  the owner forwards session events and ticks it; nothing here touches the
-  ///  session observer, so it composes with the driver glue and with tests alike
+  /// host-authoritative replication over the default session (shipped default, not a
+  ///  protocol law); owner forwards+ticks session events without touching the observer
   class replication {
    public:
     replication(network_session& session, std::function<scene*()> scene_source, const replication_config& cfg = {});
@@ -42,10 +39,8 @@ namespace other {
     bool sync_component(natural_t object_id, natural_t key_hash);
     bool is_mine(natural_t object_id) const;
 
-    /// the [Replicated] script-field lane: one automatic COMPONENT_STATE stream
-    ///  keyed kScriptFieldsKey. the hooks keep scripting out of this module —
-    ///  the glue wires C#, tests wire fakes. collect returns the dirty-field blob
-    ///  (empty = clean); apply writes it on the replica. format is the collector's
+    /// [Replicated] script-field lane: one COMPONENT_STATE stream (kScriptFieldsKey);
+    ///  hooks keep scripting out of this module — glue wires C#, tests wire fakes
     constexpr static natural_t kScriptFieldsKey = FNV("script-fields");
     using script_field_collector = std::function<ostd::vector<uint8_t>(natural_t object_id)>;
     using script_field_applier = std::function<void(natural_t object_id, std::span<const uint8_t> payload)>;

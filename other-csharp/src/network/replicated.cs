@@ -7,18 +7,15 @@ using Other.Core;
 namespace Other.Networking
 {
 #nullable enable
-  /// Host-authoritative field sync: the value is swept at snapshot-hz and shipped
-  /// to replicas. Fields only — properties are never evaluated. Value types,
-  /// enums, and string v1; a client-side write just loses at the next sweep.
+  /// Host-authoritative field sync, swept at snapshot-hz and shipped to replicas. Fields only
+  /// (value types/enums/strings); a client-side write is lost at the next sweep.
   [AttributeUsage(AttributeTargets.Field)]
   public class ReplicatedAttribute : Attribute
   {
   }
 
-  /// Instance tracker + wire codec for [Replicated] fields. Both wire ends are
-  /// managed, so the format is owned here; native transports the blob keyed by
-  /// net id. Reload-safe by construction: instances re-track on AddBehavior and
-  /// the dirty cache dies with them (a reload simply resends everything).
+  /// Instance tracker + wire codec for [Replicated] fields; native just transports the blob
+  /// keyed by net id. Reload-safe: instances re-track on AddBehavior, dirty cache dies with them.
   internal static class ReplicatedSync
   {
     private static readonly Dictionary<Type, FieldInfo[]> fields_by_type = new();

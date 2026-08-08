@@ -10,9 +10,7 @@ namespace other {
 
   filepath get_program_files_folder(const std::string_view app_name) {
     PROFILE_SECTION("get_program_files_folder");
-    /// get program files folder
-    ///   windows: PROGRAMFILES/OtherEngine
-    ///   linux: /usr/local/OtherEngine
+    /// program files folder: windows PROGRAMFILES/OtherEngine, linux /usr/local/OtherEngine
     /// \todo mac
 
     filepath folder_path = "";
@@ -34,9 +32,7 @@ namespace other {
 
   filepath get_app_data_folder(const std::string_view app_name, bool create) {
     PROFILE_SECTION("get_app_data_folder");
-    /// get app folder
-    ///   windows: APPDATA/OtherServer
-    ///   linux: ~/.otherserver
+    /// app folder: windows APPDATA/OtherServer, linux ~/.otherserver
     /// \todo mac
 
     filepath folder_path = "";
@@ -68,9 +64,7 @@ namespace other {
     ///         instead of prod installation path, currently returning hard coded local dev folder
 
 #if 1
-  /// get OtherEnvironment install folder
-  ///   windows: PROGRAMFILES/OtherEnvironment
-  ///   linux: /usr/local/OtherEnvironment
+  /// OtherEnvironment install folder: windows PROGRAMFILES/OtherEnvironment, linux /usr/local/OtherEnvironment
   /// \todo mac
   #ifdef OTHER_ENVIRONMENT_WINDOWS
     return filepath("C:/OtherEnvironment");
@@ -89,9 +83,7 @@ namespace other {
 
   filepath get_system_default_working_directory() {
     PROFILE_SECTION("get_system_default_working_directory");
-    /// get system default working directory
-    ///   windows: C:/Users/<username>/Documents/OtherEngine
-    ///   linux: /home/<username>/OtherEngine
+    /// system default working directory: windows C:/Users/<username>/Documents/OtherEngine, linux /home/<username>/OtherEngine
     /// \todo mac
 
     filepath folder_path = "";

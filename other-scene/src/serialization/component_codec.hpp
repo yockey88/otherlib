@@ -1,19 +1,8 @@
 /**
  * \file serialization/component_codec.hpp
  *
- * per-component-type conversion table driving all scene persistence paths:
- *
- *     live component  <-- capture / apply -->  payload (field stream)
- *     payload         <-- to_toml / from_toml -->  .oscn tables
- *
- * document-level conversions (payload<->toml) never touch engine state, so the oecli
- * scene tool runs them without booting anything. registration is reflection-driven:
- * an OTHER_REFLECTed component costs one register_generic_codec<T> line; components
- * whose persistent state lives outside the struct (script behaviors) register custom
- * codecs with the same payload discipline.
- *
- * members tagged attr::asset_identifier_field serialize as portable path strings, not
- * runtime asset ids — codec_services converts at the live boundary only.
+ * per-component-type conversion table (component <-> payload <-> .oscn toml) for all scene persistence;
+ * document-level conversions are engine-free; asset_identifier_field members serialize as portable paths
  */
 #ifndef OTHER_SCENE_SERIALIZATION_COMPONENT_CODEC_HPP
 #define OTHER_SCENE_SERIALIZATION_COMPONENT_CODEC_HPP
@@ -75,14 +64,11 @@ namespace other {
     const component_codec* find_component_codec(natural_t key_hash);
     const component_codec* find_component_codec(std::string_view key);
 
-    /// process-wide services for live-scene capture/apply; the asset_system wires the
-    /// members at boot, tests and the cli leave them null (asset refs then serialize
-    /// as empty paths / resolve to 0)
+    /// process-wide services for live-scene capture/apply, wired by the asset_system at boot;
+    /// tests/cli leave them null (asset refs then serialize as empty paths / resolve to 0)
     codec_services& default_codec_services();
 
-    /// ------------------------------------------------------------------
     /// generic codec machinery (used by component_codec.cpp and tests)
-    /// ------------------------------------------------------------------
     namespace detail {
 
       template <typename member_descriptor_t>
@@ -147,10 +133,8 @@ namespace other {
         !is_stringlike_type<std::remove_cvref_t<T>> &&
         !field_codec::scene_container_value<std::remove_cvref_t<T>>;
 
-      /// emit all serializable members of @p value into the writer's CURRENT table;
-      /// scalar-ish members first (toml forbids keys after a sub-table opens), then
-      /// nested reflected members as sub-tables under @p table_path. asset reference
-      /// members are skipped — the codec emits them separately as path strings
+      /// emits all serializable members of @p value into the writer's current table: scalars first
+      /// (toml forbids keys after a sub-table opens), then nested members as sub-tables; asset refs are skipped (emitted separately as paths)
       template <typename T>
       void emit_toml_members(toml_writer& w, const std::string& table_path, const T& value) {
         refl::util::for_each(refl::reflect<T>().members, [&](auto member) {
@@ -325,9 +309,7 @@ namespace other {
 
     }  // namespace detail
 
-    /// ------------------------------------------------------------------
     /// generic reflection-driven codec for a component type T
-    /// ------------------------------------------------------------------
     template <typename T>
     component_codec make_generic_codec(std::string_view key, std::string_view display_name, bool implicit) {
       component_codec codec = {

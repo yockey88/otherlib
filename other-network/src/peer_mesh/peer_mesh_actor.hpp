@@ -18,9 +18,8 @@ namespace other {
 
   class peer_mesh;
 
-  /// a node in the graph. local actors are spawned and ticked by a mesh; remote nodes
-  ///  are graph records reached over links. payload bytes are opaque both directions —
-  ///  interpreting them is the actor's job, on_frame is the whole mailbox contract
+  /// a node in the graph. local actors are spawned/ticked by a mesh; remote nodes are graph
+  ///  records reached over links. payloads are opaque — on_frame is the whole mailbox contract
   class OTHER_CLASS peer_mesh_actor {
     OTHER_ENVIRONMENT_INTERFACE("Network", "PeerMeshActor");
 

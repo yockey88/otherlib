@@ -4,9 +4,8 @@
 #ifndef OTHER_RENDERER_GPU_RESOURCE_IMGUI_FWD_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_IMGUI_FWD_HPP
 
-/// mirrors imgui.h's default ImTextureID so resource headers don't drag in all of
-///  imgui; redundant typedefs are legal so imgui.h can still appear before or after.
-///  must stay in sync if imconfig.h ever overrides ImTextureID.
+/// mirrors imgui.h's ImTextureID so this header avoids pulling in all of imgui.
+/// must stay in sync if imconfig.h ever overrides ImTextureID.
 #ifndef ImTextureID
 typedef unsigned long long ImU64;
 typedef ImU64 ImTextureID;

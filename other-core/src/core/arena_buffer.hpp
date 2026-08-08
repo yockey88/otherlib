@@ -109,9 +109,8 @@ namespace other {
       return offset;
     }
 
-    /// @note we want both the mutable and non-mutable versions of At and when
-    ///         the buffer is passed by const reference, we want to ensure that
-    ///         we don't infinitely recurse 'const T& At(idx) const' so need both of these functions
+    /// @note both mutable and const at() overloads are needed so the const version
+    ///   doesn't infinitely recurse into itself
 
     template <typename T>
     T& at(size_t index) {

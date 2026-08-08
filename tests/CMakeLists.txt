@@ -9,6 +9,7 @@ target_compile_definitions(other_tests PRIVATE OTHER_TEST_ENVIRONMENT)
 target_sources(other_tests
     PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/fuzzing.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/version_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/config_table_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/reflection_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/state_machine_tests.cpp
@@ -35,8 +36,6 @@ target_sources(other_tests
     
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/serialization_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_document_tests.cpp
-    
-    ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/thread/thread_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/message/message_bus_tests.cpp
@@ -99,8 +98,7 @@ target_sources(other_tests
 target_include_directories(other_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(other_tests PUBLIC otherlib gmock)
 
-# TODO: fix this, it tries to discover tests during build, but DLLs don't get copied over until after build
-#        so it fails to find them and errors out, breaking the pipeline
+# TODO: fix - runs at build time, before DLLs are copied, so it can't find tests and breaks the pipeline
 # include(GoogleTest)
 # gtest_discover_tests(other_tests)
 

@@ -75,9 +75,8 @@ namespace other {
 
   namespace {
 
-    /// segment/primitive collectors for b3World_Draw; box3d tessellates hull/mesh shapes
-    ///   through an opaque user-shape callback the recorder owns, so those fall back to
-    ///   their bounds via drawBounds
+    /// segment/primitive collectors for b3World_Draw; box3d tessellates hull/mesh shapes through
+    ///   an opaque user-shape callback, so those fall back to their bounds via drawBounds
     struct debug_collector {
       physics_api::physics_render_debug_data* data = nullptr;
 

@@ -15,9 +15,8 @@ namespace other {
 
   class peer_mesh;
 
-  /// a collection of links — storage + rx plumbing, never policy. links in one
-  ///  network may ride different transports; framing happens here (per link), not in
-  ///  any transport. the managing mesh drives lifecycle through the private surface
+  /// a collection of links — storage + rx plumbing, never policy. links may ride different
+  ///  transports; framing happens here (per link). the managing mesh drives lifecycle privately
   class network {
    public:
     /// live links only; view invalidated by link churn

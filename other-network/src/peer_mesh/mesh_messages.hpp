@@ -30,9 +30,8 @@ namespace other {
     return net_id >= kMeshControlFloor;
   }
 
-  /// control payloads ride the engine reflection codec — an internal detail of the
-  ///  module's own frames, versioned by the hello's protocol field. application
-  ///  payloads are never touched by any codec here
+  /// control payloads ride the engine reflection codec — an internal detail of the module's
+  ///  own frames, versioned by the hello's protocol field. application payloads are never touched here
   struct mesh_link_hello {
     uint32_t magic = kMeshMagic;
     uint16_t protocol = kMeshProtocolVersion;

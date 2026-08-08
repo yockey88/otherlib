@@ -224,10 +224,8 @@ namespace other {
 
     transport_provider* provider = itr->second.get();
     if (net_context->net_thread->is_running()) {
-      /// two posted phases: first close live sockets (routes retire, abort completions
-      ///  queue), then — after those completions provably drained through a full pump —
-      ///  tear the provider's objects down. collapsing the phases would destroy
-      ///  connections whose aborted handlers are still queued in the same poll
+      /// two posted phases: close sockets, then (after a full pump confirms drain) tear
+      ///  down objects — collapsing them would destroy connections with handlers still queued
       auto phase = std::make_shared<std::atomic<int>>(0);
       asio::post(net_context->net_thread->get_io_context(), [provider, phase]() {
         provider->begin_shutdown();

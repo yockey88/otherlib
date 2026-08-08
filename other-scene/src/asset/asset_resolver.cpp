@@ -568,9 +568,8 @@ namespace other {
 
     ostd::vector<dependency_declaration> parse_model_manifest(const filepath& model_path) {
       PROFILE_SECTION("parse_model_manifest");
-      /// gltf is json, so its texture dependencies are cheaply scannable without assimp; the
-      //  legacy formats (.fbx/.obj/.dae/.3ds) resolve their textures at load time through the
-      //  material system - documented asymmetry, gltf is the first-class citizen
+      /// gltf (json) texture deps are scannable without assimp; legacy formats (.fbx/.obj/.dae/.3ds)
+      //  resolve textures at load time via the material system instead (documented asymmetry)
       const std::string extension = model_path.extension().string();
       if (extension != ".gltf" && extension != ".glb") {
         return {};
@@ -587,9 +586,8 @@ namespace other {
 
       std::string_view json_text = bytes;
       if (extension == ".glb") {
-        /// glb container: [magic u32 'glTF'][version u32][length u32], then chunk 0 header
-        //  [chunkLength u32][chunkType u32 'JSON'] followed by the json bytes; only the json
-        //  chunk is read - binary chunks never carry dependencies
+        /// glb layout: [magic][version][length] then chunk0 [chunkLength][chunkType 'JSON'] + json bytes;
+        //  only the json chunk is read — binary chunks never carry dependencies
         constexpr size_t kGlbHeaderSize = 20;
         constexpr uint32_t kGlbMagic = 0x46546C67;       // 'glTF'
         constexpr uint32_t kJsonChunkType = 0x4E4F534A;  // 'JSON'
@@ -620,9 +618,8 @@ namespace other {
 
       ostd::vector<dependency_declaration> out;
 
-      /// buffer sidecars (.bin) are deliberately NOT declared: the plan executor loads children
-      //  through load_asset, which rejects unknown extensions - baked .omdl is what makes
-      //  binary payloads first-class, not fake asset nodes
+      /// buffer sidecars (.bin) are deliberately not declared: load_asset rejects unknown extensions,
+      //  and baked .omdl — not fake asset nodes — is what makes binary payloads first-class
       if (!doc.contains("images") || !doc["images"].is_array()) {
         return out;
       }

@@ -12,9 +12,8 @@
 
 namespace other {
 
-  /// the mesh's live view: vertices = known nodes (local actors + learned remotes),
-  ///  edges = links. edges incident to a resident node are authoritative; edges
-  ///  between two remote nodes are advisory, imported by actors that share topology
+  /// the mesh's live view: vertices = known nodes, edges = links. edges incident to a resident
+  ///  node are authoritative; edges between two remote nodes are advisory (imported topology)
   class peer_graph {
    public:
     using graph_t = graph<peer_record>;

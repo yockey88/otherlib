@@ -1,0 +1,41 @@
+## parser fuzz scenario (python cli.py test --fuzz): deterministic mutated inputs
+##  against the untrusted-input parsers; an escape from an error contract fails
+
+[application]
+name = "Other Fuzz Harness"
+metadata = [
+  { key = "name", value = "Other Fuzz Harness"},
+  { key = "description", value = "Deterministic mutation fuzz over the parsing seams"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"}
+]
+core-log-level = "info"
+core-log-file = "logs/fuzz-harness.log"
+
+[rendering]
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
+ui-layout-ini = "logs/fuzz-harness-ui-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+
+[ui]
+enable = false
+
+[scripting]
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "other-lua-interop"
+
+[harness]
+scenario = "fuzz"
+
+[harness.fuzz]
+seed = 20260808
+frame-iterations = 20000
+scene-binary-iterations = 4000
+scene-toml-iterations = 1500
+message-iterations = 20000
+config-iterations = 1500
+report-path = "logs/fuzz-report.json"

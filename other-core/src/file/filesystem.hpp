@@ -25,10 +25,8 @@ namespace other {
 
   class event_system;
 
-  /**
-   * \note this should only ever be used by the main thread
-   * \todo make this thread safe, or add a request/response message
-   **/
+  /** \note main-thread only
+      \todo make thread safe, or add a request/response message **/
   class file_system : public subsystem<file_system> {
    public:
     file_system() = default;
@@ -55,9 +53,8 @@ namespace other {
     void shutdown_file_system();
     void poll_files();
 
-    /// parses both system and engine paths into its components
-    /// e.g. "assets://textures/grass.png" -> { "assets", "textures/grass.png", "grass.png" }
-    ///  or  "C:/path/to/file.txt" -> { "C", "path/to/file.txt", "file.txt" }
+    /// parses system and engine paths into components: mount, relative path, file name
+    ///  e.g. "assets://tex/grass.png" -> { "assets", "tex/grass.png", "grass.png" }
     static resolved_path resolve_path(const std::string_view engine_path);
 
     ref<directory> mount_directory(const std::string_view mount_name, const filepath& path, mount_scope scope = mount_scope::ENGINE);

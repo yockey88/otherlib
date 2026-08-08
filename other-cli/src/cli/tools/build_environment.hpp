@@ -9,9 +9,8 @@
 namespace other {
   namespace cli {
 
-    /// drives a source-tree build: cmake project generation when needed, the parallel
-    ///  build itself, then staging of the vendored runtime DLLs next to every built
-    ///  application so the outputs run in place
+    /// drives a source-tree build: cmake generation when needed, the parallel build, then
+    ///  staging the vendored runtime DLLs next to every built application
     class build_environment_tool final : public tool {
      public:
       build_environment_tool() = default;

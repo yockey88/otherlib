@@ -645,8 +645,7 @@ namespace other {
     }
 
     /// [materials.layout] — the material block this pipeline's shaders read; the engine
-    ///  computes std430 offsets and the element size from the declaration, so the
-    ///  hand-maintained element_size for the material binding dies here
+    ///  computes std430 offsets + element size from the declaration, retiring the hand-maintained value
     void parse_materials_section(pipeline_definition& into_def, const toml::table& pipeline_table) {
       PROFILE_SECTION("parse_materials_section");
       auto params = pipeline_table.at_path("materials.layout.params");

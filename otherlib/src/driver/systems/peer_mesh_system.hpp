@@ -21,9 +21,8 @@ namespace other {
 
   class steam_context;
 
-  /// owns the driver's default mesh and spawns the default session actor on it —
-  ///  resolved by `networking.session-host` so plugin DLLs ship custom actors.
-  ///  inert when networking is force-disabled
+  /// owns the driver's default mesh + default session actor (resolved via
+  ///  networking.session-host); inert when networking is force-disabled
   class OTHER_CLASS peer_mesh_system : public core_system<peer_mesh_system> {
    public:
     peer_mesh_system(driver* driver)

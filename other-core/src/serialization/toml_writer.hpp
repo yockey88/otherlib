@@ -1,13 +1,7 @@
 /**
  * \file serialization/toml_writer.hpp
- *
- * write-side sibling of config_table (the toml++ read side). the writer owns document
- * layout — emission order, comments, blank lines — because toml::table is an alphabetical
- * std::map and cannot represent either. a parallel toml++ tree is built purely for debug
- * validation: finalize() re-parses the emitted text and asserts equivalence with it.
- *
- * misuse (duplicate keys, duplicate table headers, malformed values) is fatal via
- * OTHER_ASSERT, matching house contracts; environmental failures (save()) return bool.
+ * write-side sibling of config_table; owns document layout since toml::table is an alphabetical map.
+ * misuse (dup keys/headers, bad values) is fatal via OTHER_ASSERT; save() I/O failure returns bool.
  */
 #ifndef OTHER_CORE_SERIALIZATION_TOML_WRITER_HPP
 #define OTHER_CORE_SERIALIZATION_TOML_WRITER_HPP
@@ -81,11 +75,8 @@ namespace other {
       return *this;
     }
 
-    /// array of inline tables, one element per line:
-    ///   k = [
-    ///     { a = 1, b = 2 },
-    ///   ]
-    /// the callback receives an inline_table per element index and fills it via .key(...)
+    /// array of inline tables, one per line ("k = [ { a=1, b=2 }, ]");
+    ///  callback receives an inline_table per index, filled via .key(...)
     class inline_table {
      public:
       inline_table& key(std::string_view key_name, bool v);

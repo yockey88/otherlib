@@ -45,15 +45,8 @@ namespace other {
     CORE_LOG_INFO("Cleared all events and listeners");
   }
 
-  /**
-   * \note IMPORTANT: Do not use the logger in event_system::trigger_event
-   *                  there are log sinks that need to trigger events and loggers are not re-entrant
-   *                  so the logger can deadlock if the event system attempts to log during event triggering.
-   *                  This is not a problem for event handlers that are not the specific event handlers used by log sinks
-   * \todo add an 'event log' so that we can produce a history of registered/triggered events without risking deadlock
-   *       it would also be nice so that we can expose an event system scene component or something of the like and users
-   *       could use it to debug events
-   **/
+  /** \note never log inside trigger_event — log sinks trigger events too, so logging here can deadlock
+      \todo add an event log/history of events without risking that deadlock **/
 
   void event_system::trigger_event(const std::string_view name) {
     natural_t event_id = FNV(name);

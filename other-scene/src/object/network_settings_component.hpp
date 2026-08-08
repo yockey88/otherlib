@@ -11,10 +11,8 @@
 
 namespace other {
 
-  /// authored session policy (Mode 1) — conventionally on a settings object,
-  ///  first-found wins; replicas ignore it (the session you joined is the session).
-  ///  the session layer consults it at playback start; the scene module itself
-  ///  keeps zero networking includes
+  /// authored session policy (Mode 1): first-found settings object wins; replicas ignore it (the
+  ///  session you joined is the session); consulted by the session layer at playback start — scene stays networking-free
   struct network_settings_component {
     std::string session_mode = "off";  // "off" | "host" | "join"
     std::string transport = "";        // "" = networking.transport | "tcp" | "steam"

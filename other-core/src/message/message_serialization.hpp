@@ -75,7 +75,6 @@ namespace other {
           append_named_field_to_raw_buffer(name + "_buff_len", buff_size, data);
           data.append_range(buffer);
         }
-        //
         /// nested reflected values have no formatter — they announce themselves in
         ///  the recursive call's own trace
         else if constexpr (reflected_type<member_t>) {

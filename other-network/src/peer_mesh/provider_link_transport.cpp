@@ -148,9 +148,8 @@ namespace other {
       return;
     }
 
-    /// an accept on one of our listeners: adopt it. bytes that raced ahead of this
-    ///  notification sit in the provider's rx hold and replay through the sink the
-    ///  moment the binding registers — nothing is lost, nothing reorders
+    /// an accept on one of our listeners: adopt it. bytes that raced ahead sit in the
+    ///  provider's rx hold and replay once the binding registers — nothing lost, nothing reordered
     adopt(note.connection_id, conn_state::OPEN);
     CORE_LOG_TRACE("[LINK-TRANSPORT {}] adopted accepted connection {} (listener {})", lowered_name, note.connection_id, note.listener_id);
     if (consumer.accepted) {

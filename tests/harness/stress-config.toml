@@ -1,0 +1,45 @@
+## frame-load stress run (python cli.py test --stress); the stress-arena scene is also
+##  the human tracy target: Profile build, run test-project, activate StressArena
+
+[application]
+name = "Other Stress Harness"
+metadata = [
+  { key = "name", value = "Other Stress Harness"},
+  { key = "description", value = "Frame-load stress against the stress-arena scene"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"}
+]
+core-log-level = "info"
+core-log-file = "logs/stress.log"
+auto-play-loaded-scenes = true
+project-file = "test-project/test-project.toml"
+
+[rendering]
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
+ui-layout-ini = "logs/stress-ui-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+
+[ui]
+enable = false
+
+[scripting]
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "other-lua-interop"
+
+[harness]
+scenario = "stress"
+
+[harness.stress]
+scene = "stress-arena"
+duration-seconds = 90.0
+warmup-seconds = 10.0
+sample-interval-seconds = 5.0
+max-frame-stall-seconds = 5.0
+frame-budget-ms = 0.0
+max-live-allocation-growth = 256
+max-used-memory-growth-bytes = 4194304
+report-path = "logs/stress-report.json"

@@ -25,11 +25,13 @@ scenes = [
   { name = "SpinningDonut", path = "test-project/assets/scenes/spinning-donut.oscn" },
   { name = "PokerTable", path = "test-project/assets/scenes/poker-table.oscn"  },
   { name = "Arena", path = "test-project/assets/scenes/co-op-arena.oscn"  },
+  { name = "StressArena", path = "test-project/assets/scenes/stress-arena.oscn"  },
 ]
 graph = [
   { name = "SpinningDonut", incoming = [], outgoing = [ "PokerTable" ] },
   { name = "PokerTable", incoming = [ "SpinningDonut" ], outgoing = [] },
   { name = "Arena", incoming = [], outgoing = [] },
+  { name = "StressArena", incoming = [], outgoing = [] },
 ]
 # scene-transitions = [
 #   { from = "SpinningDonut", to = "PokerTable", type = "callback.ocl", symbol = "donut_to_poker" }

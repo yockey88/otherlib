@@ -93,10 +93,8 @@ namespace other {
     void unregister_transport_listener(natural_t sink_id);
 
     natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp");
-    /// dial by kind-tagged address; empty transport resolves by kind (IP -> "tcp").
-    ///  returns the allocated connection id, 0 when refused. completion arrives as the
-    ///  "network.connection-opened" event (or "network.connection-closed" with a
-    ///  CONNECT_FAILED reason)
+    /// dials by kind-tagged address (empty transport resolves via kind, e.g. IP->tcp);
+    ///  returns conn id or 0 if refused. completion arrives via connection-opened/closed events
     natural_t connect(const net_address& remote, const std::string_view transport_name = "");
     void close(natural_t connection_id);
 
@@ -112,9 +110,8 @@ namespace other {
 
     bool network_active() const;
 
-    /// peer-mesh glue: the network thread and providers the link-transport
-    ///  adapters wrap, plus the driver-side connection-notification feed they
-    ///  need (accept attribution and dial failures arrive only that way)
+    /// peer-mesh glue: exposes the net thread/providers for link-transport adapters to
+    ///  wrap, plus the only feed for accept attribution and dial failures
     network_thread* thread();
     transport_provider* find_provider(const std::string_view transport_name);
     void set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
@@ -165,9 +162,7 @@ namespace other {
     void on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header);
 
-    // response/timeout callbacks
-    /// message handlers
-    /// notifications
+    /// message handlers (notifications below)
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
     void handle_notification_connection_opened(driver_kernel* kernel, message&& msg);

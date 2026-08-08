@@ -18,8 +18,7 @@
 namespace other {
   namespace detail {
 
-    /**
-     * \note file dialog callbacks may be called from a different thread so the functions called must be thread safe
+    /** \note file dialog callbacks may run off-thread; called functions must be thread safe
      **/
 
     void open_project_callback(void* userdata, const char* const* filelist, int32_t filter) {

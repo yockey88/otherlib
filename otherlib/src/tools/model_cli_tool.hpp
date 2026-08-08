@@ -1,16 +1,7 @@
 /**
  * \file tools/model_cli_tool.hpp
- *
- * `oecli model info <file>` — imports a model headless through model_importer::import
- * (pure cpu, no gpu or job system) and prints its geometry/material/skeleton/clip summary.
- * `oecli model extract-clips <file> [-o <dir>]` — writes each embedded animation clip to
- * its own `<stem>@<clip>.oanim` beside the model; the authoring loop for animation
- * graphs is import once, extract, reference the .oanim files.
- * `oecli anim info <file.oanim>` — parses a standalone clip and prints its track summary.
- * `model bake` is deliberately absent until the .omdl writer exists.
- *
- * lives in otherlib because it needs the cli tool interface (other_cli), the model
- * importer (other_renderer), and the .oanim codec (other_scene).
+ * oecli model/anim tools: headless model info + per-clip .oanim extraction
+ *  (<stem>@<clip>.oanim); no model bake yet (needs the .omdl writer)
  **/
 #ifndef OTHERLIB_TOOLS_MODEL_CLI_TOOL_HPP
 #define OTHERLIB_TOOLS_MODEL_CLI_TOOL_HPP

@@ -330,7 +330,6 @@ namespace other {
           x += src_tag_width + kPaddingX;
         }
 
-        /// message text with inline span parsing
         /// Parses:  <TypeName>  →  kResultType color
         ///          followed by values like 0x4A2F or (0, 1.5, 0) → kResultValue
         glm::vec4 msg_color = color_for_level(entry.level);

@@ -1,9 +1,8 @@
 /**
  * \file tests/audio/audio_scene_tests.cpp
  *
- * desired-state reconciliation against a headless scene + pump-mode engine:
- * play/stop, completion writeback, hot-reload rebinding, entity deletion, and
- * the document-level scene -> audio manifest edge
+ * desired-state reconciliation against a headless scene + pump-mode engine: play/stop,
+ *  completion writeback, hot-reload rebinding, entity deletion, scene -> audio manifest edge
  **/
 #include <gtest/gtest.h>
 
@@ -192,10 +191,8 @@ namespace other {
     const voice_id voice = live->voice;
     ASSERT_NE(voice, 0u);
 
-    /// component (and entity) gone: nothing owns the voice anymore; the loader's
-    ///  stop_voices_on covers clip unload, and scene teardown covers the rest —
-    ///  here the component is removed while the scene lives, so the diff never
-    ///  sees the source again and the voice must not leak past cleanup
+    /// component removed while the scene still lives, so the diff never sees the source
+    ///  again — the voice must not leak past this cleanup
     s.remove_component<audio_source_component>(emitter.id);
     reconcile_scene_audio(&s, &env, kIdentityHash, 1.0 / 60.0, state);
     EXPECT_EQ(env.live_voice_count(), 0u);

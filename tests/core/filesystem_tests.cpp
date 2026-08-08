@@ -1,9 +1,8 @@
 /**
  * \file tests/core/filesystem_tests.cpp
  *
- * contract under test: the engine-path query surface of file_system
- *  (open / file_exists / get_file, plus directory::get_file(hash)) resolves
- *  mount://file.ext and mount://sub/dir/file.ext paths against cold caches.
+ * contract: file_system's engine-path query surface (open/file_exists/get_file, plus
+ *  directory::get_file(hash)) resolves mount://... paths against cold caches
  **/
 #include "core/filesystem_tests.hpp"
 

@@ -6,9 +6,7 @@ using System.Runtime.InteropServices;
 #nullable enable
 namespace OtherCsBindings
 {
-  /**
-   * TODO: replace the use of Marshal with better approach
-   **/
+  /** TODO: replace Marshal with a better approach **/
 
   public static class OtherMemory
   {

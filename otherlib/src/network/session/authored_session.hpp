@@ -1,9 +1,7 @@
 /**
  * \file network/session/authored_session.hpp
- *
- * Mode 1 (authored, zero-code): the session-layer half the driver glue calls at
- * playback edges. header-only and driver-free so the sim fixtures exercise the
- * real path; the glue supplies config defaults and the steam establishment hook.
+ * Mode 1 (authored) session layer; header-only/driver-free so sim fixtures exercise
+ *  the real path. glue supplies config defaults + the steam establishment hook.
  **/
 #ifndef OTHERLIB_NETWORK_SESSION_AUTHORED_SESSION_HPP
 #define OTHERLIB_NETWORK_SESSION_AUTHORED_SESSION_HPP

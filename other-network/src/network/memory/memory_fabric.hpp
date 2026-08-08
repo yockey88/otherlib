@@ -15,11 +15,8 @@ namespace other {
 
   class fabric_port;
 
-  /// the shared simulated medium: pairs endpoints, shapes per-direction channels, and
-  ///  delivers on tick. meshes attach through fabric_ports (one port = one consumer);
-  ///  both endpoints of a connection may live in the same process — and the same mesh.
-  ///  fully deterministic: time is the tick parameter, all randomness comes from
-  ///  seeded per-channel prngs — no wall clock, no global rng
+  /// shared simulated medium: pairs endpoints via fabric_ports, shapes per-direction channels,
+  ///  delivers on tick. fully deterministic — time is the tick param, prngs are seeded per-channel
   class memory_fabric {
    public:
     struct channel_stats {
@@ -118,9 +115,8 @@ namespace other {
     microseconds current_now{ 0 };
   };
 
-  /// one mesh's attachment to the medium — the link_transport a mesh registers.
-  ///  simulation shape: one process, one fabric, one port per mesh. subclassable
-  ///  so tests can layer transport concerns (attestation) over the medium
+  /// one mesh's attachment to the medium (the link_transport it registers); one process,
+  ///  one fabric, one port per mesh. subclassable so tests can layer in attestation etc.
   class fabric_port : public link_transport {
    public:
     explicit fabric_port(memory_fabric& medium)

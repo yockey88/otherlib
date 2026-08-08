@@ -644,9 +644,8 @@ namespace other {
       };
     }
 
-    /// blended forward pass over the frame's transparent draw set: painter-sorted per viewport
-    ///   inside execute_draw_calls, depth-tested against the shared scene depth attachment but
-    ///   not writing it, standard src-alpha-over blending
+    /// blended forward pass over transparent draws, painter-sorted per viewport; depth-tested
+    ///  against scene depth but not writing it, standard src-alpha-over blending
     render_graph::pass_executor make_draw_scene_transparent(const pipeline_pass_definition&, render_pipeline*) {
       return [](pass_context& ctx) {
         auto& api = ctx.get_renderer().rendering()->api();

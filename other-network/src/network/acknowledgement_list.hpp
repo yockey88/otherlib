@@ -22,9 +22,8 @@ namespace other {
 
       message_handler handler;
 
-      /// heap-held so container erases move a pointer, never a timer with a pending wait
-      ///  (moving an asio timer cancels its outstanding waits — a middle erase would
-      ///  spuriously fire every later entry's callback)
+      /// heap-held: container erases move a pointer, never the timer itself — moving an asio
+      ///  timer cancels its waits, so a middle erase would spuriously fire other entries' callbacks
       scope<asio::steady_timer> timer;
 
       constexpr auto operator<=>(const pending_ack& other) const {

@@ -40,10 +40,8 @@ namespace other {
       return new_id;
     }
 
-    /// registration/unregistration run on one thread (the main thread via network_system);
-    ///  the pump reads the registry wait-free. unregister only tombstones — the provider
-    ///  object may not be destroyed until reclamation_epoch() has advanced past the value
-    ///  sampled after the tombstone (network_system defers destruction on this contract)
+    /// registration runs on the main thread only; the pump reads the registry wait-free.
+    ///  unregister only tombstones — destruction waits for reclamation_epoch() to advance past it
     void register_provider(transport_provider* provider);
     void unregister_provider(transport_provider* provider);
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);

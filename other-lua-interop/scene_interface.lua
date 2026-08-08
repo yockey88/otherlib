@@ -207,9 +207,8 @@ function _SceneInterface:AttachDotNetBehaviorToObject(native_id, behavior_type_n
   return self:CallInterfaceFunction(_attach_dotnet_behavior_to_object, native_id, behavior_type_name)
 end
 
---- immediate-mode draws, submit every frame the shape should be visible (e.g. from
---- OnSceneRender, which runs whether or not the scene is playing); target is an
---- optional DrawTarget and defaults to DrawTarget.Scene
+--- immediate-mode draws: submit every frame the shape should be visible (e.g. from
+--- OnSceneRender, which runs whether or not the scene is playing); target defaults to Scene
 function _SceneInterface:DrawLine(a, b, color, target)
   __other_native.__scene_interface.draw_line(a, b, color, _resolve_in_scene(target))
 end

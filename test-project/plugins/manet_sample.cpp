@@ -1,11 +1,7 @@
 /**
  * \file plugins/manet_sample.cpp
- *
- * the Mode-4 exemplar as shipped content: set `networking.session-host =
- * "manet-sample"` and the driver mesh runs the toy MANET instead of the default
- * client-server session — one mesh, N member actors, disc radio over the memory
- * fabric, no engine edits. the scenario itself lives in tests/network/
- * manet_scenario.hpp so the deterministic test and this plugin share one source.
+ * set `networking.session-host = "manet-sample"` to run the toy MANET (one mesh, N
+ *  actors, disc radio, no engine edits) instead of client-server; scenario shared with tests/network/manet_scenario.hpp
  **/
 #include "plugin/plugin.hpp"
 

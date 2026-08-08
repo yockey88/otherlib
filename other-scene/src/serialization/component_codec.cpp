@@ -53,9 +53,8 @@ namespace other {
         return payload;
       }
 
-      /// script_component's persistent state is the list of attached behavior type
-      /// names, which lives in the scripting environment's script_object rather than
-      /// the component struct — a custom codec with the shared payload discipline
+      /// script_component's persistent state (attached behavior type names) lives in the scripting
+      /// environment's script_object, not the component struct — hence a custom codec, same payload discipline
       component_codec make_script_codec() {
         component_codec codec = {
           .key = "script",
@@ -98,10 +97,8 @@ namespace other {
             component->add_behavior(name);
           }
 
-          /// reconcile: behaviors on the live object that the document does not list are
-          ///  genuine removals (e.g. added during play, rolled back by stop's restore).
-          ///  objects whose captured behavior list was empty emit no script record at
-          ///  all, so play-added behaviors on those objects escape this prune
+          /// reconcile: behaviors on the live object absent from the document are genuine removals
+          ///  (e.g. added during play); objects with an empty captured list emit no record, so those escape this prune
           auto* script_env = subsystem<scripting_environment>::get();
           if (script_env == nullptr || component->script_object_id < 0) {
             return;
@@ -141,9 +138,8 @@ namespace other {
         return codec;
       }
 
-      /// authored camera tables usually give only position/direction; the view matrix
-      ///  reads the basis, so canonicalize it (with look()'s degenerate-up fallback)
-      ///  after the generic field apply
+      /// authored camera tables usually give only position/direction; the view matrix reads the basis,
+      ///  so canonicalize it (look()'s degenerate-up fallback) after the generic field apply
       component_codec make_camera_codec() {
         component_codec codec = make_generic_codec<camera_component>("camera", "Camera", /*implicit=*/false);
         auto generic_apply = codec.apply;

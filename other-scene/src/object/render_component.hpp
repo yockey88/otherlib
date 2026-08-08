@@ -20,9 +20,8 @@ namespace other {
     natural_t last_model_asset_id = 0;
     natural_t model_asset_id = 0;
 
-    /// material asset override; 0 = the model's own imported materials (per submesh), and a
-    ///  material the active pipeline's layout doesn't fully know still renders — unknown
-    ///  params are skipped, missing ones take the layout defaults
+    /// material asset override; 0 = the model's own imported materials (per submesh); a material
+    ///  the active pipeline doesn't fully know still renders (unknown params skipped, missing use layout defaults)
     natural_t last_material_asset_id = 0;
     natural_t material_asset_id = 0;
 

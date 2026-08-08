@@ -487,11 +487,8 @@ namespace other {
       }
     }
 
-    /// promote the importer's value-sets to plain materials owned by the model_source —
-    ///  derived data, not assets, not files, not resolver nodes. texture paths resolve
-    ///  relative to the model file; gltf textures are already resolver-declared children
-    ///  loading through the plan (the load here dedupes), legacy formats get their lazy
-    ///  best-effort kick-off here (documented asymmetry).
+    /// promotes the importer's value-sets to plain materials owned by the model_source (derived
+    ///  data, not assets/files); gltf textures are resolver-declared (dedupes), legacy formats get a lazy kick-off here
     static ostd::vector<material> build_imported_materials(const model_data& data, asset* asset_ptr, asset_handler* handler) {
       PROFILE_SECTION("build_imported_materials");
       ostd::vector<material> out;
@@ -739,10 +736,8 @@ namespace other {
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
-      /// live scenes enter through the scene graph (add_scene_asset): path_hash == 0 and the
-      /// scene attached to the pipeline. resolver-dispatched scene documents (path_hash != 0,
-      /// no scene attached) parse to validate + track the file; instantiation stays with the
-      /// scene graph, which re-parses through this same path when the scene activates
+      /// live scenes enter via add_scene_asset (path_hash == 0, scene attached); resolver-dispatched
+      /// docs (path_hash != 0, no scene) only parse to validate/track — instantiation re-parses via the scene graph
       if (asset_ptr->path_hash != 0) {
         const std::string standalone_extension = asset_ptr->load_path.extension().string();
         if (!serialization::is_scene_file_extension(standalone_extension)) {
@@ -904,11 +899,8 @@ namespace other {
           OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in register material job");
 
           material mat = std::move(*p->mat);
-          /// slot paths are authored relative to the .omat; the hash a texture registers under
-          //  is decided by the asset handler at its own load time, so never predict it — load
-          //  (idempotent for already-loaded/in-flight assets) and read the hash back. resolver
-          //  roots load textures first through the same virtual-path route, making this a no-op
-          //  dedupe hit; for legacy formats and standalone materials it is the lazy kick-off.
+          /// slot paths are relative to the .omat; the texture hash is decided by the asset handler at
+          //  load time — never predict it, load (idempotent) and read it back; this is the lazy kick-off for legacy/standalone materials
           for (const auto& [slot, rel] : mat.texture_paths) {
             if (rel.empty()) {
               continue;

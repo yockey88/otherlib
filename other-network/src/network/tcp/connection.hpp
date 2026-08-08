@@ -15,9 +15,8 @@ namespace other {
 
   class tcp_transport_provider;
 
-  /// one tcp socket, network-thread-only. tx is a send queue drained by the composed
-  ///  asio::async_write (partial writes are its contract, not ours); rx is chunk reads
-  ///  fanned out as raw bytes — framing is the mesh's business, not the transport's
+  /// one tcp socket, network-thread-only. tx is a send queue drained by async_write;
+  ///  rx is raw chunk reads fanned out as-is — framing is the mesh's job, not the transport's
   class connection {
    public:
     constexpr static size_t kReadChunkSize = 8192;             // read granularity, NOT a payload cap

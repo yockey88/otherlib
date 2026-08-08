@@ -11,16 +11,12 @@
 
 namespace other {
 
-  /// the real datagram transport: unreliable, unordered, one datagram = one delivery,
-  ///  uninterpreted. udp is connectionless, so connections are synthesized to satisfy
-  ///  the seam — a datagram from an unknown remote on a listening socket becomes a new
-  ///  connection; establishment/liveness semantics live entirely above (LINK_HELLO and
-  ///  keepalive at the mesh level — there is no transport handshake and no EOF)
+  /// the real datagram transport: unreliable, unordered, 1 datagram = 1 delivery, uninterpreted.
+  ///  connectionless, so connections are synthesized; liveness lives above (mesh LINK_HELLO/keepalive) — no handshake, no EOF
   class udp_transport_provider : public transport_provider {
    public:
-    /// safe-MTU posture: radios and MANET field conditions live well below ethernet's
-    ///  1472, and ip fragmentation is exactly the failure mode a datagram transport
-    ///  must not smuggle in (networking.udp.max-datagram-bytes)
+    /// safe-MTU posture: radio/MANET conditions sit well below ethernet's 1472, and ip
+    ///  fragmentation is the failure mode a datagram transport must avoid (networking.udp.max-datagram-bytes)
     constexpr static uint32_t kDefaultMaxDatagramBytes = 1200;
 
     explicit udp_transport_provider(uint32_t max_datagram_bytes = kDefaultMaxDatagramBytes)

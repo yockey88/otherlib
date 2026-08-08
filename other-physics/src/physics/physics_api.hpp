@@ -96,9 +96,8 @@ namespace other {
     /// sweep a kinematic body toward the target pose over one fixed step, with contact response
     virtual void move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) = 0;
 
-    /// build the described shape (entity world scale baked in) and attach it to the body;
-    ///   geometry is required for hull/mesh kinds. false = build failed, body keeps its
-    ///   previous shape (authored data never asserts)
+    /// builds the described shape (world scale baked in) and attaches it to the body; geometry
+    ///   required for hull/mesh. false = build failed, body keeps its previous shape (never asserts)
     virtual bool set_body_shape(natural_t world_id, physics_world* world, physics_body* body,
                                 const physics_shape_desc& desc, const glm::vec3& world_scale,
                                 const shape_geometry* geometry) = 0;

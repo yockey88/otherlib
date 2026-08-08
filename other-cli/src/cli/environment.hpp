@@ -35,9 +35,8 @@ namespace other {
 
     bool is_valid_build_config(std::string_view build_config);
 
-    /// discovery order: explicit root -> OTHER_ENVIRONMENT_ROOT env var -> walk up from this
-    ///  executable -> walk up from the working directory -> default install location;
-    ///  returns found == false when nothing matches (an explicit root is never walked)
+    /// discovery order: explicit root -> OTHER_ENVIRONMENT_ROOT -> walk up from executable ->
+    ///  walk up from cwd -> default install location; found==false if nothing matches (explicit root never walked)
     environment_paths locate_environment(const opt<filepath>& explicit_root = std::nullopt);
 
     /// probe order for per-config engine binaries, starting with the config this binary

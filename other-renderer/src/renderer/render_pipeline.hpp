@@ -65,9 +65,8 @@ namespace other {
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
 
-    /// material draw seam: a pass with a material-tagged PER_DRAW binding gets its ring
-    ///  slices packed against this pipeline's declared layout (bind_draw_resources) and its
-    ///  layout texture slots bound per draw; sampler uniforms are set once per pass execution
+    /// material draw seam: a material-tagged PER_DRAW binding gets ring slices packed against
+    ///  this pipeline's layout + texture slots bound per draw; sampler uniforms set once per pass
     bool pass_uses_material_binding(const pass_runtime& runtime) const;
     void apply_material_sampler_uniforms(const frame_node* node);
     void bind_material_textures(const render_data& data, size_t draw_index);

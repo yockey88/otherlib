@@ -1,8 +1,7 @@
 /**
  * \file tests/physics/contact_tests.cpp
- *  doc-03 contacts, queries & joints: begin/end transitions, triggers, raycasts, breakable
- *  welds, runtime body verbs — asserted at the native drain (the C# dispatch is the proven
- *  FixedUpdate invoke path and is exercised live by the editor anchors)
+ *  contacts/queries/joints: begin/end transitions, triggers, raycasts, breakable welds, body
+ *  verbs — asserted at the native drain (C# dispatch is exercised live by the editor anchors)
  **/
 #include "other_test.hpp"
 

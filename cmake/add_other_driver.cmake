@@ -1,11 +1,5 @@
-## Driver-target helpers, usable both from the source tree and from an installed
-## otherlib SDK (find_package(otherlib)). This is the single implementation;
-## cmake/other_driver.cmake is a compatibility shim that includes this file.
-##
-## In-tree consumers link the build targets (otherlib / otherlib_main); installed
-## consumers link the exported otherlib:: targets and get the SDK lib directories
-## added so prebuilt third-party libs referenced by bare name (lua-5.4.4, SDL3,
-## glad, ...) resolve at link time.
+## driver-target helpers; single implementation (other_driver.cmake is a shim).
+##  installed consumers get SDK lib dirs added so bare-name third-party libs resolve
 macro(add_driver_target type driver_name)
   if (${type} STREQUAL "static")
     add_executable(${driver_name})

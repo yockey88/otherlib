@@ -12,9 +12,8 @@
 
 namespace other {
 
-  /// SNS reliable sends cap at 512 KiB; join snapshots can exceed it. blobs ride as
-  ///  [u8 flags: bit0 = final][u16 index le][payload <= 448 KiB] chunks reassembled
-  ///  per connection — transport-internal "how bytes move", never a message schema
+  /// SNS reliable sends cap at 512 KiB; join snapshots can exceed it, so blobs ride as [u8 flags]
+  ///  [u16 index][payload <= 448 KiB] chunks reassembled per connection — transport-internal, not a schema
   constexpr size_t kSteamFragmentPayload = 448 * 1024;
   constexpr size_t kSteamFragmentHeader = 3;
 
@@ -31,9 +30,8 @@ namespace other {
     uint16_t next_index = 0;
   };
 
-  /// the byte mover over ISteamNetworkingSockets P2P (SDR). main-thread home:
-  ///  connection events arrive during SteamAPI_RunCallbacks, receives are polled by
-  ///  pump(). construct only when the steam context is READY
+  /// the byte mover over ISteamNetworkingSockets P2P (SDR). main-thread home: connection events
+  ///  arrive during SteamAPI_RunCallbacks, receives are polled by pump(). construct only when READY
   class steam_link_transport final : public link_transport {
    public:
     explicit steam_link_transport(int virtual_port);

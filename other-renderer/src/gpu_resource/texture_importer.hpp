@@ -1,9 +1,7 @@
 /**
  * \file gpu_resource/texture_importer.hpp
  *
- * image file -> gpu texture, split so decode can run off the main thread:
- *   load_texture_data  : pure cpu decode (any thread)
- *   upload_texture_data: resource creation + upload (main thread only)
+ * load_texture_data = pure cpu decode (any thread); upload_texture_data = gpu upload (main thread only)
  **/
 #ifndef OTHER_RENDERER_GPU_RESOURCE_TEXTURE_IMPORTER_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_TEXTURE_IMPORTER_HPP

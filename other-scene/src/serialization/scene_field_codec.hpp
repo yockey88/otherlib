@@ -9,12 +9,8 @@
  *   struct :  tag = USER_TYPE             bytes = nested field stream (reflected member)
  *   vector :  tag = USER_TYPE             bytes = [count u32] then per element [tag][size][bytes]
  *
- * every field is skippable from [tag][size] alone — unknown field ids skip forward
- * (schema grew), missing fields keep member defaults (schema shrank). readers are typed,
- * so struct-vs-vector sharing USER_TYPE is unambiguous.
- *
- * decode never asserts on data — malformed input reports through the bool returns /
- * warning sink; OTHER_ASSERT stays reserved for programmer misuse.
+ * every field is skippable from [tag][size] alone (schema-safe: unknown ids skip, missing fields
+ * default); decode never asserts on data — malformed input reports via bool/warning, not OTHER_ASSERT
  */
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_FIELD_CODEC_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_FIELD_CODEC_HPP
@@ -119,9 +115,8 @@ namespace other {
         requires scene_encodable_value<T>
       bool decode_value(std::span<const uint8_t> data, size_t& offset, T& out);
 
-      /// reads [tag][size] and yields the body span; false = truncated stream.
-      /// on success the offset has consumed the whole frame, keeping the stream aligned
-      /// even when the caller then rejects the body (type mismatch -> warn and continue)
+      /// reads [tag][size] and yields the body span; false = truncated stream. on success the offset
+      /// consumes the whole frame, keeping the stream aligned even if the caller rejects the body (type mismatch)
       inline bool read_frame(std::span<const uint8_t> data, size_t& offset, uint8_t& tag, std::span<const uint8_t>& body) {
         uint8_t frame_tag = 0;
         uint32_t size = 0;

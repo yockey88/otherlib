@@ -68,10 +68,8 @@ namespace other {
 
     EMIT_TRACE("Compiling program w/ {} code blocks and {} data blocks", ir.code_blocks.size(), ir.data_blocks.size());
     EMIT_TRACE(" - target VM version: {}", ir.target_vm_version);
-    // collect all __native_entry blocks into a single one first these are any instructions not in a named code block,
-    // these are collected into a single main '__natural_entry' code block that acts as the main if no /entry directive is found,
-    // programs that export functions can not define an entry point and __natural_entry will always be ran when these files are loaded
-    // notice that this gets created even if there are no loose instructions in the compiled program and will still be invoked if no /entry directive is found
+    // loose instructions outside any named block collect into one "__natural_entry" block,
+    // used as the default entry point when no /entry directive is set; always created
     {
       code_block native_entry = {
         .name = "__natural_entry",
@@ -113,9 +111,8 @@ namespace other {
       else if (code_block_itr->instructions.empty() || code_block_itr->instructions.back().opcode != canonical_opcode::STOPDEV_OP) {
         EMIT_TRACE(" - entry symbol {} resolved to code block {}", entry_def_itr->value.text, code_block_itr->name);
 
-        /// if user put ret at end of entry point function, remove it
-        ///  and stop the device instead
-        /// \todo: we will have to fix how we handle this once we begin linking multiple source files
+        /// if entry point ends in ret, remove it and stop the device instead
+        /// \todo fix once we link multiple source files
         if (code_block_itr->instructions.back().opcode == canonical_opcode::RET_OP) {
           code_block_itr->instructions.erase(code_block_itr->instructions.end() - 1);
           code_block_itr->instructions.push_back({ .opcode = canonical_opcode::STOPDEV_OP });

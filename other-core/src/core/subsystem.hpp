@@ -47,26 +47,8 @@ namespace other {
       { subsystem_deleter<T>()(std::declval<T*>()) } -> std::same_as<void>;
     };
 
-  /**
-   * List of subsystems
-   *  - arena
-   *  - logger
-   *  - file_system
-   *  - input_system
-   *  - type_database
-   *  - physics_environment
-   *  - renderer_backend
-   *  - scripting_environment
-   *  - audio_environment
-   *
-   * Profiles:
-   *  - core only: arena, logger, file_system, input_system, type_database
-   *  - rendering environment: core + renderer_backend
-   *  - physics environment: core + physics_environment
-   *  - scripting environment: core + scripting_environment
-   *  - headless environment: core + physics_environment, scripting_environment
-   *  - full: core + physics_environment, renderer_backend, scripting_environment, audio_environment
-   **/
+  /** subsystem profiles: core = arena/logger/file_system/input_system/type_database;
+      profiles add physics/renderer/scripting/audio on top (see subsystem_profile) **/
 
   struct subsystem_profile {
     constexpr static std::string_view kLogger = "logger";

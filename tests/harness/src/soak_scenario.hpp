@@ -1,9 +1,8 @@
 /**
  * \file tests/harness/src/soak_scenario.hpp
  *
- * long-running memory soak: run a real project, optionally cycle its scenes to
- * exercise load/unload churn, sample the arena + process counters on an interval,
- * and fail if memory keeps growing after warmup.
+ * long-running memory soak: runs a real project (optionally cycling scenes for load/unload
+ *  churn), samples arena + process counters on an interval, fails if memory grows after warmup
  **/
 #ifndef OTHER_TESTS_HARNESS_SOAK_SCENARIO_HPP
 #define OTHER_TESTS_HARNESS_SOAK_SCENARIO_HPP

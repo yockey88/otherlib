@@ -37,9 +37,8 @@ namespace other {
     uint8_t default_ttl = 8;
   };
 
-  /// manages a network and the peer-mesh actors — the boundary between the project
-  ///  and the network itself. not a packet sink: bytes arrive only through the
-  ///  transports registered here, and the module never interprets application payloads
+  /// manages a network and its peer-mesh actors — the boundary between project and network.
+  ///  not a packet sink: bytes arrive only through registered transports, payloads stay opaque
   class peer_mesh {
    public:
     struct mesh_counters {

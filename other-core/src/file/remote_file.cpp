@@ -88,26 +88,8 @@ namespace other {
     CORE_LOG_DEBUG("Beginning fetch for remote file '{}' from url '{}'", file_name, remote_url);
     fetch_state = remote_fetch_state::FETCHING;
 
-    /// =======================================================================
-    /// STUB: implement actual network fetching here
-    ///
-    /// this coroutine should:
-    ///   1. issue an HTTP request to `remote_url`
-    ///   2. yield (co_await task::awaiter{}) while waiting for the response
-    ///   3. on success, write the response body into `cached_data`
-    ///      and set `fetch_state = remote_fetch_state::COMPLETE`
-    ///   4. on failure, set `fetch_state = remote_fetch_state::FAILED`
-    ///      and log the error
-    ///
-    /// example skeleton:
-    ///   auto response = co_await http_get(remote_url);
-    ///   if (response.ok()) {
-    ///     cached_data = std::move(response.body);
-    ///     fetch_state = remote_fetch_state::COMPLETE;
-    ///   } else {
-    ///     fetch_state = remote_fetch_state::FAILED;
-    ///   }
-    /// =======================================================================
+    /// STUB: should issue an HTTP GET to `remote_url`, await the response, then set
+    ///  cached_data + fetch_state = COMPLETE on success, or FAILED on error
 
     CORE_LOG_WARN("remote_file::fetch() is a stub, no data will be fetched for '{}'", file_name);
     fetch_state = remote_fetch_state::FAILED;

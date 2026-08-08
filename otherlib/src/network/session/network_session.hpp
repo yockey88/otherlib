@@ -31,10 +31,8 @@ namespace other {
     std::string name;
   };
 
-  /// the shipped default peer_mesh_actor: client-server, host-authoritative, star
-  ///  topology — all of it this actor's policy, asserted here and nowhere lower.
-  ///  membership and authority only: framing, keepalive, RTT and the live peer
-  ///  table already live at the link/mesh level
+  /// shipped default actor: client-server, host-authoritative star topology (its policy
+  ///  only). handles membership/authority; framing/keepalive/RTT live at link/mesh level
   class OTHER_CLASS network_session final : public peer_mesh_actor {
    public:
     constexpr static std::string_view kDefaultActorName = "client-server";
@@ -135,9 +133,8 @@ namespace other {
     void adopt_roster_entry(const net_roster_entry& entry, natural_t link_id);
   };
 
-  /// the by-name seam `networking.session-host` resolves through: plugin-provided
-  ///  actors (environment registry) park here until the driver mesh spawns one.
-  ///  the default name never lands here — the glue builds network_session itself
+  /// networking.session-host seam: plugin-provided actors park here until the driver
+  ///  mesh spawns one; the default name never lands here (glue builds network_session)
   class session_actor_source {
    public:
     struct taken {

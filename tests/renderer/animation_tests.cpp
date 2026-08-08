@@ -1,11 +1,8 @@
 /**
  * \file tests/renderer/animation_tests.cpp
  *
- * contract under test: assimp import emits a parents-first joint skeleton and immutable
- *  seconds-normalized clips, .oanim round-trips exactly through the field-codec
- *  primitives without ever aborting on malformed bytes, and the pure runtime primitives
- *  (pose / clip_binding / sample_clip / blend_poses / build_palette) behave headlessly
- *  over plain data.
+ * contract: assimp import emits parents-first skeletons + seconds-normalized clips, .oanim
+ *  round-trips without aborting on malformed bytes, and the pure runtime primitives are headless
  **/
 #include <chrono>
 #include <cmath>
@@ -29,9 +26,8 @@ namespace other {
 
   class animation_tests : public other_test {
    protected:
-    /// three-joint chain A -> B -> C with non-trivial bind TRS; inverse_bind matrices
-    ///  are the exact inverses of the model-space bind chain, so the bind pose maps to
-    ///  an identity palette by construction
+    /// three-joint chain A -> B -> C with non-trivial bind TRS; inverse_bind matrices are exact
+    ///  inverses of the model-space chain, so the bind pose maps to an identity palette
     static skeleton make_chain_skeleton() {
       skeleton skel;
       skel.name = "chain";
@@ -397,9 +393,8 @@ namespace other {
     EXPECT_EQ(out.positions[1], skel.joints[1].bind_position);
   }
 
-  /// measurement, not correctness: reports the per-character cost of a full evaluation
-  ///  (reset_to_bind + sample_clip + build_palette) to ground parallel-evaluation
-  ///  decisions. the only assertion is a catastrophe bound.
+  /// measurement, not correctness: reports per-character cost of a full evaluation to ground
+  ///  parallel-evaluation decisions; the only assertion is a catastrophe bound
   TEST_F(animation_tests, palette_throughput_measurement) {
     constexpr size_t kJoints = 64;          /// typical humanoid rig
     constexpr size_t kKeysPerChannel = 60;  /// 2s clip baked at 30hz

@@ -61,11 +61,8 @@ shaders = [
   { name = "forward_transparent_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-forward-transparent.frag" },
 ]
 
-## the material block this pipeline's shaders read (shader-modules/basic-material.glsl mirrors
-## it); element offsets and the per-draw binding size are computed std430 from this declaration.
-## materials themselves are layout-agnostic .omat parameter sets packed against this at bind
-## time. albedo.a carries roughness into the shading pass (formerly specular_reflect — the pass
-## treats .a as a scalar shading factor either way). texture units 0-7 stay pass inputs.
+## material block basic-material.glsl mirrors; per-draw binding size is std430-computed from
+## this. albedo.a carries roughness (formerly specular_reflect); texture units 0-7 are pass inputs
 [materials.layout]
 params = [
   { name = "base_color",     type = "vec4",  default = [1.0, 1.0, 1.0, 1.0] },
@@ -129,8 +126,7 @@ passes = [
   ## blended forward transparency, painter-sorted, depth-tested against scene_depth without
   ## writing it; last in-scene pass so glass composites over grids and overlays too
   { name = "transparent-pass", pass_type = "RENDER_PASS", shader_name = "forward_transparent_shader", depends_on = [ "scene-overlay-pass" ], clear_bits = [] },
-  ## additional shading
-  ## screen-space passes
+  ## additional shading / screen-space passes
   ## anit-aliasing and post-processing passes
   { name = "smaa-edges", pass_type = "RENDER_PASS", shader_name = "smaa_edges_shader" },
   { name = "smaa-weights", pass_type = "RENDER_PASS", shader_name = "smaa_weights_shader" },

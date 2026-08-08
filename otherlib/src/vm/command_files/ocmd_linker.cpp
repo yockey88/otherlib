@@ -285,13 +285,8 @@ namespace other {
         }
 
         if (!fixup.invocation_thunk.empty()) {
-          /**
-           * resolution of symbols that have invocation thunks works by replacing a fixup symbol with a goto instead of just patching the instruction,
-           *  so insert right before the patched label, we also insert a goto to go back to the label address at the end of the invocation thunk, this is the first section so we can use local addresses
-           *  and it will always be correct.
-           *  This allows us to support arbitrary resolution code without needing to worry about how much space it takes up or needing multiple passes to resolve everything
-           *  the resolution code will be responsible for putting the resolved address in the right place in and will be compiled completely separately
-           */
+          /** thunked symbols resolve via an inserted goto (not an in-place patch) so
+           *   resolution code can be arbitrary size and compiled separately **/
           const std::string gen_name = std::format("__compiler:{}", instr.symbol_name);
           resolver->register_symbol(gen_name, {});
 

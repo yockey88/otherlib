@@ -1,8 +1,7 @@
 OtherLog.Info("Hello from server.lua!")
 
--- headless TCP server shell: listens on server.main-port and logs connection
--- traffic through the Other.Server interface hooks. request handling returns
--- when the session layer can carry it (networking-1).
+-- headless TCP server shell: listens on server.main-port, logs connection traffic through
+-- the Other.Server interface hooks; request handling awaits the session layer (networking-1)
 local server_hook = {
   OnReceiveData = function(id, data)
     OtherLog.Debug(string.format("[SERVER] Connection %d received %d bytes", id, data and #data or 0))

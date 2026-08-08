@@ -28,9 +28,8 @@ namespace other {
     REPLICA,
   };
 
-  /// the scene's net-identity registry — pure state, zero networking includes.
-  ///  a scene member rather than a component: nothing here is per-object-authored
-  ///  or serialized (authored intent lives on network_component)
+  /// the scene's net-identity registry — pure state, zero networking includes; a scene member,
+  ///  not a component (nothing here is per-object-authored/serialized; authored intent lives on network_component)
   class scene_network_context {
    public:
     replication_role role = replication_role::NONE;

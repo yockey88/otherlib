@@ -1,11 +1,8 @@
 /**
  * \file tests/harness/src/network_scenario.hpp
  *
- * deterministic peer-mesh network scenario: N actors on one mesh over the memory
- * fabric run establish -> steady traffic -> partition/recovery churn -> lossy
- * datagram -> teardown phases on a virtual clock, measuring delivery, end-to-end
- * latency, link RTT/counters, and shaping behavior. the verdict + full metric set
- * lands in logs/network-report.json for analysis (the soak-report pattern).
+ * deterministic peer-mesh scenario: N actors on one mesh run establish -> steady -> churn ->
+ *  datagram -> teardown on a virtual clock; verdict + metrics land in logs/network-report.json
  **/
 #ifndef OTHER_TESTS_HARNESS_NETWORK_SCENARIO_HPP
 #define OTHER_TESTS_HARNESS_NETWORK_SCENARIO_HPP

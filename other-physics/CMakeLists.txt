@@ -12,9 +12,8 @@ target_sources(other_physics
     src/physics/physics_environment.cpp
 )
 
-# ABI-sensitive defines the prebuilt extern/jolt binaries (5.5.1) were built with;
-#  no Jolt header escapes this module (jolt_api.hpp only forward-declares JPH types),
-#  so PRIVATE is safe — must become PUBLIC again if a header ever includes Jolt
+# ABI-sensitive defines matching the prebuilt extern/jolt 5.5.1 binaries; no Jolt header escapes
+#  this module, so PRIVATE is safe — must become PUBLIC if a header ever includes Jolt
 target_compile_definitions(other_physics
   PRIVATE
     JPH_FLOATING_POINT_EXCEPTIONS_ENABLED

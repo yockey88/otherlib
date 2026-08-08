@@ -12,10 +12,8 @@
 
 namespace other {
 
-  /// the semantic/audit layer: M4 replicates state, this replicates INTENT. the
-  ///  engine carries and journals envelopes — it never interprets them (it cannot
-  ///  know what a part or a port is; gameplay handlers mutate the world through
-  ///  normal APIs and those mutations flow through M4's one state channel)
+  /// semantic/audit layer: M4 replicates state, this replicates INTENT. the engine
+  ///  carries/journals envelopes but never interprets them (gameplay owns that)
   struct scene_op {
     natural_t op_id = 0;  // host-assigned, monotonic, never recycled (spacesim journal rule)
     uint64_t tick = 0;    // host tick at application

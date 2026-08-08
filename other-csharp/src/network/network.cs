@@ -151,9 +151,8 @@ namespace Other.Networking
     /// Fires on an accepted overlay invite; the engine auto-joins unless
     /// networking.steam.auto-join-invites is off.
     public static Action<ulong>? OnLobbyJoinRequested;
-    /// Host-side validator + applier: mutate the world through normal APIs and
-    /// return true to accept (state replicates via the snapshot channels). Null =
-    /// accept-all (the envelope is audit either way).
+    /// Host-side validator + applier: mutate the world through normal APIs and return true
+    /// to accept (state replicates via snapshot channels). Null = accept-all.
     public static Func<ushort, string, ulong, byte[], bool>? OnOpRequest;
     /// Presentation/bookkeeping only on clients — never world mutation.
     public static Action<ushort, string, ulong, byte[]>? OnOpApplied;

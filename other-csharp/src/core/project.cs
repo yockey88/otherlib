@@ -12,9 +12,8 @@ namespace Other
       /// will build a desktop application with a window and rendering capabilities
       /// useful for games or simulations
       RENDERING_APPLICATION,
-      /// will build a plugin library that can be loaded into an Other Environment application
-      /// useful for extending the functionality of an existing application or for creating reusable components
-      /// note: plugin projects will not be executable on their own and require an existing application to load them
+      /// will build a plugin library, loadable into an Other Environment application
+      /// note: not executable on its own; requires a host application
       PLUGIN_LIBRARY,
     }
 

@@ -81,9 +81,7 @@ namespace other {
       OTHER_ASSERT(hostfxr_lib != nullptr, "Failed to load hostfxr library: {}", host_path->string());
     }
 
-    /// 0 - success
-    /// 1 - success, already initialized
-    /// 2 - success, different runtime properties
+    /// return codes: 0 success, 1 already initialized, 2 different runtime properties
     hostfxr_handle host_fxr = nullptr;
     {
       PROFILE_SECTION("dotnet_host::load-host--load-coreclr");

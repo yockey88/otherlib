@@ -152,9 +152,8 @@ namespace other {
       }
     }
 
-    /// the churn can outrun the reader's first pass entirely (release builds finish
-    ///  the waves inside one scheduling quantum, leaving an empty registry behind),
-    ///  so park one live entry and wait for the reader to prove it ran
+    /// churn can outrun the reader's first pass (release builds finish inside one scheduling
+    ///  quantum), so park one live entry and wait for the reader to prove it ran
     ASSERT_TRUE(registry.insert(&entries[0]));
     const auto deadline = steady_clock::now() + seconds(2);
     while (reads.load(std::memory_order_relaxed) == 0 && steady_clock::now() < deadline) {

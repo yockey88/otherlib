@@ -55,10 +55,8 @@ namespace other {
     }
   }
 
-  /// eager sweeps cover plain data fields only. properties stay lazy, by name: getters can
-  ///  run arbitrary code (SceneObject.WorldMatrix calls back into native), so evaluating
-  ///  them wholesale at attach/serialize time is never safe. user types are unrepresentable
-  ///  in flat storage until a [Serialized] story exists
+  /// eager sweeps cover plain data fields only; properties stay lazy since getters can run
+  ///  arbitrary code, and user types are unrepresentable until a [Serialized] story exists
   bool dotnet_object::is_eagerly_loadable(const dotnet_field& f) const {
     if (f.is_property() || f.name().ends_with("k__BackingField")) {
       return false;

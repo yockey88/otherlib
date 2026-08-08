@@ -284,10 +284,8 @@ namespace other {
       comp.scene_stop();
     });
 
-    /// end of the disable pass: the restore invalidates every runtime id, so the
-    ///  surviving managed instances drop their native bindings here and are rebound
-    ///  during the rebuild — Awake/Remove never fire on a play-stop cycle. the root
-    ///  survives the restore untouched, so its binding stays valid
+    /// end of the disable pass: restore invalidates every runtime id, so surviving managed instances
+    ///  drop native bindings here and rebind during rebuild (Awake/Remove never fire on a play-stop cycle)
     if (!play_snapshot.empty()) {
       scene_object& root = root_object();
       storage->registry.view<script_component>().each([&root](entt::entity entity, script_component& comp) {
@@ -532,9 +530,8 @@ namespace other {
           return;  /// physics-off profile
         }
 
-        /// effective body diverged from the built body (restore, inspector, C#,
-        /// replica-role change) -> recreate; the fresh body starts shapeless and
-        /// falls through to the shape check below
+        /// effective body diverged from the built body (restore, inspector, C#, replica-role change)
+        /// -> recreate; the fresh body starts shapeless and falls through to the shape check below
         if (!(effective_body_settings(handle.id, phys_comp) == phys_comp.body->applied_settings)) {
           rebuild_physics_body(entity, phys_comp);
         }
@@ -701,9 +698,8 @@ namespace other {
 
   namespace {
 
-    /// resolve the component's clip, advance its clock, sample the working pose, build the
-    ///  model's palette. runs after every script surface so state scripts set lands in the
-    ///  same frame's pose
+    /// resolves the component's clip, advances its clock, samples the working pose, builds the
+    ///  model's palette; runs after every script surface so state set this frame lands in this frame's pose
     void tick_animation(animation_component& anim, render_component& render, double delta_time, scope<asset_handler>& asset_handler) {
       PROFILE_SECTION("tick_animation");
       model_source* source = render.obj_model.source;
@@ -1475,9 +1471,8 @@ namespace other {
           render.obj_model = model_src->produce_model();
         }
 
-        /// effective material resolution: component override wins when its asset is registered,
-        ///  else the model's imported material per submesh, else nullptr = layout defaults at
-        ///  bind time. the key keeps batching stable through the override's async load window.
+        /// effective material: component override if registered, else model's imported material per
+        ///  submesh, else nullptr = layout defaults; the key keeps batching stable through async load
         const material* override_material = nullptr;
         natural_t material_key = 0;
         if (render.material_asset_id != 0 && asset_handler->asset_exists(render.material_asset_id)) {

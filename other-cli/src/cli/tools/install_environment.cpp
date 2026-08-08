@@ -49,10 +49,8 @@ namespace other {
         return tool_result::ok();
       }
 
-      /// the effective install prefix: an explicit --prefix wins, otherwise the
-      ///  CMAKE_INSTALL_PREFIX the build tree was configured with; empty when neither
-      ///  resolves. cmake resolves a relative --prefix against its working directory,
-      ///  which run_attached sets to the environment root
+      /// effective install prefix: explicit --prefix wins, else the configured CMAKE_INSTALL_PREFIX,
+      ///  else empty; a relative --prefix resolves against run_attached's cwd (the environment root)
       filepath resolve_install_prefix(const opt<std::string>& prefix, const filepath& root) {
         filepath resolved = "";
         if (prefix.has_value()) {

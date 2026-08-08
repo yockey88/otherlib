@@ -11,9 +11,8 @@
 
 namespace other {
 
-  /// built natively from each behavior's own dotnet_object — the managed side exposes no
-  ///  parent-indexed field surface, and does not need to: every attached behavior already
-  ///  owns a script_object whose type reflection carries the field list
+  /// built from each behavior's own dotnet_object — the managed side exposes no parent-indexed
+  ///  field surface; each attached behavior's script_object already carries its own field list
   behavior_snapshot script_object::get_behavior_snapshot() const {
     PROFILE_SECTION("script_object::get_behavior_snapshot");
     if (dotnet_object == nullptr) {

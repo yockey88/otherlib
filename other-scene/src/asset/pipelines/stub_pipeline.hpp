@@ -1,9 +1,8 @@
 /**
  * \file asset/pipelines/stub_pipeline.hpp
  *
- * pipeline for asset types whose runtime backend does not exist yet
- * (input-map): the asset is tracked, watched, and resolvable, but the loader
- * carries no payload. replace per-type when the backend lands.
+ * pipeline for asset types with no runtime backend yet (e.g. input-map): tracked/watched/resolvable,
+ * but the loader carries no payload. replace per-type when the backend lands.
  **/
 #ifndef OTHER_SCENE_ASSET_PIPELINES_STUB_PIPELINE_HPP
 #define OTHER_SCENE_ASSET_PIPELINES_STUB_PIPELINE_HPP

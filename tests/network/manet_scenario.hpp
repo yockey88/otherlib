@@ -1,14 +1,8 @@
 /**
  * \file network/manet_scenario.hpp
  *
- * the shipped "ideal" MANET sample — the Mode-4 exemplar (07 §4a) and the arc's
- * standing proof that the seams compose: one mesh, N member actors, a director
- * driving a toy disc radio over the memory fabric with waypoint mobility, static
- * routes recomputed from geometry, and a circulating token that makes partitions
- * and re-joins visible. deliberately NOT real propagation/spectrum/routing — the
- * analyzer project owns those; this is its shape at toy scale, zero engine edits.
- * lives in test-land so the deterministic test and the test-project plugin share
- * one source.
+ * shipped "ideal" MANET sample (Mode-4 exemplar): mesh + N actors + director driving a toy
+ *  disc radio/mobility/routing/token-ring; not real propagation (analyzer project's job)
  **/
 #ifndef OTHER_TESTS_NETWORK_MANET_SCENARIO_HPP
 #define OTHER_TESTS_NETWORK_MANET_SCENARIO_HPP

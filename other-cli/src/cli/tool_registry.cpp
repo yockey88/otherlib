@@ -58,9 +58,8 @@ namespace other {
     tool_registry& default_tool_registry() {
       static tool_registry registry = [] {
         tool_registry tools;
-        /// only the project workflow is builtin; the developer/source-tree workflow is
-        ///  opt-in per host (dev cli front end, driver boot) through register_dev_tools,
-        ///  so the user cli that ships with the SDK never carries it
+        /// only the project workflow is builtin; dev/source-tree tools are opt-in per host via
+        ///  register_dev_tools, so the SDK-shipped user cli never carries them
         tools.add_tool(std::make_unique<create_project_tool>());
         tools.add_tool(std::make_unique<open_project_tool>());
         return tools;

@@ -2,6 +2,7 @@
 
 A C++ game development framework with C# scripting. Everything is driven through
 `oecli` — `oecli help` lists the tools, `oecli help <tool>` documents each one.
+Releases follow [VERSIONING.md](VERSIONING.md); the root `VERSION` file is the source of truth.
 
 ## Other Environment Architecture
 
@@ -72,5 +73,5 @@ Configs: `Debug` (default), `Release`, and `ProfileD`/`Profile` (Tracy profiler 
 | `oecli model` / `oecli anim` | inspect models, extract/inspect animation clips (`.oanim`) |
 | `oecli material` | inspect material files (`.omat`) |
 | `oecli build [--tests] [-c <config>]` | build the environment from source |
-| `oecli test [-f <filter>] [--soak]` | run the unit suites / soak harness |
+| `oecli test [-f <filter>] [--soak\|--network\|--fuzz\|--stress]` | run the unit suites / harness scenarios |
 | `oecli install` / `oecli package` | install the SDK / package the installer + zip |

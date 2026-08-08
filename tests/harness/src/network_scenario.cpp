@@ -180,9 +180,8 @@ namespace other {
   }
 
   void network_scenario::rebuild_routes() {
-    /// BFS next-hops over the planned topology (minus the cut while it is open),
-    ///  then per-seat (from, dst) -> link rows — the scenario is the routing
-    ///  director, exactly the analyzer/MANET-sample shape
+    /// BFS next-hops over the planned topology (minus an open cut), then per-seat
+    ///  (from, dst) -> link rows; scenario acts as routing director, same as the MANET sample
     ostd::map<node_id, ostd::vector<node_id>> adjacency;
     for (const planned_link& planned : plan) {
       if (cut_applied && !reopened && planned.crosses_cut) {

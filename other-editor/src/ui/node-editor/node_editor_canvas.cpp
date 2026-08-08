@@ -675,9 +675,8 @@ namespace other {
         }
       }
 
-      /// if parent node is too small, then make pin smaller too
-      /// if pin is small and node is big, make pin bigger
-      /// also have to take into account number of pins on the node
+      /// pin size follows parent node size (small node -> small pin, big node -> big pin),
+      ///  also factoring in how many pins the node has
       float parent_node_size_y = nodes.node_sizes[pins.pin_node_indices[pin_id]].y;
       float target_radius = glm::clamp(parent_node_size_y / 15.f, 2.2f, 10.f);
       float radius_diff = target_radius - pins.pin_radii[pin_id];

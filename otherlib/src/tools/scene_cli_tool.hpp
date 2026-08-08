@@ -1,13 +1,7 @@
 /**
  * \file tools/scene_cli_tool.hpp
- *
- * `oecli scene <compile|decompile|info>` — document-level scene conversions between
- * .oscn (toml) and .oscnb (binary). runs entirely on the scene_document layer, so no
- * engine subsystems boot; the same tool is reachable in-process through
- * other::cli::run("scene compile ...") from the editor console or driver code.
- *
- * lives in otherlib because it needs both the cli tool interface (other_cli) and the
- * scene component codecs (other_scene) — this is the first layer that links both.
+ * oecli scene <compile|decompile|info>: .oscn/.oscnb conversions on the scene_document
+ *  layer only (no engine subsystems boot); reachable in-process via other::cli::run(...)
  **/
 #ifndef OTHERLIB_TOOLS_SCENE_CLI_TOOL_HPP
 #define OTHERLIB_TOOLS_SCENE_CLI_TOOL_HPP
@@ -30,14 +24,12 @@ namespace other {
       tool_result execute(tool_context& ctx, std::span<const std::string> args) override;
     };
 
-    /// registers the engine-level tools (scene, model, ...) that the core cli library
-    ///  cannot host itself; idempotent so every frontend (oecli main, driver boot, tests)
-    ///  can call it unconditionally
+    /// registers engine-level tools (scene, model, ...) the core cli library can't host
+    ///  itself; idempotent so any frontend can call it unconditionally
     void register_environment_tools(tool_registry& registry);
 
-    /// engine-level tools allocate through the arena and log through the logger; when no
-    ///  host booted those subsystems (bare oecli), this activates them console-warn-only.
-    ///  inside a running environment it is a no-op.
+    /// engine-level tools need the arena+logger live; if no host booted them (bare oecli)
+    ///  this activates them console-warn-only. no-op inside a running environment
     void ensure_cli_runtime();
 
   }  // namespace cli

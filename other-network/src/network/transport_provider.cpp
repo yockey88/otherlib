@@ -63,9 +63,8 @@ namespace other {
     OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when shutting down transport provider.");
     on_shutdown();
 
-    /// listener slots are left as-is: shutdown may run on the network thread (which must
-    ///  never write the registry) and the entries die with this object or the next
-    ///  initialize() reset — whichever comes first
+    /// listener slots left as-is: shutdown may run on the network thread, which must never
+    ///  write the registry — entries die with this object or the next initialize() reset
     rx_holds.clear();
 
     net_io = nullptr;

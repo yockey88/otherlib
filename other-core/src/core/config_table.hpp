@@ -27,9 +27,8 @@ namespace other {
 
   namespace detail {
 
-    /// value-semantic heap box for the parsed table: special members are defined in
-    ///  config_table.cpp so this header only needs toml++'s forward declarations,
-    ///  while config_table itself keeps its defaulted memberwise copy/move
+    /// value-semantic heap box for the parsed table; special members live in
+    ///  config_table.cpp so this header only needs toml++'s forward declarations
     class toml_table_box {
      public:
       toml_table_box();
@@ -59,10 +58,7 @@ namespace other {
 
     ~config_table() = default;
 
-    /**
-     * \note this will look for the path @p toml_subpath at:
-     *   [project.<toml_subpath>]
-     */
+    /** \note looks for the path @p toml_subpath at [project.<toml_subpath>] */
     value get_project_value(const std::string_view toml_subpath) const;
 
     /// defined in config_table.cpp with explicit instantiations for the supported

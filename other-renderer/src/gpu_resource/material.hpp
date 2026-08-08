@@ -10,8 +10,7 @@
 
 namespace other {
 
-  /// a material is a layout-agnostic bag of typed parameter values and texture-slot paths;
-  ///  it knows nothing about pipelines, byte offsets, or rendering styles — packing against a
+  /// layout-agnostic bag of typed params + texture-slot paths; packing against a
   ///  pipeline-declared material_layout happens late, at bind time (render_pipeline)
   struct material_value {
     enum class kind : uint8_t { F32, VEC2, VEC3, VEC4, I32, B32 };
@@ -42,8 +41,7 @@ namespace other {
     ostd::map<natural_t, std::string> texture_paths;  //< FNV(slot name) -> as-authored path ("" = none)
     ostd::map<natural_t, natural_t> texture_hashes;   //< FNV(slot name) -> texture asset path_hash (resolved at load)
 
-    /// registry identity + monotonic revision, stamped by renderer_backend when the material
-    ///  is registered (asset path_hash for .omat assets, a derived key for imported materials);
+    /// registry identity + revision, stamped by renderer_backend when registered;
     ///  pipeline pack caches key off (key, revision) so reloads repack and reuse never aliases
     natural_t key = 0;
     uint32_t revision = 0;

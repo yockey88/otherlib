@@ -24,8 +24,7 @@ namespace other {
     };
 
     /// the complete AUTHORED body; pure data with a meaningful operator== so revalidation can
-    ///   compare authored settings against the built body. the spawn pose is NOT here — it is
-    ///   derived from the entity and passed to create_physics_body separately
+    ///  compare it against the built body. spawn pose is NOT here — passed to create_physics_body separately
     struct settings {
       uint32_t body_type = physics_body::STATIC;
       float mass = 1.0f;

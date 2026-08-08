@@ -15,10 +15,8 @@ namespace other {
 
   class peer_mesh;
 
-  /// the configurable security layer, per mesh. none installed = zero cost, no
-  ///  AUTHENTICATING state, no per-frame calls. mesh control frames are exempt from
-  ///  encrypt/decrypt — keepalive must survive a misconfigured key, and the hello/auth
-  ///  exchange precedes any established secret
+  /// configurable per-mesh security layer; none installed = zero cost, no AUTHENTICATING state.
+  ///  control frames are exempt from encrypt/decrypt — keepalive must survive a misconfigured key
   class OTHER_CLASS link_security {
     OTHER_ENVIRONMENT_INTERFACE("Network", "LinkSecurity");
 

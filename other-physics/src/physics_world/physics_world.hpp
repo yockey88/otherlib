@@ -48,11 +48,8 @@ namespace other {
     physics_body* create_physics_body(const physics_body::settings& settings, const glm::mat4& world_transform);
     void destroy_physics_body(physics_body* body);
 
-    /// build/rebuild the body's collider from its authored desc (allocating the pool shape on
-    ///   first call); geometry required for hull/mesh kinds, fit_bounds for fit_render_bounds.
-    ///   mesh on a non-static body downgrades to a hull with a warning. a build that cannot
-    ///   proceed yet leaves `applied` untouched so the revalidation pass retries.
-    ///   returns the body's shape record
+    /// rebuilds the body's collider from its authored desc; geometry required for hull/mesh,
+    ///  fit_bounds for fit_render_bounds. a build that can't proceed leaves `applied` untouched for retry
     physics_shape* apply_shape(physics_body* body, const physics_shape_desc& desc,
                                const glm::vec3& world_scale, const shape_geometry* geometry = nullptr,
                                const bounding_box* fit_bounds = nullptr);

@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 4.0.2)
 include(cmake/add_other_driver.cmake)
 include(cmake/configure_version_header.cmake)
 
-project(other VERSION 1.0.0 LANGUAGES CXX CSharp)
+## the release version single source of truth; VERSIONING.md has the bump rules
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" OTHER_ENVIRONMENT_VERSION)
+string(STRIP "${OTHER_ENVIRONMENT_VERSION}" OTHER_ENVIRONMENT_VERSION)
+project(other VERSION ${OTHER_ENVIRONMENT_VERSION} LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
 if (NOT CMAKE_SHARED_LINKER_FLAGS_PROFILE)
@@ -58,9 +61,8 @@ message(STATUS "[INSTALL PATHS]\n  Includedir: ${OTHER_INSTALL_INCLUDEDIR}\n  Li
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
-## every build tree produces both cli front ends (oecli with the source-tree developer
-##  tools, oecli_user with the project workflow only); this only selects which of the
-##  two `install`/`package` ship as the SDK's oecli.exe
+## every build tree produces both cli front ends (oecli dev tools, oecli_user
+##  project-only); selects which one ships as the SDK's oecli.exe
 option(OTHER_INSTALL_DEV_CLI "Ship the developer oecli (run/build/test/install/package) with the SDK instead of the user cli" OFF)
 if (OTHER_INSTALL_DEV_CLI)
   message(STATUS "SDK cli flavor: developer (source-tree workflow tools included)")
@@ -200,6 +202,8 @@ set(DOTNET_LIBRARIES nethost)
 find_package(Threads REQUIRED)
 
 add_compile_definitions(OTHER_PROJECT_FILE_TOML_FORMAT)
+## toml++ debug asserts abort on hostile text (fuzz gate); force its NDEBUG semantics
+add_compile_definitions("TOML_ASSERT=static_cast<void>")
 
 add_subdirectory(other-core)
 add_subdirectory(other-network)
@@ -298,9 +302,8 @@ install(
   DESTINATION "${OTHER_INSTALL_PROJECT_TEMPLATES}"
 )
 
-### now install resources (shaders, pipelines, boot scripts, fonts, ui layouts, ...)
-## everything the runtime references from resources/ ships with the SDK; models are
-##  local development content and stay out of the install
+### install resources (shaders, pipelines, boot scripts, fonts, ui layouts, ...)
+## everything under resources/ ships except models (dev-only content)
 set(OTHERLIB_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 install(
   DIRECTORY "${OTHERLIB_RESOURCES}/"

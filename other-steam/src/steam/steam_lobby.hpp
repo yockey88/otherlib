@@ -20,10 +20,8 @@ namespace other {
     IN_LOBBY,
   };
 
-  /// matchmaking + invite flow. steam replaces dial and discovery, never the
-  ///  protocol: the only outputs are the hooks below — the glue dials from them.
-  ///  the on_* entries take already-parsed values so tests drive the state machine
-  ///  as a faked callback driver, no client involved
+  /// matchmaking + invite flow. steam replaces dial and discovery, never the protocol — the
+  ///  hooks below are the only output. on_* entries take parsed values so tests can fake the callback driver
   class steam_lobby {
    public:
     struct hooks {

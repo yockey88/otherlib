@@ -224,11 +224,8 @@ namespace other {
     }
   }
 
-  /// ring-tagged bindings have no static resource rows, so no frame_node input row wires
-  ///  their GLSL blocks to binding points — the blocks carry no binding qualifier (GL
-  ///  default 0) while buffer_range binds ring data at the TOML-assigned points. wired at
-  ///  every pass start because a shader hot-reload relinks the program, which resets block
-  ///  bindings to their defaults
+  /// ring-tagged bindings carry no binding qualifier in GLSL (buffer_range binds ring data at
+  ///  TOML-assigned points instead); rewired every pass start since hot-reload resets block bindings
   void render_pipeline::apply_ring_block_bindings(const frame_node* node, const pass_runtime& runtime) {
     OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_ring_block_bindings.");
     PROFILE_SECTION("render_pipeline::apply_ring_block_bindings");
@@ -669,9 +666,7 @@ namespace other {
 
   std::string render_pipeline::get_pipeline_name(const std::string_view n) const {
     return
-      /// \todo: buffers break with this because the *resource* name and
-      ///        the name the buffer resource uses in the shader are coupled
-      ///        fix this
+      /// \todo buffers break here — the *resource* name and shader buffer name are coupled; fix
       // definition.name + ":" +
       std::string{ n };
   }

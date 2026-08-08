@@ -94,9 +94,8 @@ namespace other {
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 
-    /// behaviors live in their own script slots and own their managed objects;
-    ///  destroy them with their parent so the managed names are released for reuse
-    ///  (scene teardown destroys only the parent's slot)
+    /// behaviors own their managed objects; destroyed with their parent so managed names are
+    ///  released for reuse (scene teardown only destroys the parent's slot)
     for (auto it = obj->behavior_handles.rbegin(); it != obj->behavior_handles.rend(); ++it) {
       if (it->script_object_id >= 0) {
         destroy_object(it->script_object_id);
@@ -362,11 +361,8 @@ namespace other {
     PROFILE_SECTION("scripting_environment::invalidate_dotnet_script_objects_of_type");
     CORE_LOG_DEBUG("Invalidating script objects with .NET type ID {}", dotnet_type_id);
 
-    /// behaviors of this type are referenced from their parent OtherObject's C# behavior
-    ///  list, so they must be removed through the parent: a behavior only destroyed
-    ///  native-side keeps its old instance ticking through the parent's Update loop and
-    ///  roots the unloading assembly forever. the handle is kept with an invalid id so
-    ///  reattach_invalidated_dotnet_behaviors can restore it from the refreshed assembly.
+    /// behaviors must be removed through the parent, or the native-side-only destroy roots
+    ///  the unloading assembly; the handle stays invalid until reattach restores it
     if (dotnet_type* invalidated_type = dotnet.get_type_cache()->get_type(dotnet_type_id); invalidated_type != nullptr) {
       const std::string type_class_name = invalidated_type->class_name();
       const std::string type_full_name = invalidated_type->full_name();

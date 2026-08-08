@@ -90,14 +90,8 @@ namespace other {
 
     void node_editor_display::reorganize_nodes() {
       PROFILE_SECTION("node_editor_display::reorganize_nodes");
-      /// go through the, starting at the root, and place the nodes in a directed graph
-      /// 1. build graph data
-      /// 2. topological sort to get order of nodes
-      /// 3. start with root node at (0, 0), place each node at end of output pins
-      ///     at little bit +x of current node
-      ///     (all outputs will be overlapping after this step, so the graph will render as a line)
-      /// 2. start again with root and go and shift each output node down a certian bit if - y
-      ///     for each output node placed before it
+      /// layout: build the adjacency graph, topological sort it, then place each node by column
+      ///  (sort order) and stagger rows so overlapping outputs spread out
 
       /// graph data
       ostd::map<natural_t, ostd::vector<natural_t>> adjacency_list;

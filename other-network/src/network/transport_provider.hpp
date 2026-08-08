@@ -38,9 +38,8 @@ namespace other {
     SHUTDOWN = 7,
   };
 
-  /// one connection's rx scoped to one sink; the registrant owns the binding and must
-  ///  keep it alive until pump quiescence after unregistering (same reclaim contract
-  ///  as the sinks themselves)
+  /// one connection's rx scoped to one sink; the registrant owns the binding and must keep
+  ///  it alive until pump quiescence after unregistering (same reclaim contract as sinks)
   struct conn_sink_binding {
     natural_t conn_id = 0;
     packet_sink* sink = nullptr;
@@ -66,10 +65,8 @@ namespace other {
     void begin_shutdown();
     void shutdown();
 
-    /// registration runs on the main thread only; the network thread iterates the
-    ///  registry wait-free during rx fan-out. unregistering only tombstones the entry —
-    ///  destroying the sink itself must wait for network-thread quiescence
-    ///  (network_system's deferred reclaim owns that)
+    /// main-thread only; the network thread iterates the registry wait-free during rx fan-out.
+    ///  unregister only tombstones — destroying the sink waits for network_system's deferred reclaim
     inline void register_packet_sink(packet_sink* sink) {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(sink != nullptr, "Cannot register a null packet sink.");
@@ -97,11 +94,8 @@ namespace other {
     }
     virtual void on_unregistered_packet_sink(packet_sink* sink) {}
 
-    /// conn-scoped rx: the binding's sink hears exactly one connection. same writer
-    ///  discipline and reclaim contract as the transport-wide registry. a binding
-    ///  registered before the connection produces bytes sees the stream from its first
-    ///  byte; one registered shortly after establishment gets the held prefix replayed
-    ///  (bounded — see rx_hold)
+    /// conn-scoped rx: one binding hears exactly one connection, same writer discipline and
+    ///  reclaim contract as the transport-wide registry; late registration replays a bounded held prefix (see rx_hold)
     inline void register_conn_sink(conn_sink_binding* binding) {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(binding != nullptr && binding->sink != nullptr && binding->conn_id != 0, "Invalid conn sink binding.");
@@ -126,9 +120,8 @@ namespace other {
     virtual void connection_removed(natural_t connection_id) {}
 
     void rx_data(natural_t connection_id, std::span<const uint8_t> data);
-    /// inbound established (a listener produced it) / outbound established (a dial
-    ///  completed); both begin an rx hold so a promptly-registered conn sink misses
-    ///  nothing, then notify the driver thread
+    /// inbound (listener) or outbound (dial) established: both begin an rx hold so a
+    ///  promptly-registered conn sink misses nothing, then notify the driver thread
     void connection_accepted(natural_t listener_id, natural_t conn_id, const binding_point& remote);
     void connection_established(natural_t conn_id, const binding_point& remote);
     /// every teardown funnels here exactly once per connection: sink fan-out, route
@@ -168,9 +161,8 @@ namespace other {
     constexpr static size_t kRxHoldMaxBytes = 256 * 1024;
     constexpr static std::chrono::seconds kRxHoldExpiry{ 2 };
 
-    /// bytes received before any conn-scoped sink existed, replayed to the first one.
-    ///  chunk granularity preserved (datagram transports: 1 chunk = 1 datagram).
-    ///  net-thread-only
+    /// bytes received before any conn-scoped sink existed, replayed to the first one; chunk
+    ///  granularity preserved (1 chunk = 1 datagram for datagram transports). net-thread-only
     struct rx_hold {
       std::chrono::steady_clock::time_point opened_at;
       std::deque<ostd::vector<uint8_t>> chunks;

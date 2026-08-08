@@ -282,9 +282,8 @@ namespace other {
                                           .asset_type = asset::type::SCENE,
                                           .id = scene_id,
                                           .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::SCENE), name)),
-                                          // since we are loading an already existing scene into system
-                                          // we use 0 here to tell the pipeline to set scene's asset id
-                                          // so scene can be found when load is finished
+                                          // loading an existing scene: 0 tells the pipeline to set scene's
+                                          // asset id, so the scene can be found when load finishes
                                           .path_hash = 0,
                                           .load_path = p,
                                           .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
