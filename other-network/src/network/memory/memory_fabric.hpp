@@ -119,8 +119,9 @@ namespace other {
   };
 
   /// one mesh's attachment to the medium — the link_transport a mesh registers.
-  ///  simulation shape: one process, one fabric, one port per mesh
-  class fabric_port final : public link_transport {
+  ///  simulation shape: one process, one fabric, one port per mesh. subclassable
+  ///  so tests can layer transport concerns (attestation) over the medium
+  class fabric_port : public link_transport {
    public:
     explicit fabric_port(memory_fabric& medium)
         : medium(medium) {}

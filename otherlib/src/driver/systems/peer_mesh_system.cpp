@@ -12,6 +12,8 @@
 
 #include "script/scripting_environment.hpp"
 
+#include "steam/steam_context.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/network_system.hpp"
 
@@ -47,6 +49,7 @@ namespace other {
     events.register_event("network.session-ended");
     events.register_event("network.peer-joined");
     events.register_event("network.peer-left");
+    events.register_event("network.lobby-join-requested");
     events.register_event("network.command");
     events.add_listener("network.command", [this](const value& data) { handle_network_command(data); });
 
@@ -80,6 +83,9 @@ namespace other {
       return;
     }
     tcp_link->pump();
+    if (steam_link != nullptr) {
+      steam_link->pump();
+    }
     driver_mesh->tick(engine_now);
   }
 
@@ -92,8 +98,10 @@ namespace other {
     ///  alive because this system shuts down ahead of them (reverse boot order)
     sibling<network_system>(*kernel).set_connection_taps(nullptr, nullptr);
     active_session = nullptr;
+    steam_ctx = nullptr;
     driver_mesh = nullptr;
     tcp_link = nullptr;
+    steam_link = nullptr;
   }
 
   void peer_mesh_system::build(driver_kernel* kernel) {
@@ -119,8 +127,27 @@ namespace other {
       [this](const notification_connection_opened& note) { tcp_link->on_connection_opened(note); },
       [this](const notification_connection_closed& note) { tcp_link->on_connection_closed(note); });
 
-    /// D13 policy chain: config override, else random nonzero
+    if (steam_context* steam = net.steam(); steam != nullptr && steam->state() == steam_state::READY) {
+      steam_ctx = steam;
+      steam_link = make_scope<steam_link_transport>(static_cast<int>(get_driver().get_config_value<size_t>("networking.steam.virtual-port", 0)));
+      driver_mesh->register_transport(*steam_link);
+      /// steam replaces dial and discovery, never the protocol: the lobby's only
+      ///  outputs are a host id to dial and an invite to consider
+      steam->lobby().set_hooks({
+        .ready_to_connect = [this](uint64_t host_id) {
+          if (active_session != nullptr) {
+            active_session->join(net_address{ .addressing = net_address::kind::STEAM_PEER, .id = host_id });
+          }
+        },
+        .join_requested = [this](uint64_t lobby_id) { handle_lobby_join_request(lobby_id); },
+      });
+    }
+
+    /// D13 policy chain: attested identity (steam) beats config override beats random
     session_node = get_driver().get_config_value<size_t>("networking.node-id", 0);
+    if (steam_ctx != nullptr) {
+      session_node = steam_ctx->local_steam_id();
+    }
     if (session_node == 0) {
       std::mt19937_64 gen{ std::random_device{}() };
       while (session_node == 0) {
@@ -162,10 +189,64 @@ namespace other {
       CORE_LOG_WARN("host refused: networking is disabled or a custom actor owns the session");
       return false;
     }
+    /// the physics.backend idiom: config picks the listen transport at host time
+    if (get_driver().get_config_value<std::string>("networking.transport", std::string("tcp")) == "steam") {
+      return host_steam_session();
+    }
     if (port == 0) {
       port = static_cast<uint16_t>(get_driver().get_config_value<size_t>("networking.port", 49222));
     }
     return active_session->host(net_address::ip_endpoint({ 0, port }));
+  }
+
+  bool peer_mesh_system::host_steam_session() {
+    if (active_session == nullptr || steam_ctx == nullptr) {
+      CORE_LOG_WARN("steam host refused: steam is not ready");
+      return false;
+    }
+    if (!active_session->host(net_address{ .addressing = net_address::kind::STEAM_PEER })) {
+      return false;
+    }
+
+    const std::string type_name = get_driver().get_config_value<std::string>("networking.steam.lobby-type", std::string("friends"));
+    uint8_t lobby_type = 1;  // friends
+    if (type_name == "private") {
+      lobby_type = 0;
+    } else if (type_name == "public") {
+      lobby_type = 2;
+    } else if (type_name == "invisible") {
+      lobby_type = 3;
+    }
+    const int max_members = static_cast<int>(get_driver().get_config_value<size_t>("networking.max-peers", 8));
+    /// lobby failure downgrades to invite-less P2P hosting, already logged
+    steam_ctx->lobby().create(lobby_type, max_members);
+    return true;
+  }
+
+  bool peer_mesh_system::join_lobby(uint64_t lobby_id) {
+    if (active_session == nullptr || steam_ctx == nullptr) {
+      CORE_LOG_WARN("lobby join refused: steam is not ready");
+      return false;
+    }
+    /// async: LobbyEnter resolves the owner, the ready_to_connect hook dials it
+    return steam_ctx->lobby().join(lobby_id);
+  }
+
+  void peer_mesh_system::open_invite_dialog() {
+    if (steam_ctx != nullptr) {
+      steam_ctx->lobby().open_invite_dialog();
+    }
+  }
+
+  void peer_mesh_system::handle_lobby_join_request(uint64_t lobby_id) {
+    event_system& events = *get_driver().get_event_system();
+    events.trigger_event("network.lobby-join-requested", static_cast<uint64_t>(lobby_id));
+    if (scripting_environment* scripts = subsystem<scripting_environment>::get(); scripts != nullptr) {
+      scripts->call_static_dotnet_method<void>(kNetworkClass, "DispatchLobbyJoinRequested", lobby_id);
+    }
+    if (get_driver().get_config_value<bool>("networking.steam.auto-join-invites", true)) {
+      join_lobby(lobby_id);
+    }
   }
 
   bool peer_mesh_system::join_session(const std::string_view address_text, uint16_t port) {
@@ -217,18 +298,25 @@ namespace other {
         active_session->leave();
       }
       events.trigger_event("console.output", std::string("left session"));
+    } else if (verb == "invite") {
+      open_invite_dialog();
     } else if (verb == "status") {
       events.trigger_event("console.output", status_text());
     } else {
-      events.trigger_event("console.output", std::string("usage: net host [port] | join <ip[:port]> | leave | status"));
+      events.trigger_event("console.output", std::string("usage: net host [port] | join <ip[:port]> | invite | leave | status"));
     }
   }
 
-  std::string peer_mesh_system::status_text() const {
+  std::string peer_mesh_system::status_text() {
     if (driver_mesh == nullptr) {
       return "networking inactive";
     }
     std::stringstream out;
+    if (steam_ctx != nullptr) {
+      out << "steam: ready (" << steam_ctx->persona_name() << ")\n";
+    } else if (sibling<network_system>(get_driver().get_kernel()).steam() != nullptr) {
+      out << "steam: unavailable\n";
+    }
     if (active_session == nullptr || !active_session->in_session()) {
       out << "no session\n";
     } else {
@@ -255,6 +343,9 @@ namespace other {
         break;
       case session_event::ENDED:
         events.trigger_event("network.session-ended", static_cast<uint32_t>(arg));
+        if (steam_ctx != nullptr) {
+          steam_ctx->lobby().leave();
+        }
         break;
       case session_event::PEER_JOINED:
         events.trigger_event("network.peer-joined", static_cast<uint32_t>(arg));

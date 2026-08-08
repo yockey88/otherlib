@@ -514,6 +514,18 @@ namespace other {
       return;
     }
 
+    /// D13 hardening: a transport that authenticates its remote (steam) pins the
+    ///  hello — a mismatched claim is an identity failure, not a protocol slip
+    if (const node_id attested = transports[rt->transport_index].transport->attested_remote(record->connection_id); attested != 0) {
+      if (hello.node != attested) {
+        stats.security_failures++;
+        CORE_LOG_WARN("[MESH {}] link {} hello claims node {:#x} but transport attests {:#x}", debug_name, link_id, hello.node, attested);
+        teardown(link_id, link_close_reason::SECURITY_ERROR, true);
+        return;
+      }
+      record->attested = true;
+    }
+
     record->remote = hello.node;
     record->caps.reliable = record->caps.reliable && hello.reliable != 0;
     record->caps.ordered = record->caps.ordered && hello.ordered != 0;

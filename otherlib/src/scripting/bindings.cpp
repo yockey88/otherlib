@@ -28,6 +28,7 @@
 #include "scripting/dotnet_bindings/network_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_object_bindings.hpp"
+#include "scripting/dotnet_bindings/steam_bindings.hpp"
 #include "scripting/dotnet_bindings/ui_bindings.hpp"
 #include "scripting/lua_bindings/bind_math_types_lua.hpp"
 #include "scripting/lua_bindings/bind_rendering_types_lua.hpp"
@@ -311,7 +312,13 @@ namespace other {
       .bind("NetworkLeave", bindings::native_network_leave)
       .bind("NetworkSendEvent", bindings::native_network_send_event)
       .bind("NetworkBroadcastEvent", bindings::native_network_broadcast_event)
-      .bind("NetworkCopyEventPayload", bindings::native_network_copy_event_payload);
+      .bind("NetworkCopyEventPayload", bindings::native_network_copy_event_payload)
+      .bind("NetworkHostSteam", bindings::native_network_host_steam)
+      .bind("NetworkJoinLobby", bindings::native_network_join_lobby)
+      .bind("SteamIsAvailable", bindings::native_steam_is_available)
+      .bind("SteamPlayerId", bindings::native_steam_player_id)
+      .bind("SteamPlayerName", bindings::native_steam_player_name)
+      .bind("SteamOpenInviteDialog", bindings::native_steam_open_invite_dialog);
 
     bindings::binding_context{ dn_host }
       /// OtherObject

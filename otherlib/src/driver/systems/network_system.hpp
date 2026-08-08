@@ -16,6 +16,8 @@
 #include "network/network_thread.hpp"
 #include "network/transport_provider.hpp"
 
+#include "steam/steam_context.hpp"
+
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
 
@@ -118,6 +120,10 @@ namespace other {
     void set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
                              std::function<void(const notification_connection_closed&)> on_close);
 
+    /// nullptr when steam.enabled is false; group-0 tick order pumps its callbacks
+    ///  before peer_mesh_system ticks the mesh
+    steam_context* steam() { return steam_ctx.get(); }
+
    private:
     signal_catcher signal_handler{ this };
 
@@ -125,6 +131,7 @@ namespace other {
     /// networking.force-disable, read once at init
     bool network_disabled = false;
     acknowledgement_list ack_list;
+    scope<steam_context> steam_ctx = nullptr;
 
     std::function<void(const notification_connection_opened&)> connection_opened_tap;
     std::function<void(const notification_connection_closed&)> connection_closed_tap;

@@ -30,6 +30,10 @@ namespace Other.Networking
     internal static unsafe delegate*<NativeString, byte*, int, void> NativeBroadcastEvent;
     [NativeFunction("NetworkCopyEventPayload")]
     internal static unsafe delegate*<byte*, int, int> NativeCopyEventPayload;
+    [NativeFunction("NetworkHostSteam")]
+    internal static unsafe delegate*<NativeBool32> NativeHostSteam;
+    [NativeFunction("NetworkJoinLobby")]
+    internal static unsafe delegate*<ulong, NativeBool32> NativeJoinLobby;
 
     public static bool IsConnected
     {
@@ -64,6 +68,17 @@ namespace Other.Networking
       unsafe { NativeLeave(); }
     }
 
+    /// Hosts over steam (lobby + P2P listen); Host() keeps honoring networking.transport.
+    public static bool HostSteam()
+    {
+      unsafe { return NativeHostSteam(); }
+    }
+
+    public static bool JoinLobby(ulong lobbyId)
+    {
+      unsafe { return NativeJoinLobby(lobbyId); }
+    }
+
     /// client -> host
     public static void SendEvent(string name, byte[]? payload = null)
     {
@@ -91,10 +106,14 @@ namespace Other.Networking
     public static Action<ushort>? OnPeerJoined;
     public static Action<ushort>? OnPeerLeft;
     public static Action<ushort, string, byte[]>? OnEvent;
+    /// Fires on an accepted overlay invite; the engine auto-joins unless
+    /// networking.steam.auto-join-invites is off.
+    public static Action<ulong>? OnLobbyJoinRequested;
 
     // native entry points, invoked by name each call so assembly reloads stay safe
     internal static void DispatchPeerJoined(ushort peer) => OnPeerJoined?.Invoke(peer);
     internal static void DispatchPeerLeft(ushort peer) => OnPeerLeft?.Invoke(peer);
+    internal static void DispatchLobbyJoinRequested(ulong lobbyId) => OnLobbyJoinRequested?.Invoke(lobbyId);
 
     internal static void DispatchEvent(ushort sender, string name, int payloadSize)
     {

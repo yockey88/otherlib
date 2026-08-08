@@ -38,6 +38,7 @@ namespace other {
           extern_dir / "assimp" / "lib" / "assimp-vc143-mt.dll",
           extern_dir / "sol2" / "lib" / "lua-5.4.4.dll",
           extern_dir / "jolt" / "bin" / family_lower / "Jolt.dll",
+          extern_dir / "steam" / "redistributable_bin" / "win64" / "steam_api64.dll",
         };
         return dlls;
       }

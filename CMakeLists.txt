@@ -126,8 +126,9 @@ set(OTHER_LIBRARIES_PATH
 )
 
 set(ASSIMP_NAME "assimp-vc143-mt")
-set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
+set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH}
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/steam/redistributable_bin/win64"
 )
   
 add_compile_definitions("$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ENABLE>" "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_CALLSTACK=10>")
@@ -202,6 +203,7 @@ add_compile_definitions(OTHER_PROJECT_FILE_TOML_FORMAT)
 
 add_subdirectory(other-core)
 add_subdirectory(other-network)
+add_subdirectory(other-steam)
 add_subdirectory(other-renderer)
 add_subdirectory(other-ui)
 add_subdirectory(other-scripting)
@@ -272,6 +274,7 @@ install(
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
     "${OTHER_EXTERN_DIR}/jolt/bin/${DLL_CONFIG}/Jolt.dll"
     "${OTHER_EXTERN_DIR}/xxHash/bin/${DLL_CONFIG}/xxhash.dll"
+    "${OTHER_EXTERN_DIR}/steam/redistributable_bin/win64/steam_api64.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
   OPTIONAL
 )

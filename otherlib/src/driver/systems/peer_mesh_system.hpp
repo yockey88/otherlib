@@ -13,7 +13,11 @@
 #include "peer_mesh/peer_mesh.hpp"
 #include "peer_mesh/provider_link_transport.hpp"
 
+#include "steam/steam_link_transport.hpp"
+
 namespace other {
+
+  class steam_context;
 
   /// owns the driver's default mesh and spawns the default session actor on it —
   ///  resolved by `networking.session-host` so plugin DLLs ship custom actors.
@@ -35,8 +39,12 @@ namespace other {
     network_session* session() { return active_session; }
     peer_mesh* mesh() { return driver_mesh.get(); }
 
+    /// honors networking.transport: "steam" hosts a lobby + P2P listen, else tcp
     bool host_session(uint16_t port);
     bool join_session(const std::string_view address_text, uint16_t port);
+    bool host_steam_session();
+    bool join_lobby(uint64_t lobby_id);
+    void open_invite_dialog();
 
     /// GAME_EVENT payload handoff for the C# pull (primitives-only invoke marshal)
     size_t pending_event_payload_size() const { return pending_event_payload.size(); }
@@ -45,6 +53,9 @@ namespace other {
    private:
     scope<peer_mesh> driver_mesh;
     scope<provider_link_transport> tcp_link;
+    scope<steam_link_transport> steam_link;
+    /// borrowed from network_system, set only when READY; it outlives this system
+    steam_context* steam_ctx = nullptr;
     network_session* active_session = nullptr;
     node_id session_node = 0;
     /// provider id of a spawned registry-provided actor; plugin revoke destroys it
@@ -57,9 +68,10 @@ namespace other {
 
     void build(driver_kernel* kernel);
     void handle_network_command(const value& data);
+    void handle_lobby_join_request(uint64_t lobby_id);
     void on_session_event(session_event ev, uint16_t arg);
     void dispatch_game_event(uint16_t sender_peer, std::string_view event_name, std::span<const uint8_t> payload);
-    std::string status_text() const;
+    std::string status_text();
   };
 
 }  // namespace other

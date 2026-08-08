@@ -35,6 +35,10 @@ namespace other {
     virtual bool is_stream() const = 0;
     virtual link_caps conn_caps(natural_t conn_id) const = 0;
 
+    /// platform-authenticated remote node id for a connection; 0 = the transport
+    ///  attests nothing (tcp/udp/memory). a nonzero value must match LINK_HELLO
+    virtual node_id attested_remote(natural_t conn_id) const { return 0; }
+
     /// one consumer per instance; events fire from the implementation's tick/pump
     virtual void bind(callbacks cbs) = 0;
 

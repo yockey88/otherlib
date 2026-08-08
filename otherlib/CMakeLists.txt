@@ -76,6 +76,7 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/event_bindings.cpp
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
+    src/scripting/dotnet_bindings/steam_bindings.cpp
     src/scripting/interfaces/networking_interfaces.cpp
     src/scripting/interfaces/rendering_interfaces.cpp
     src/scripting/interface_registry.cpp
@@ -187,7 +188,7 @@ target_link_directories(otherlib PUBLIC
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
 ## other_cli rides along so cli tools stay invocable from inside any running environment
-target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_audio other_scripting other_network other_core other_cli)
+target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_audio other_scripting other_network other_steam other_core other_cli)
 
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)

@@ -51,6 +51,13 @@ namespace other {
 
       net_context->net_thread->launch();
       net_context->net_thread_message_bus.register_thread();
+
+      /// degradation contract: init failure warns once and leaves the context
+      ///  UNAVAILABLE — tcp/memory untouched, CI (no client) never notices
+      if (get_driver().get_config_value<bool>("steam.enabled", false)) {
+        steam_ctx = make_scope<steam_context>();
+        steam_ctx->initialize(static_cast<uint32_t>(get_driver().get_config_value<size_t>("steam.app-id", 480)));
+      }
     }
 
     initialize_message_handlers();
@@ -105,6 +112,10 @@ namespace other {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }
     }
+
+    if (steam_ctx != nullptr) {
+      steam_ctx->pump();
+    }
   }
 
   void network_system::shutdown(driver_kernel* kernel) {
@@ -112,6 +123,7 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     PROFILE_SECTION("network_system::shutdown");
     message_handlers.clear();
+    steam_ctx = nullptr;
 
     if (!network_disabled) {
       net_context->net_thread->wait_for_shutdown_complete();

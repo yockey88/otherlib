@@ -51,3 +51,6 @@ extern/python312/include
 extern/python312/Lib
 # local scratch / prompt context (untracked by design)
 test.ps1
+
+# dev-loop steam artifact (steam_context writes it for the spacewar appid)
+steam_appid.txt

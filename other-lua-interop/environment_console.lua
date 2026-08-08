@@ -209,10 +209,11 @@ function _Console:new()
   [net Command]
     Controls the default networking session.
     Usage:
-      net host [port]           Hosts a session on the given port (default from networking.port)
+      net host [port]           Hosts a session (networking.transport picks tcp or steam)
       net join <ip[:port]>      Joins a session at the given address
+      net invite                Opens the steam overlay invite dialog (steam sessions)
       net leave                 Leaves the current session
-      net status                Prints session role, roster, and per-link state
+      net status                Prints session role, roster, steam state, per-link state
   ]]
   self:RegisterConsoleCommand("net", "Controls the default networking session.", function(args) _Meta:Driver().TriggerEvent("network.command", table.concat(args, " ")) end, net_long_description)
 
