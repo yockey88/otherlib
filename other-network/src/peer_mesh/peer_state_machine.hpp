@@ -43,6 +43,8 @@ namespace other {
       PROFILE_SECTION("peer_state_machine::peer_state_machine");
       add_transition(role_state::UNJOINED, role_event::HANDSHAKE_STARTED, role_state::JOINING);
       add_transition(role_state::JOINING, role_event::HANDSHAKE_COMPLETED, role_state::PEER);
+      /// the degenerate no-election path: a hosting session promotes itself directly
+      add_transition(role_state::UNJOINED, role_event::PROMOTE, role_state::SERVER);
       add_transition(role_state::PEER, role_event::NOMINATE, role_state::SERVER_CANDIDATE);
       add_transition(role_state::SERVER_CANDIDATE, role_event::PROMOTE, role_state::SERVER);
       add_transition(role_state::SERVER_CANDIDATE, role_event::DEMOTE, role_state::PEER);
@@ -56,7 +58,6 @@ namespace other {
     }
 
    private:
-    //  event_system& events;
     void on_enter_state(role_state state) override;
   };
 

@@ -304,7 +304,14 @@ namespace other {
     bindings::binding_context{ dn_host }
       /// Networking.
       .bind("NetworkIsConnected", bindings::native_network_is_connected)
-      .bind("NetworkGetRole", bindings::native_network_get_role);
+      .bind("NetworkGetRole", bindings::native_network_get_role)
+      .bind("NetworkLocalPeerId", bindings::native_network_local_peer_id)
+      .bind("NetworkHost", bindings::native_network_host)
+      .bind("NetworkJoin", bindings::native_network_join)
+      .bind("NetworkLeave", bindings::native_network_leave)
+      .bind("NetworkSendEvent", bindings::native_network_send_event)
+      .bind("NetworkBroadcastEvent", bindings::native_network_broadcast_event)
+      .bind("NetworkCopyEventPayload", bindings::native_network_copy_event_payload);
 
     bindings::binding_context{ dn_host }
       /// OtherObject

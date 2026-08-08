@@ -52,10 +52,15 @@ namespace other {
 
     peer_mesh& mesh() { return sim_mesh; }
 
-    test_actor& actor(size_t node) {
+    /// works for any spawned actor type; session tests spawn their own actors
+    peer_mesh_actor& base_actor(size_t node) {
       peer_mesh_actor* a = sim_mesh.actor(static_cast<node_id>(node));
       OTHER_ASSERT(a != nullptr, "fixture: no actor {}", node);
-      return *static_cast<test_actor*>(a);
+      return *a;
+    }
+
+    test_actor& actor(size_t node) {
+      return static_cast<test_actor&>(base_actor(node));
     }
 
     /// b listens on a fresh endpoint, a dials it. returns a's link id; run step()
@@ -64,10 +69,10 @@ namespace other {
       const uint64_t endpoint_id = next_endpoint++;
       fabric.configure_endpoint(endpoint_id, datagram);
 
-      const natural_t listener = actor(b).open_listener(net_address::memory_endpoint(endpoint_id));
+      const natural_t listener = base_actor(b).open_listener(net_address::memory_endpoint(endpoint_id));
       OTHER_ASSERT(listener != 0, "fixture: listen failed for endpoint {}", endpoint_id);
 
-      const natural_t link_id = actor(a).open_link(net_address::memory_endpoint(endpoint_id));
+      const natural_t link_id = base_actor(a).open_link(net_address::memory_endpoint(endpoint_id));
       OTHER_ASSERT(link_id != 0, "fixture: dial failed for endpoint {}", endpoint_id);
 
       const link_record* record = sim_mesh.net().link(link_id);

@@ -77,6 +77,9 @@ namespace other {
       natural_t peer_conn = 0;
       bool datagram = false;
       bool open = true;
+      /// graceful close: no new tx, in-flight frames still deliver, the CLOSED
+      ///  event queues behind them (like a FIN behind flushed data)
+      bool closing = false;
       fabric_port* owner = nullptr;
       channel out;
     };

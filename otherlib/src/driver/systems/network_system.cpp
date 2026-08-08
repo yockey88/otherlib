@@ -430,6 +430,27 @@ namespace other {
     return net_context->net_thread != nullptr && net_context->net_thread->is_running();
   }
 
+  network_thread* network_system::thread() {
+    ASSERT_MAIN_THREAD();
+    return net_context != nullptr ? net_context->net_thread.get() : nullptr;
+  }
+
+  transport_provider* network_system::find_provider(const std::string_view transport_name) {
+    ASSERT_MAIN_THREAD();
+    if (net_context == nullptr) {
+      return nullptr;
+    }
+    auto itr = net_context->registered_transport_providers.find(transport_provider::hash_name(transport_name));
+    return itr != net_context->registered_transport_providers.end() ? itr->second.get() : nullptr;
+  }
+
+  void network_system::set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
+                                           std::function<void(const notification_connection_closed&)> on_close) {
+    ASSERT_MAIN_THREAD();
+    connection_opened_tap = std::move(on_open);
+    connection_closed_tap = std::move(on_close);
+  }
+
   void network_system::initialize_message_handlers() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::initialize_message_handlers");
@@ -652,6 +673,9 @@ namespace other {
     notification_connection_opened data = deserialize_direct<notification_connection_opened>(msg.data).first;
     CORE_LOG_DEBUG("Connection {} opened ({}, remote {}:{})", data.connection_id, data.outbound != 0 ? "outbound" : "inbound", data.remote.ip, data.remote.port);
     get_driver().get_event_system()->trigger_event("network.connection-opened", data.connection_id);
+    if (connection_opened_tap != nullptr) {
+      connection_opened_tap(data);
+    }
   }
 
   void network_system::handle_notification_connection_closed(driver_kernel* kernel, message&& msg) {
@@ -659,6 +683,9 @@ namespace other {
     notification_connection_closed data = deserialize_direct<notification_connection_closed>(msg.data).first;
     CORE_LOG_DEBUG("Connection {} closed (reason {})", data.connection_id, data.reason);
     get_driver().get_event_system()->trigger_event("network.connection-closed", data.connection_id);
+    if (connection_closed_tap != nullptr) {
+      connection_closed_tap(data);
+    }
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {

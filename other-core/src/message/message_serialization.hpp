@@ -75,19 +75,20 @@ namespace other {
           data.append_range(buffer);
         }
         //
-        else {
+        /// nested reflected values have no formatter — they announce themselves in
+        ///  the recursive call's own trace
+        else if constexpr (reflected_type<member_t>) {
+          CORE_LOG_TRACE("{}[FIELD: {}] [NESTED] (offset: {})", std::string((level + 1) * 2, ' '), name, data.size());
+          data.append_range(serialize_direct(field_value, level + 1));
+        }
+        //
+        else if constexpr (std::is_trivially_copyable_v<member_t>) {
           CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, field_value, get_value_type<member_t>(), data.size());
-          if constexpr (reflected_type<member_t>) {
-            data.append_range(serialize_direct(field_value, level + 1));
-          }
-          //
-          else if constexpr (std::is_trivially_copyable_v<member_t>) {
-            append_named_field_to_raw_buffer(name, field_value, data);
-          }
-          //
-          else {
-            static_assert(false, "Unsupported field type for serialization in serialize_direct");
-          }
+          append_named_field_to_raw_buffer(name, field_value, data);
+        }
+        //
+        else {
+          static_assert(false, "Unsupported field type for serialization in serialize_direct");
         }
       }
     });
@@ -124,22 +125,21 @@ namespace other {
           CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, buff_size, get_value_type<T>(), data.size() - remaining_data.size());
         }
         //
-        else {
-          if constexpr (reflected_type<member_t>) {
-            auto [deserialized_value, consumed_size] = deserialize_direct<member_t>(remaining_data, level + 1);
-            member(value) = deserialized_value;
-            remaining_data = remaining_data.subspan(consumed_size);
-          }
-          //
-          else if constexpr (std::is_default_constructible_v<member_t>) {
-            member(value) = parse_named_field_from_raw_buffer<member_t>(name, remaining_data);
-            remaining_data = remaining_data.subspan(sizeof(member_t));
-          }
-          //
-          else {
-            static_assert(false, "Unsupported field type for deserialization in deserialize_direct");
-          }
+        else if constexpr (reflected_type<member_t>) {
+          auto [deserialized_value, consumed_size] = deserialize_direct<member_t>(remaining_data, level + 1);
+          member(value) = deserialized_value;
+          remaining_data = remaining_data.subspan(consumed_size);
+          CORE_LOG_TRACE("{}[FIELD: {}] [NESTED] (offset: {})", std::string((level + 1) * 2, ' '), name, offset);
+        }
+        //
+        else if constexpr (std::is_default_constructible_v<member_t>) {
+          member(value) = parse_named_field_from_raw_buffer<member_t>(name, remaining_data);
+          remaining_data = remaining_data.subspan(sizeof(member_t));
           CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, member(value), get_value_type<member_t>(), offset);
+        }
+        //
+        else {
+          static_assert(false, "Unsupported field type for deserialization in deserialize_direct");
         }
       }
     });

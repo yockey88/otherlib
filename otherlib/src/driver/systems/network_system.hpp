@@ -110,6 +110,14 @@ namespace other {
 
     bool network_active() const;
 
+    /// peer-mesh glue: the network thread and providers the link-transport
+    ///  adapters wrap, plus the driver-side connection-notification feed they
+    ///  need (accept attribution and dial failures arrive only that way)
+    network_thread* thread();
+    transport_provider* find_provider(const std::string_view transport_name);
+    void set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
+                             std::function<void(const notification_connection_closed&)> on_close);
+
    private:
     signal_catcher signal_handler{ this };
 
@@ -117,6 +125,9 @@ namespace other {
     /// networking.force-disable, read once at init
     bool network_disabled = false;
     acknowledgement_list ack_list;
+
+    std::function<void(const notification_connection_opened&)> connection_opened_tap;
+    std::function<void(const notification_connection_closed&)> connection_closed_tap;
 
     /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
     ///  providers/sinks can live in plugins that unload the moment unregister returns

@@ -48,6 +48,13 @@ namespace other {
     MAX_FRAME_SIZE,
     TIMESTAMP_US,
     REASON,
+
+    /// session layer (otherlib/src/network/session/net_messages.hpp)
+    CLIENT_FLAGS,
+    PEER_ID,
+    HOST_TICK,
+    ROSTER_COUNT,
+    SENDER_PEER,
   };
 
   constexpr static std::string_view kMessageFieldNames[] = {
@@ -88,6 +95,12 @@ namespace other {
     "max-frame-size",
     "timestamp-us",
     "reason",
+
+    "client-flags",
+    "peer-id",
+    "host-tick",
+    "roster-count",
+    "sender-peer",
   };
 
   constexpr static value_type kMessageFieldTypes[] = {
@@ -127,6 +140,12 @@ namespace other {
     value_type::UINT32,  // MAX_FRAME_SIZE
     value_type::UINT64,  // TIMESTAMP_US
     value_type::UINT16,  // REASON
+
+    value_type::UINT32,  // CLIENT_FLAGS
+    value_type::UINT16,  // PEER_ID
+    value_type::UINT64,  // HOST_TICK
+    value_type::UINT16,  // ROSTER_COUNT
+    value_type::UINT16,  // SENDER_PEER
   };
 
 }  // namespace other

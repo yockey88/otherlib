@@ -50,6 +50,8 @@ target_sources(otherlib
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
+    src/network/session/network_session.cpp
+
     # src/object/...
 
     src/project/project.cpp

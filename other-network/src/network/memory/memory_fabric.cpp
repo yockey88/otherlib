@@ -179,7 +179,7 @@ namespace other {
 
   void memory_fabric::tx(natural_t conn_id, std::span<const uint8_t> bytes) {
     auto itr = connections.find(conn_id);
-    if (itr == connections.end() || !itr->second.open) {
+    if (itr == connections.end() || !itr->second.open || itr->second.closing) {
       return;
     }
     auto peer = connections.find(itr->second.peer_conn);
@@ -191,17 +191,14 @@ namespace other {
 
   void memory_fabric::close(natural_t conn_id) {
     auto itr = connections.find(conn_id);
-    if (itr == connections.end() || !itr->second.open) {
+    if (itr == connections.end() || !itr->second.open || itr->second.closing) {
       return;
     }
-    itr->second.open = false;
-    itr->second.out.queue.clear();
-
-    auto peer = connections.find(itr->second.peer_conn);
-    if (peer != connections.end() && peer->second.open) {
-      peer->second.open = false;
-      peer->second.out.queue.clear();
-      events.push_back({ .kind = event_kind::CLOSED, .target = peer->second.owner, .a = itr->second.peer_conn });
+    /// frames already sent (a REJECT, a BYE) still arrive; tick emits CLOSED once
+    ///  the channel drains
+    itr->second.closing = true;
+    if (auto peer = connections.find(itr->second.peer_conn); peer != connections.end()) {
+      peer->second.closing = true;
     }
   }
 
@@ -281,6 +278,22 @@ namespace other {
       }
       if (frame.target->sink.received) {
         frame.target->sink.received(frame.to_conn, frame.bytes);
+      }
+    }
+
+    /// a closing pair fully closes only once BOTH channels drain — otherwise the
+    ///  quiet side would close first and block the closer's final frames
+    for (auto& [conn_id, conn] : connections) {
+      if (!conn.closing || !conn.open || !conn.out.queue.empty()) {
+        continue;
+      }
+      auto peer = connections.find(conn.peer_conn);
+      if (peer != connections.end() && !peer->second.out.queue.empty()) {
+        continue;
+      }
+      conn.open = false;
+      if (peer != connections.end() && peer->second.open) {
+        events.push_back({ .kind = event_kind::CLOSED, .target = peer->second.owner, .a = conn.peer_conn });
       }
     }
   }
