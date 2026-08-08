@@ -10,6 +10,8 @@
 #include "core/value.hpp"
 #include "event/event_system.hpp"
 
+#include "network/session/authored_session.hpp"
+
 #include "script/scripting_environment.hpp"
 
 #include "steam/steam_context.hpp"
@@ -91,6 +93,65 @@ namespace other {
     if (scene_replication != nullptr) {
       scene_replication->tick(engine_now);
     }
+    watch_authored_playback(kernel);
+  }
+
+  void peer_mesh_system::watch_authored_playback(driver_kernel* kernel) {
+    scene* active = sibling<scene_system>(*kernel).get_active_scene();
+    const bool playing = active != nullptr && active->is_playing();
+    if (playing == scene_was_playing) {
+      return;
+    }
+    scene_was_playing = playing;
+
+    if (playing) {
+      if (active_session != nullptr && !active_session->in_session()) {
+        apply_authored_settings(*active);
+      }
+      return;
+    }
+    /// authored sessions follow their scene out of play; console/API sessions don't
+    if (authored_active && active_session != nullptr) {
+      active_session->leave();
+    }
+    authored_active = false;
+    authored_spawn_template.clear();
+  }
+
+  void peer_mesh_system::apply_authored_settings(scene& s) {
+    PROFILE_SECTION("peer_mesh_system::apply_authored_settings");
+    const network_settings_component* settings = authored_session::find_settings(s);
+    if (settings == nullptr || settings->session_mode == "off") {
+      return;
+    }
+    authored_spawn_template = settings->spawn_template;
+
+    const authored_session::defaults engine{
+      .transport = get_driver().get_config_value<std::string>("networking.transport", std::string("tcp")),
+      .port = static_cast<uint16_t>(get_driver().get_config_value<size_t>("networking.port", 49222)),
+      .resolve_address = [](std::string_view address, uint16_t port) -> net_address {
+        uint32_t ip = 0;
+        parse_ip(address, ip);
+        return net_address::ip_endpoint({ ip, port });
+      },
+      .host_steam = [this] { return host_steam_session(); },
+    };
+    authored_active = authored_session::start(*active_session, *settings, engine);
+    if (!authored_active) {
+      CORE_LOG_WARN("authored session did not start (mode '{}')", settings->session_mode);
+    }
+  }
+
+  void peer_mesh_system::spawn_template_for_peer(uint16_t peer) {
+    scene* s = sibling<scene_system>(get_driver().get_kernel()).get_active_scene();
+    if (s == nullptr || scene_replication == nullptr) {
+      return;
+    }
+    PROFILE_SECTION("peer_mesh_system::spawn_template_for_peer");
+    const natural_t clone_id = authored_session::spawn_template(*s, *scene_replication, authored_spawn_template, peer);
+    if (clone_id != 0) {
+      CORE_LOG_INFO("spawned '{}' for peer {}", s->find_object(clone_id)->name, peer);
+    }
   }
 
   void peer_mesh_system::shutdown(driver_kernel* kernel) {
@@ -125,6 +186,8 @@ namespace other {
     cfg.handshake_timeout = milliseconds{ get_driver().get_config_value<size_t>("networking.handshake-timeout-ms", 3'000) };
     cfg.keepalive_idle = milliseconds{ get_driver().get_config_value<size_t>("networking.keepalive-idle-ms", 5'000) };
     cfg.link_timeout = milliseconds{ get_driver().get_config_value<size_t>("networking.link-timeout-ms", 15'000) };
+    /// sessions fit in the default; sim-shaped actors (the manet sample) need room
+    cfg.max_links = get_driver().get_config_value<size_t>("networking.max-links", 32);
     driver_mesh = make_scope<peer_mesh>("driver", cfg);
 
     tcp_link = make_scope<provider_link_transport>(*net.thread(), *tcp, link_caps{ .reliable = true, .ordered = true, .max_frame_size = 0 }, true);
@@ -182,6 +245,27 @@ namespace other {
       repl_cfg.interp_delay = milliseconds{ get_driver().get_config_value<size_t>("networking.interp-delay-ms", 100) };
       scene_replication = make_scope<replication>(*active_session,
         [this] { return sibling<scene_system>(get_driver().get_kernel()).get_active_scene(); }, repl_cfg);
+
+      scene_replication->set_script_field_hooks(
+        [this](natural_t object_id) -> ostd::vector<uint8_t> {
+          scripting_environment* scripts = subsystem<scripting_environment>::get();
+          if (scripts == nullptr) {
+            return {};
+          }
+          staged_script_fields.clear();
+          scripts->call_static_dotnet_method<int32_t>(kNetworkClass, "CollectReplicatedFields", static_cast<uint64_t>(object_id));
+          return std::move(staged_script_fields);
+        },
+        [this](natural_t object_id, std::span<const uint8_t> payload) {
+          scripting_environment* scripts = subsystem<scripting_environment>::get();
+          if (scripts == nullptr) {
+            return;
+          }
+          pending_event_payload.assign(payload.begin(), payload.end());
+          scripts->call_static_dotnet_method<void>(kNetworkClass, "ApplyReplicatedFields",
+                                                   static_cast<uint64_t>(object_id), static_cast<int32_t>(payload.size()));
+          pending_event_payload.clear();
+        });
 
       scene_ops = make_scope<op_channel>(*active_session, [this] { return scene_replication->host_tick(); },
                                          get_driver().get_config_value<size_t>("networking.op-journal-cap", 4096));
@@ -397,6 +481,11 @@ namespace other {
         events.trigger_event("network.peer-joined", static_cast<uint32_t>(arg));
         if (scripts != nullptr) {
           scripts->call_static_dotnet_method<void>(kNetworkClass, "DispatchPeerJoined", arg);
+        }
+        /// Mode 1: authored spawn template clones for the new member (after the
+        ///  replication forward above — the join snapshot precedes the clone)
+        if (active_session != nullptr && active_session->is_host() && !authored_spawn_template.empty()) {
+          spawn_template_for_peer(arg);
         }
         break;
       case session_event::PEER_LEFT:

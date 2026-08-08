@@ -226,6 +226,21 @@ namespace other {
     }
     pending_syncs.clear();
 
+    /// [Replicated] script fields: the one automatic lane beyond transforms
+    if (collect_script_fields != nullptr) {
+      for (const net_object_entry& entry : s.network().entries()) {
+        if (!entry.spawn_sent) {
+          continue;
+        }
+        ostd::vector<uint8_t> fields = collect_script_fields(entry.object_id);
+        if (fields.empty()) {
+          continue;
+        }
+        net_component_state msg{ .net_id = entry.net_id, .key_hash = kScriptFieldsKey, .payload = std::move(fields) };
+        session.broadcast(net_message::COMPONENT_STATE, serialize_direct(msg));
+      }
+    }
+
     for (const natural_t net_id : dead) {
       /// the sweep IS the despawn detector: plain destroy_object replicates
       const net_despawn msg{ .net_id = net_id };
@@ -391,8 +406,17 @@ namespace other {
       return;
     }
     const opt<natural_t> object_id = s.network().object_of(msg.net_id);
+    if (!object_id.has_value()) {
+      return;
+    }
+    if (msg.key_hash == kScriptFieldsKey) {
+      if (apply_script_fields != nullptr) {
+        apply_script_fields(*object_id, msg.payload);
+      }
+      return;
+    }
     const serialization::component_codec* codec = serialization::find_component_codec(msg.key_hash);
-    scene_object* object = object_id.has_value() ? s.find_object(*object_id) : nullptr;
+    scene_object* object = s.find_object(*object_id);
     if (object != nullptr && codec != nullptr) {
       codec->apply(s, object, msg.payload, serialization::default_codec_services());
     }

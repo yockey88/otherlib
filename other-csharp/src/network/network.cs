@@ -42,6 +42,8 @@ namespace Other.Networking
     internal static unsafe delegate*<ulong, NativeBool32> NativeIsMine;
     [NativeFunction("NetworkRequestOp")]
     internal static unsafe delegate*<NativeString, ulong, byte*, int, NativeBool32> NativeRequestOp;
+    [NativeFunction("NetworkStageReplicated")]
+    internal static unsafe delegate*<byte*, int, void> NativeStageReplicated;
 
     public static bool IsConnected
     {
@@ -184,6 +186,32 @@ namespace Other.Networking
       => OnOpApplied?.Invoke(actor, name, subject, PullPendingPayload(payloadSize));
 
     internal static void DispatchOpRejected(string name, ushort reason) => OnOpRejected?.Invoke(name, reason);
+
+    /// [Replicated] sweep entry points — native drives these per net object.
+    internal static int CollectReplicatedFields(ulong objectId)
+    {
+      byte[]? blob = ReplicatedSync.Collect(objectId);
+      if (blob == null || blob.Length == 0)
+      {
+        return 0;
+      }
+      unsafe
+      {
+        fixed (byte* data = blob)
+        {
+          NativeStageReplicated(data, blob.Length);
+        }
+      }
+      return blob.Length;
+    }
+
+    internal static void ApplyReplicatedFields(ulong objectId, int size)
+    {
+      if (size > 0)
+      {
+        ReplicatedSync.Apply(objectId, PullPendingPayload(size));
+      }
+    }
 
     /// The native side parks the payload for the duration of the dispatch call.
     private static byte[] PullPendingPayload(int payloadSize)

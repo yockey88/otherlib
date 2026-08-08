@@ -35,6 +35,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/project.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/network/network.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/network/replicated.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/network/steam.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/network-component.cs
 

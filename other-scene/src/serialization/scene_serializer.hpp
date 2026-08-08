@@ -16,6 +16,7 @@
 namespace other {
 
   class scene;
+  struct scene_object;
 
   namespace serialization {
 
@@ -38,6 +39,16 @@ namespace other {
     /// given — join snapshots adopt net identities through it)
     void instantiate_scene(scene& s, const scene_document& doc, const codec_services& services,
                            ostd::map<natural_t, natural_t>* out_id_remap = nullptr);
+
+    /// -- object subtrees (spawn templates, duplicate-object, prefabs) ------
+
+    /// one object and its descendants through the same codecs; the subtree root's
+    /// record carries parent_file_id 0
+    scene_document capture_object_subtree(scene& s, natural_t root_object_id, const codec_services& services);
+
+    /// instantiates the document's records under @p parent (nullptr = scene root)
+    void instantiate_subtree(scene& s, const scene_document& doc, scene_object* parent, const codec_services& services,
+                             ostd::map<natural_t, natural_t>* out_id_remap = nullptr);
 
     /// -- document <-> bytes (.oscnb + snapshots) ---------------------------
 

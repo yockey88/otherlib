@@ -53,6 +53,10 @@ namespace other {
     /// GAME_EVENT payload handoff for the C# pull (primitives-only invoke marshal)
     size_t pending_event_payload_size() const { return pending_event_payload.size(); }
     size_t copy_pending_event_payload(uint8_t* dst, size_t capacity);
+    /// the reverse direction: C# stages its [Replicated] blob during a collect call
+    void stage_script_fields(const uint8_t* data, size_t length) {
+      staged_script_fields.assign(data, data + length);
+    }
 
    private:
     scope<peer_mesh> driver_mesh;
@@ -71,10 +75,19 @@ namespace other {
     microseconds engine_now{ 0 };
     bool networking_off = false;
     ostd::vector<uint8_t> pending_event_payload;
+    ostd::vector<uint8_t> staged_script_fields;
+
+    /// Mode 1: authored playback state (05 §6 lifecycle — stop leaves the session)
+    bool scene_was_playing = false;
+    bool authored_active = false;
+    std::string authored_spawn_template;
 
     void build(driver_kernel* kernel);
     void handle_network_command(const value& data);
     void handle_lobby_join_request(uint64_t lobby_id);
+    void watch_authored_playback(driver_kernel* kernel);
+    void apply_authored_settings(scene& s);
+    void spawn_template_for_peer(uint16_t peer);
     void on_session_event(session_event ev, uint16_t arg);
     void dispatch_game_event(uint16_t sender_peer, std::string_view event_name, std::span<const uint8_t> payload);
     op_result validate_op_via_scripts(uint16_t peer, const scene_op& op);

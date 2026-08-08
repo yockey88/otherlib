@@ -43,9 +43,8 @@ namespace other {
         return dlls;
       }
 
-      void stage_runtime_dlls(const tool_context& ctx, const filepath& root, std::string_view config, bool dry_run) {
+      void stage_runtime_dlls(const tool_context& ctx, const filepath& root, bool dry_run) {
         PROFILE_SECTION("stage_runtime_dlls");
-        const bool debug_family = (config == "Debug" || config == "ProfileD");
 
         /// every directory that holds a runnable build output; plugin outputs (spacesim,
         ///  test-project, ...) load inside the editor process and need no copies
@@ -59,44 +58,56 @@ namespace other {
           root / "build" / "tests" / "harness",
         };
 
-        const std::vector<filepath> dlls = runtime_dlls(root, debug_family);
+        /// EVERY config's existing output dirs get their family-correct dlls, not
+        ///  just the config that was built: a config whose last build predates a
+        ///  staging-list change (or ran under an older oecli) heals on the next
+        ///  build of ANY config instead of missing dlls until its own rebuild
+        constexpr std::array<std::pair<std::string_view, bool>, 4> configs = { {
+          { "Debug", /*debug_family=*/true },
+          { "Release", false },
+          { "Profile", false },
+          { "ProfileD", true },
+        } };
+
         if (dry_run) {
-          ctx.print("would stage {} runtime DLLs into the built application directories", dlls.size());
+          ctx.print("would stage the runtime DLLs into every built configuration's application directories");
           return;
         }
 
         size_t copied = 0;
         size_t up_to_date = 0;
-        for (const filepath& dll : dlls) {
-          if (!std::filesystem::exists(dll)) {
-            ctx.print("warning: runtime dll '{}' does not exist", dll.string());
-            continue;
-          }
-          for (const filepath& output_dir : output_dirs) {
-            const filepath destination = output_dir / config;
-            if (!std::filesystem::exists(destination)) {
+        for (const auto& [config, debug_family] : configs) {
+          for (const filepath& dll : runtime_dlls(root, debug_family)) {
+            if (!std::filesystem::exists(dll)) {
+              ctx.print("warning: runtime dll '{}' does not exist", dll.string());
               continue;
             }
+            for (const filepath& output_dir : output_dirs) {
+              const filepath destination = output_dir / std::string(config);
+              if (!std::filesystem::exists(destination)) {
+                continue;
+              }
 
-            /// the vendored dlls never change in place, so a same-sized copy is current;
-            ///  this also keeps the pass from rewriting dlls a running process (often
-            ///  oecli itself) holds loaded
-            const filepath staged = destination / dll.filename();
-            std::error_code ec;
-            if (std::filesystem::exists(staged) && std::filesystem::file_size(staged, ec) == std::filesystem::file_size(dll, ec)) {
-              ++up_to_date;
-              continue;
-            }
+              /// the vendored dlls never change in place, so a same-sized copy is current;
+              ///  this also keeps the pass from rewriting dlls a running process (often
+              ///  oecli itself) holds loaded
+              const filepath staged = destination / dll.filename();
+              std::error_code ec;
+              if (std::filesystem::exists(staged) && std::filesystem::file_size(staged, ec) == std::filesystem::file_size(dll, ec)) {
+                ++up_to_date;
+                continue;
+              }
 
-            std::filesystem::copy_file(dll, staged, std::filesystem::copy_options::overwrite_existing, ec);
-            if (ec) {
-              ctx.print("warning: failed to stage '{}' into '{}': {}", dll.filename().string(), destination.string(), ec.message());
-              continue;
+              std::filesystem::copy_file(dll, staged, std::filesystem::copy_options::overwrite_existing, ec);
+              if (ec) {
+                ctx.print("warning: failed to stage '{}' into '{}': {}", dll.filename().string(), destination.string(), ec.message());
+                continue;
+              }
+              ++copied;
             }
-            ++copied;
           }
         }
-        ctx.print("staged {} runtime DLL copies ({} already up to date) [{}]", copied, up_to_date, debug_family ? "Debug" : "Release");
+        ctx.print("staged {} runtime DLL copies ({} already up to date) across build configurations", copied, up_to_date);
       }
 
     }  // namespace
@@ -178,7 +189,7 @@ namespace other {
         return { .code = built.code, .message = std::format("build failed (exit {})", built.code) };
       }
 
-      stage_runtime_dlls(ctx, root, config, options.dry_run);
+      stage_runtime_dlls(ctx, root, options.dry_run);
       if (options.dry_run) {
         return tool_result::ok("dry run only, nothing built");
       }

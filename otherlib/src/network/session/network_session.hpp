@@ -84,6 +84,8 @@ namespace other {
     ///  actors. session control ids and GAME_EVENT are consumed internally
     void register_handler(net_message id, frame_handler fn);
     void set_join_validator(join_validator fn) { validator = std::move(fn); }
+    /// authored scenes may override capacity before hosting (Mode 1)
+    void set_max_peers(uint16_t max_peers) { cfg.max_peers = max_peers; }
     void set_observer(session_observer fn) { observer = std::move(fn); }
     void set_game_event_handler(game_event_handler fn) { on_game_event = std::move(fn); }
 

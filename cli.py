@@ -10,6 +10,7 @@ is this script.
   python cli.py test -c Debug
   python cli.py bootstrap [-c CFG] [--tests] [--regen]   (only build oecli itself)
   python cli.py bootstrap --user                         (build the user cli instead)
+  python cli.py cloc                                     (capped-LOC ledger measure)
 
 When no oecli build exists yet, the script configures cmake, builds the oecli target,
 stages the runtime DLLs oecli itself needs, and then forwards the command.
@@ -60,6 +61,7 @@ def stage_oecli_dlls(cfg, user=False):
     os.path.join(extern, "assimp", "lib", "assimp-vc143-mt.dll"),
     os.path.join(extern, "sol2", "lib", "lua-5.4.4.dll"),
     os.path.join(extern, "jolt", "bin", family.lower(), "Jolt.dll"),
+    os.path.join(extern, "steam", "redistributable_bin", "win64", "steam_api64.dll"),
   ]
 
   destination = os.path.dirname(oecli_path(cfg, user))
@@ -89,6 +91,35 @@ def bootstrap(cfg, with_tests=False, regen=False, user=False):
   return oecli_path(cfg, user)
 
 
+LEDGER_UNCAPPED = ("other-editor", "other-cli", "other-server",
+                   "other-csharp", "other-csharp-interop", "other-lua-interop")
+LEDGER_EXTENSIONS = (".cpp", ".hpp", ".h", ".inl")
+
+
+def capped_loc():
+  ## the roadmap LOC ledger: raw lines of C++ sources under each capped module's src/;
+  ##  the applications (editor/cli/server), the C# side, and the interops are uncapped
+  rows = []
+  for entry in sorted(os.listdir(REPO_ROOT)):
+    if not (entry == "otherlib" or entry.startswith("other-")) or entry in LEDGER_UNCAPPED:
+      continue
+    src = os.path.join(REPO_ROOT, entry, "src")
+    if not os.path.isdir(src):
+      continue
+    lines = 0
+    for root, _dirs, files in os.walk(src):
+      for name in files:
+        if name.endswith(LEDGER_EXTENSIONS):
+          with open(os.path.join(root, name), "rb") as source:
+            lines += source.read().count(b"\n")
+    rows.append((entry, lines))
+
+  for entry, lines in rows:
+    print(f"{entry:<20}{lines:>8}")
+  print(f"{'total':<20}{sum(lines for _, lines in rows):>8}")
+  return 0
+
+
 def infer_config(args):
   for i, arg in enumerate(args):
     if arg in ("-c", "--config") and i + 1 < len(args):
@@ -107,7 +138,7 @@ def main(argv):
     print(f"[cli.py] {'user' if user else 'developer'} oecli ready at {path}")
     return 0
   elif argv and argv[0] == "cloc":
-    return subprocess.call(["cloc", "--match-d=other-*", "--not-match-d=other-(server|editor|cli)", "--include-ext=cpp,hpp,h,cc,c" , "."], cwd=REPO_ROOT)
+    return capped_loc()
 
   cfg = infer_config(argv)
   if cfg is not None and cfg not in CONFIGS:

@@ -317,6 +317,7 @@ namespace other {
       .bind("NetworkSyncComponent", bindings::native_network_sync_component)
       .bind("NetworkIsMine", bindings::native_network_is_mine)
       .bind("NetworkRequestOp", bindings::native_network_request_op)
+      .bind("NetworkStageReplicated", bindings::native_network_stage_replicated)
       .bind("NetworkHostSteam", bindings::native_network_host_steam)
       .bind("NetworkJoinLobby", bindings::native_network_join_lobby)
       .bind("SteamIsAvailable", bindings::native_steam_is_available)

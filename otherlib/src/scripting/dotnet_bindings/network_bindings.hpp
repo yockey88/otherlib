@@ -29,6 +29,8 @@ namespace other {
     nbool32 native_network_is_mine(uint64_t object_id);
 
     nbool32 native_network_request_op(native_string op_name, uint64_t subject_net_id, const uint8_t* payload, int32_t length);
+    /// C# -> native blob handoff during a [Replicated] collect call
+    void native_network_stage_replicated(const uint8_t* data, int32_t length);
 
   }  // namespace bindings
 }  // namespace other

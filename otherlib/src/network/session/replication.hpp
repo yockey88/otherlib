@@ -42,6 +42,18 @@ namespace other {
     bool sync_component(natural_t object_id, natural_t key_hash);
     bool is_mine(natural_t object_id) const;
 
+    /// the [Replicated] script-field lane: one automatic COMPONENT_STATE stream
+    ///  keyed kScriptFieldsKey. the hooks keep scripting out of this module —
+    ///  the glue wires C#, tests wire fakes. collect returns the dirty-field blob
+    ///  (empty = clean); apply writes it on the replica. format is the collector's
+    constexpr static natural_t kScriptFieldsKey = FNV("script-fields");
+    using script_field_collector = std::function<ostd::vector<uint8_t>(natural_t object_id)>;
+    using script_field_applier = std::function<void(natural_t object_id, std::span<const uint8_t> payload)>;
+    void set_script_field_hooks(script_field_collector collect, script_field_applier apply) {
+      collect_script_fields = std::move(collect);
+      apply_script_fields = std::move(apply);
+    }
+
    private:
     struct interp_sample {
       uint64_t tick = 0;
@@ -75,6 +87,8 @@ namespace other {
 
     ostd::map<natural_t, interp_ring> interp;
     ostd::vector<std::pair<natural_t, natural_t>> pending_syncs;  // net_id, key_hash
+    script_field_collector collect_script_fields;
+    script_field_applier apply_script_fields;
 
     // host
     void sweep_authored(scene& s);

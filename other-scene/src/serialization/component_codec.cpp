@@ -15,6 +15,7 @@
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/network_component.hpp"
+#include "object/network_settings_component.hpp"
 #include "object/physics_component.hpp"
 #include "object/physics_joint_component.hpp"
 #include "object/render_component.hpp"
@@ -170,6 +171,7 @@ namespace other {
         codecs.push_back(make_generic_codec<audio_source_component>("audio-source", "Audio Source", /*implicit=*/false));
         codecs.push_back(make_generic_codec<audio_listener_component>("audio-listener", "Audio Listener", /*implicit=*/false));
         codecs.push_back(make_generic_codec<network_component>("network", "Network", /*implicit=*/false));
+        codecs.push_back(make_generic_codec<network_settings_component>("network-settings", "Network Settings", /*implicit=*/false));
 
         for (size_t i = 0; i < codecs.size(); ++i) {
           for (size_t j = i + 1; j < codecs.size(); ++j) {

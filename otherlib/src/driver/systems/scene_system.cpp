@@ -10,6 +10,7 @@
 
 #include "object/audio_listener_component.hpp"
 #include "object/network_component.hpp"
+#include "object/network_settings_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/physics_joint_component.hpp"
@@ -331,6 +332,7 @@ namespace other {
     component_reg->register_component_type<audio_source_component>("Audio Source");
     component_reg->register_component_type<audio_listener_component>("Audio Listener");
     component_reg->register_component_type<network_component>("Network");
+    component_reg->register_component_type<network_settings_component>("Network Settings");
   }
 
   void scene_system::handle_scene_load_event(const value& data) {

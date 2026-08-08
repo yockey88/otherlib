@@ -13,7 +13,7 @@ dockerfile
 # environment files
 .vs*/
 .cache/
-# testing ai (gross), don't share
+# testing ai
 .github/*.md
 .github/prompts/
 

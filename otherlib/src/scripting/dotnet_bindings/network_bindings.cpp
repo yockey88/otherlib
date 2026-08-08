@@ -113,5 +113,11 @@ namespace other {
              system->ops()->request(static_cast<std::string>(op_name), subject_net_id, payload_span(payload, length));
     }
 
+    void native_network_stage_replicated(const uint8_t* data, int32_t length) {
+      if (peer_mesh_system* system = mesh_system(); system != nullptr && data != nullptr && length > 0) {
+        system->stage_script_fields(data, static_cast<size_t>(length));
+      }
+    }
+
   }  // namespace bindings
 }  // namespace other
