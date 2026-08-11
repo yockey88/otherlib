@@ -392,7 +392,7 @@ namespace other {
       storage->physics->step_simulation(delta_time);  /// exactly one fixed step
       step_contacts.clear();
       storage->physics->drain_contacts(step_contacts);
-      dispatch_contact_events(step_contacts);         /// scripts hear contacts before their FixedUpdate
+      dispatch_contact_events(step_contacts);  /// scripts hear contacts before their FixedUpdate
       check_joint_breaks(delta_time);
     }
 
@@ -1419,7 +1419,7 @@ namespace other {
       }
     });
 
-    bool instance_overflow_warned = false;
+    static bool instance_overflow_warned = false;
     {
       PROFILE_SECTION("scene::prepare_render_data--render_view");
       storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {

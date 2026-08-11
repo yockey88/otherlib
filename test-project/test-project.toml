@@ -19,8 +19,11 @@ cs_project = "test-project/TestProject.csproj"
 # [physics]
 # backend = "box3d"
 
+# [networking]
+# session-host = "manet-sample"
+
 [scene-graph]
-starting-scene = "Arena"
+starting-scene = "SpinningDonut"
 scenes = [
   { name = "SpinningDonut", path = "test-project/assets/scenes/spinning-donut.oscn" },
   { name = "PokerTable", path = "test-project/assets/scenes/poker-table.oscn"  },

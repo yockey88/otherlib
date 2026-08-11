@@ -7,13 +7,10 @@
 #include "core/defines.hpp"
 
 #include "message/message_serialization.hpp"
-
 #include "peer_mesh/node_id.hpp"
 
 namespace other {
 
-  /// the reserved control page: net_id >= kMeshControlFloor belongs to link management.
-  ///  every other tag value is opaque to the module and passed through untouched
   enum class mesh_message : uint16_t {
     LINK_HELLO = 0xFF01,
     LINK_PING = 0xFF02,
@@ -30,8 +27,6 @@ namespace other {
     return net_id >= kMeshControlFloor;
   }
 
-  /// control payloads ride the engine reflection codec — an internal detail of the module's
-  ///  own frames, versioned by the hello's protocol field. application payloads are never touched here
   struct mesh_link_hello {
     uint32_t magic = kMeshMagic;
     uint16_t protocol = kMeshProtocolVersion;

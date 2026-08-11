@@ -1,0 +1,45 @@
+schema-version = 1
+
+[colors]                        # values: "#RRGGBB", "#RRGGBBAA", or [r, g, b, a] floats
+"core.accent"            = "#3BA7F0"
+"core.bg0"               = "#0B0E14"
+"inspector.field_bg"     = [0.04, 0.05, 0.08, 1.0]
+"asset.texture"          = "#DAA520"
+
+[metrics]                       # multipliers/values feeding ImGuiStyle (section 5)
+density                = 1.0    # global spacing multiplier, clamped [0.75, 1.5]
+rounding               = 2.0    # WindowRounding/FrameRounding/TabRounding base, px
+border-size            = 1.0    # WindowBorderSize/FrameBorderSize (0 disables)
+item-spacing           = [8.0, 4.0]
+frame-padding          = [6.0, 3.0]
+cell-padding           = [4.0, 2.0]
+indent-spacing         = 18.0
+scrollbar-size         = 12.0
+grab-min-size          = 10.0
+
+[typography]                    # font roles; files resolve portfolio-relative, then resources/fonts/
+default   = { file = "fonts/BlexMonoNerdFont-Regular.ttf", size = 16.0 }
+mono      = { file = "fonts/BlexMonoNerdFont-Regular.ttf", size = 15.0 }
+heading   = { file = "fonts/BlexMonoNerdFont-Regular.ttf", size = 19.0 }
+small     = { file = "fonts/BlexMonoNerdFont-Regular.ttf", size = 13.0 }
+# icons ride the default font's nerd-font glyphs unless a dedicated file is given
+icons     = { }                 # empty table = merge into default
+
+[icons]                         # glyph overrides by semantic name (section 7)
+"status.dot"    = "●"
+"action.search" = ""      # nerd-font magnifier instead of emoji
+"action.save"   = ""
+
+[motion]
+hover-fade-ms      = 80.0
+toast-slide-ms     = 160.0
+popup-fade-ms      = 60.0
+reduced-motion     = false      # true => all durations treated as 0
+
+[viewport]                      # in-world editor chrome (feeds editor_settings + grid defaults)
+selection-outline-color = "#FF9900"
+selection-outline-width = 4.0
+gizmo-scale             = 1.0
+grid-major-color        = "#3C4048"
+grid-minor-color        = "#2A2D33"
+camera-widget-color     = "#B4B4B4"

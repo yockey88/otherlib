@@ -11,12 +11,8 @@
 
 namespace other {
 
-  /// the real datagram transport: unreliable, unordered, 1 datagram = 1 delivery, uninterpreted.
-  ///  connectionless, so connections are synthesized; liveness lives above (mesh LINK_HELLO/keepalive) — no handshake, no EOF
   class udp_transport_provider : public transport_provider {
    public:
-    /// safe-MTU posture: radio/MANET conditions sit well below ethernet's 1472, and ip
-    ///  fragmentation is the failure mode a datagram transport must avoid (networking.udp.max-datagram-bytes)
     constexpr static uint32_t kDefaultMaxDatagramBytes = 1200;
 
     explicit udp_transport_provider(uint32_t max_datagram_bytes = kDefaultMaxDatagramBytes)
@@ -37,11 +33,11 @@ namespace other {
     constexpr static size_t kRecvBufferSize = 64 * 1024;
     constexpr static size_t kMaxQueuedDatagrams = 256;
 
-    /// one bound socket: a listener (synthesizes conns per remote) or a dial (one conn)
+    /// one bound socket: a listener or a connection
     struct socket_entry {
       scope<asio::ip::udp::socket> socket;
       bool listener = false;
-      /// dial sockets: the one expected remote and its conn id
+      /// connected-to sockets: the one expected remote and its conn id
       asio::ip::udp::endpoint dial_remote{};
       natural_t dial_conn = 0;
       std::map<asio::ip::udp::endpoint, natural_t> remotes;
