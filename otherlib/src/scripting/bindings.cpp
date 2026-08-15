@@ -441,7 +441,7 @@ namespace other {
 
     sol::table log_table = lua_state["__other_native"]["__log"];
     log_table.set_function("send_log_message", [](spdlog::level::level_enum level, const std::string& message, const std::string& source, int line) {
-      other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
+      other::logger::send_log_guarded(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
     });
 
     {

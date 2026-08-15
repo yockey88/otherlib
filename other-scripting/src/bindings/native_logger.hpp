@@ -21,7 +21,7 @@ namespace other {
 
   namespace bindings {
 
-    void native_log_message(logger* logger, native_string message, int32_t level);
+    void native_log_message(logger* cached_logger, native_string message, int32_t level);
 
   }  // namespace bindings
 }  // namespace other

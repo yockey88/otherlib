@@ -3,6 +3,7 @@
  **/
 #include "core/logger.hpp"
 
+#include <cstdio>
 #include <source_location>
 
 #include <spdlog/sinks/basic_file_sink.h>
@@ -99,7 +100,15 @@ namespace other {
   }
 
   void logger::send_log(spdlog::level::level_enum level, natural_t log_id, const std::string_view msg) {
-    OTHER_ASSERT(log_id < num_loggers, "Invalid log ID: {}", log_id);
+    if (log_id >= num_loggers) {
+      /// contract failure reported raw: OTHER_ASSERT logs back through this logger and would
+      ///  recurse (stderr direct, same reasoning as report_unhandled_seh)
+      const std::string failure = std::format(
+        "Critical failure! Invalid log ID: {} (num loggers: {})\nstacktrace =\n{}\ndropped log:\n{}\n",
+        log_id, num_loggers, OTHER_STACKTRACE, msg);
+      std::fputs(failure.c_str(), stderr);
+      OTHER_ABORT();
+    }
 
     auto& log_entry = loggers[log_id];
     if (log_entry.logger_ptr->level() == spdlog::level::off) {
@@ -132,6 +141,37 @@ namespace other {
 
   void logger::set_config(const config_table* config) {
     this->current_config_table = config;
+  }
+
+  void logger::send_log_guarded(spdlog::level::level_enum level, natural_t log_id, const std::string_view msg) {
+    logger* log = subsystem<logger>::try_get();
+    if (log == nullptr) {
+      dropped_log_error(level, msg);
+      return;
+    }
+    log->send_log(level, log_id, msg);
+  }
+
+  void logger::dropped_log_error(spdlog::level::level_enum level, const std::string_view msg) {
+    /// leaked mutex: drops can arrive during static destruction, after function-locals are gone
+    static std::mutex& dropped_mutex = *(new std::mutex());
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm now_tm = *std::localtime(&now_time);
+
+    std::stringstream time_stream;
+    time_stream << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+
+    std::lock_guard lock(dropped_mutex);
+    std::ofstream file(kLogFailureFile.data(), std::ios::app);
+    file << "[" << time_stream.str() << "] DROPPED LOG (logger subsystem inactive): " << msg << std::endl;
+
+    /// assert failure paths log at critical then abort — that report must still reach the console
+    if (level == spdlog::level::critical) {
+      const std::string err = std::format("DROPPED CRITICAL LOG (logger subsystem inactive): {}\n", msg);
+      std::fputs(err.c_str(), stderr);
+    }
   }
 
   void logger::log_failure_error(const std::string& message) {
