@@ -75,7 +75,7 @@ namespace other {
       }
 
       network_session& spawn(node_id node, std::string name) {
-        return static_cast<network_session&>(sim.mesh().spawn_actor(make_scope<network_session>(fast_scfg(std::move(name))), node));
+        return static_cast<network_session&>(sim.spawn(make_scope<network_session>(fast_scfg(std::move(name))), node));
       }
 
       void step(size_t ticks = 1, microseconds dt = microseconds{ 5'000 }) {
@@ -351,7 +351,7 @@ namespace other {
       peer_mesh mesh("manet-sample", mesh_cfg);
       manet_config cfg;
       cfg.seed = seed;
-      manet_director& director = static_cast<manet_director&>(mesh.spawn_actor(make_scope<manet_director>(cfg), 999));
+      manet_director& director = static_cast<manet_director&>(mesh.set_primary(make_scope<manet_director>(cfg), 999));
 
       manet_run run;
       const node_id wanderer = cfg.node_count;

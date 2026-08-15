@@ -98,7 +98,7 @@ namespace other {
       }
 
       network_session& spawn(node_id node, std::string name) {
-        return static_cast<network_session&>(sim.mesh().spawn_actor(make_scope<network_session>(fast_scfg(std::move(name))), node));
+        return static_cast<network_session&>(sim.spawn(make_scope<network_session>(fast_scfg(std::move(name))), node));
       }
 
       template <typename Pred>
@@ -294,9 +294,9 @@ namespace other {
     ASSERT_TRUE(client_side.start());
 
     network_session& host = static_cast<network_session&>(
-      host_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
+      host_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
     network_session& client = static_cast<network_session&>(
-      client_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
+      client_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
     replication host_repl(host, [&] { return &host_scene; });
     replication client_repl(client, [&] { return &client_scene; });
     host.set_observer([&](session_event ev, uint16_t arg) { host_repl.on_session_event(ev, arg); });

@@ -3,13 +3,12 @@
  **/
 #include "scripting/dotnet_bindings/steam_bindings.hpp"
 
-#include "steam/steam_context.hpp"
-
-#include "scripting/dotnet_bindings/driver_bindings.hpp"
-
 #include "driver/driver.hpp"
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/peer_mesh_system.hpp"
+#include "scripting/dotnet_bindings/driver_bindings.hpp"
+
+#include "steam/steam_context.hpp"
 
 namespace other {
   namespace bindings {
@@ -52,19 +51,21 @@ namespace other {
     }
 
     void native_steam_open_invite_dialog() {
-      if (peer_mesh_system* system = mesh_system(); system != nullptr) {
-        system->open_invite_dialog();
-      }
+      // if (peer_mesh_system* system = mesh_system(); system != nullptr) {
+      //   system->open_invite_dialog();
+      // }
     }
 
     nbool32 native_network_host_steam() {
-      peer_mesh_system* system = mesh_system();
-      return system != nullptr && system->host_steam_session();
+      // peer_mesh_system* system = mesh_system();
+      // return system != nullptr && system->host_steam_session();
+      return false;
     }
 
     nbool32 native_network_join_lobby(uint64_t lobby_id) {
-      peer_mesh_system* system = mesh_system();
-      return system != nullptr && system->join_lobby(lobby_id);
+      // peer_mesh_system* system = mesh_system();
+      // return system != nullptr && system->join_lobby(lobby_id);
+      return false;
     }
 
   }  // namespace bindings

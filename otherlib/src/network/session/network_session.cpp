@@ -24,11 +24,18 @@ namespace other {
 
   }  // namespace
 
+  void network_session::set_role(session_role next) {
+    /// role transitions are load-bearing session moments; engine events ride the
+    ///  session observer, this is the module-level trace
+    state = next;
+    CORE_LOG_DEBUG("peer role -> {}", static_cast<uint8_t>(next));
+  }
+
   /// ---------------------------------------------------------------- public api
 
   bool network_session::host(const net_address& bind) {
     PROFILE_SECTION("network_session::host");
-    if (!spawned() || state.get_current_state() != role_state::UNJOINED) {
+    if (!spawned() || state != session_role::UNJOINED) {
       CORE_LOG_WARN("[SESSION] host refused: {}", spawned() ? "already in a session" : "session is not spawned on a mesh");
       return false;
     }
@@ -43,7 +50,7 @@ namespace other {
       return false;
     }
 
-    state.handle_event(role_event::PROMOTE);
+    set_role(session_role::SERVER);
     local_peer = 0;
     next_peer = 1;
     add_member(id(), 0, 0, cfg.display_name);
@@ -53,7 +60,7 @@ namespace other {
 
   bool network_session::join(const net_address& remote) {
     PROFILE_SECTION("network_session::join");
-    if (!spawned() || state.get_current_state() != role_state::UNJOINED) {
+    if (!spawned() || state != session_role::UNJOINED) {
       CORE_LOG_WARN("[SESSION] join refused: {}", spawned() ? "already in a session" : "session is not spawned on a mesh");
       return false;
     }
@@ -64,14 +71,14 @@ namespace other {
       return false;
     }
 
-    state.handle_event(role_event::HANDSHAKE_STARTED);
+    set_role(session_role::JOINING);
     join_deadline = session_now + cfg.join_timeout;
     return true;
   }
 
   void network_session::leave(uint16_t reason) {
     PROFILE_SECTION("network_session::leave");
-    if (!spawned() || state.get_current_state() == role_state::UNJOINED) {
+    if (!spawned() || state == session_role::UNJOINED) {
       return;
     }
 
@@ -83,7 +90,7 @@ namespace other {
           send_on_link(member.link_id, static_cast<uint16_t>(net_message::DISCONNECT_NOTICE), bytes);
         }
       }
-    } else if (state.get_current_state() == role_state::PEER) {
+    } else if (state == session_role::PEER) {
       send_on_link(host_link, static_cast<uint16_t>(net_message::DISCONNECT_NOTICE), bytes);
     }
 
@@ -101,7 +108,7 @@ namespace other {
     }
     /// always single-hop under star, but written against the mesh API — a relayed
     ///  topology would not change this call site
-    return peer_mesh_actor::send(member->node, static_cast<uint16_t>(msg_id), payload);
+    return peer_actor::send(member->node, static_cast<uint16_t>(msg_id), payload);
   }
 
   bool network_session::broadcast(net_message msg_id, std::span<const uint8_t> payload) {
@@ -112,7 +119,7 @@ namespace other {
     bool all_sent = true;
     for (const session_member& member : members) {
       if (member.node != id()) {
-        all_sent &= peer_mesh_actor::send(member.node, static_cast<uint16_t>(msg_id), payload);
+        all_sent &= peer_actor::send(member.node, static_cast<uint16_t>(msg_id), payload);
       }
     }
     return all_sent;
@@ -151,7 +158,7 @@ namespace other {
   /// ---------------------------------------------------------------- actor hooks
 
   void network_session::on_link_up(const link_record& link) {
-    if (state.get_current_state() == role_state::JOINING && link.link_id == host_link) {
+    if (state == session_role::JOINING && link.link_id == host_link) {
       const net_join_request request{ .client_flags = cfg.client_flags, .name = name_bytes(cfg.display_name) };
       send_on_link(host_link, static_cast<uint16_t>(net_message::JOIN_REQUEST), serialize_direct(request));
       join_deadline = session_now + cfg.join_timeout;
@@ -175,7 +182,7 @@ namespace other {
       }
       return;
     }
-    if (link.link_id == host_link && state.get_current_state() != role_state::UNJOINED) {
+    if (link.link_id == host_link && state != session_role::UNJOINED) {
       /// link-down to the host = session over
       end_session(static_cast<uint16_t>(reason));
     }
@@ -200,7 +207,7 @@ namespace other {
       return;
     }
 
-    if (state.get_current_state() == role_state::JOINING && now > join_deadline) {
+    if (state == session_role::JOINING && now > join_deadline) {
       CORE_LOG_WARN("[SESSION] join timed out waiting for WELCOME");
       close_link(host_link, link_close_reason::HANDSHAKE_TIMEOUT);
     }
@@ -211,7 +218,7 @@ namespace other {
     const net_message msg_id = static_cast<net_message>(net_id);
 
     /// client rule: session frames before WELCOME/REJECT close the link
-    if (state.get_current_state() == role_state::JOINING &&
+    if (state == session_role::JOINING &&
         msg_id != net_message::WELCOME && msg_id != net_message::REJECT) {
       CORE_LOG_WARN("[SESSION] session frame {} before WELCOME; closing link", net_id);
       close_link(via.link_id, link_close_reason::PROTOCOL_ERROR);
@@ -230,19 +237,19 @@ namespace other {
         return;
 
       case net_message::WELCOME:
-        if (state.get_current_state() == role_state::JOINING && via.link_id == host_link) {
+        if (state == session_role::JOINING && via.link_id == host_link) {
           client_handle_welcome(via, payload);
         }
         return;
 
       case net_message::REJECT:
-        if (state.get_current_state() == role_state::JOINING) {
+        if (state == session_role::JOINING) {
           client_handle_reject(payload);
         }
         return;
 
       case net_message::PEER_JOINED:
-        if (state.get_current_state() == role_state::PEER && via.link_id == host_link) {
+        if (state == session_role::PEER && via.link_id == host_link) {
           try {
             const net_peer_joined joined = deserialize_direct<net_peer_joined>(payload).first;
             adopt_roster_entry(joined.peer, 0);
@@ -254,7 +261,7 @@ namespace other {
         return;
 
       case net_message::PEER_LEFT:
-        if (state.get_current_state() == role_state::PEER && via.link_id == host_link) {
+        if (state == session_role::PEER && via.link_id == host_link) {
           try {
             const net_peer_left left = deserialize_direct<net_peer_left>(payload).first;
             remove_member(left.peer_id);
@@ -268,7 +275,7 @@ namespace other {
       case net_message::DISCONNECT_NOTICE:
         if (is_host()) {
           host_handle_notice(via, payload);
-        } else if (state.get_current_state() == role_state::PEER && via.link_id == host_link) {
+        } else if (state == session_role::PEER && via.link_id == host_link) {
           try {
             end_session(deserialize_direct<net_peer_left>(payload).first.reason);
           } catch (const std::exception&) {
@@ -345,7 +352,7 @@ namespace other {
     const ostd::vector<uint8_t> joined_bytes = serialize_direct(joined);
     for (const session_member& member : members) {
       if (member.node != id() && member.peer_id != peer) {
-        peer_mesh_actor::send(member.node, static_cast<uint16_t>(net_message::PEER_JOINED), joined_bytes);
+        peer_actor::send(member.node, static_cast<uint16_t>(net_message::PEER_JOINED), joined_bytes);
       }
     }
     notify(session_event::PEER_JOINED, peer);
@@ -389,7 +396,7 @@ namespace other {
       return;
     }
 
-    state.handle_event(role_event::HANDSHAKE_COMPLETED);
+    set_role(session_role::PEER);
     notify(session_event::STARTED, local_peer);
   }
 
@@ -435,15 +442,6 @@ namespace other {
       return;
     }
     add_member(entry.node, entry.peer_id, link_id, name_string(entry.name));
-
-    /// members this seat holds no link to still land in the graph as
-    ///  host-imported advisory records/edges
-    if (entry.peer_id != 0 && entry.node != id()) {
-      if (const session_member* host_member = member_by_peer(0); host_member != nullptr &&
-          mesh().net().link_between(host_member->node, entry.node) == nullptr) {
-        mesh().graph().add_edge(host_member->node, entry.node);
-      }
-    }
   }
 
   session_member* network_session::member_by_peer(uint16_t peer_id) {
@@ -461,9 +459,6 @@ namespace other {
 
   session_member& network_session::add_member(node_id node, uint16_t peer_id, natural_t link_id, std::string member_name) {
     members.push_back({ .node = node, .peer_id = peer_id, .link_id = link_id, .name = std::move(member_name) });
-    peer_record& record = mesh().graph().ensure_node(node);
-    record.session_alias = peer_id;
-    record.display_name = members.back().name;
     return members.back();
   }
 
@@ -472,39 +467,15 @@ namespace other {
     if (itr == members.end()) {
       return;
     }
-    const node_id node = itr->node;
-    const bool imported = itr->link_id == 0 && node != id();
     members.erase(itr);
-
-    if (peer_record* record = mesh().graph().record(node); record != nullptr) {
-      record->session_alias = 0;
-    }
-    if (imported) {
-      if (const session_member* host_member = member_by_peer(0); host_member != nullptr &&
-          mesh().net().link_between(host_member->node, node) == nullptr) {
-        mesh().graph().remove_edge(host_member->node, node);
-      }
-    }
   }
 
   void network_session::end_session(uint16_t reason) {
     PROFILE_SECTION("network_session::end_session");
-    /// imported members leave first so their advisory edges come out of the graph
-    ostd::vector<uint16_t> imported;
     ostd::vector<natural_t> links_to_close;
     for (const session_member& member : members) {
       if (member.link_id != 0) {
         links_to_close.push_back(member.link_id);
-      } else if (member.node != id()) {
-        imported.push_back(member.peer_id);
-      }
-    }
-    for (const uint16_t peer : imported) {
-      remove_member(peer);
-    }
-    for (const session_member& member : members) {
-      if (peer_record* record = mesh().graph().record(member.node); record != nullptr) {
-        record->session_alias = 0;
       }
     }
     members.clear();
@@ -517,8 +488,8 @@ namespace other {
       close_link(link_id, link_close_reason::SHUTDOWN);
     }
 
-    if (state.get_current_state() != role_state::UNJOINED) {
-      state.handle_event(role_event::DISCONNECT);
+    if (state != session_role::UNJOINED) {
+      set_role(session_role::UNJOINED);
     }
     notify(session_event::ENDED, reason);
   }
@@ -536,7 +507,7 @@ namespace other {
 
   /// ---------------------------------------------------------------- actor source
 
-  natural_t session_actor_source::provide(scope<peer_mesh_actor> actor) {
+  natural_t session_actor_source::provide(scope<peer_actor> actor) {
     OTHER_ASSERT(actor != nullptr, "Cannot provide a null session actor.");
     CORE_LOG_DEBUG("[SESSION] actor '{}' provided by name", actor->name());
     pending.emplace_back(next_id, std::move(actor));

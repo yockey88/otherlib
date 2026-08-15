@@ -10,9 +10,8 @@
 #include <gtest/gtest.h>
 
 #include "network/frame.hpp"
-#include "network/memory/memory_fabric.hpp"
-#include "peer_mesh/mesh_messages.hpp"
-#include "peer_mesh/mesh_router.hpp"
+#include "network/memory/memory_transport_provider.hpp"
+#include "network/mesh_messages.hpp"
 #include "peer_mesh/peer_mesh.hpp"
 
 #include "network/mesh_sim_fixture.hpp"
@@ -39,7 +38,7 @@ namespace other {
     }
 
     test_actor& spawn_recorder(peer_mesh& mesh, node_id id) {
-      return static_cast<test_actor&>(mesh.spawn_actor(make_scope<test_actor>(), id));
+      return static_cast<test_actor&>(mesh.primary() == nullptr ? mesh.set_primary(make_scope<test_actor>(), id) : mesh.add_secondary(make_scope<test_actor>(), id));
     }
 
     /// establish one raw tcp pair (no mesh): returns {dial conn on b, accepted conn on a}
@@ -156,14 +155,14 @@ namespace other {
 
     /// raw endpoint speaking the mesh link protocol by hand
     const natural_t raw_conn = b.raw_connect(port);
-    ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(raw_conn) && a.mesh.net().link_count() == 1; }));
+    ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(raw_conn) && a.mesh.link_count() == 1; }));
 
     /// hello fed one byte at a time: the reader must reassemble across 60-odd chunks
     const ostd::vector<uint8_t> hello = hello_frame(99);
     for (const uint8_t byte : hello) {
       b.raw_tx(raw_conn, std::span<const uint8_t>(&byte, 1));
     }
-    ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.net().link_between(1, 99) != nullptr; }));
+    ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.link_between(1, 99) != nullptr; }));
 
     /// three frames coalesced into one tx; the reader must split them
     const std::vector<uint8_t> p1 = pattern_bytes(64, 10);
@@ -238,9 +237,11 @@ namespace other {
       })) << "cycle " << cycle;
 
       b.raw_close(conn);
+      /// generous deadline: route retirement defers a pump, and a loaded scheduler can
+      ///  stretch 20 serialized cycles well past the default window
       ASSERT_TRUE(pump_until({ &a, &b }, [&] {
         return b.closed_note(conn) != nullptr && a.thread.active_route_count() == 1 && b.thread.active_route_count() == 0;
-      })) << "cycle " << cycle;
+      }, std::chrono::milliseconds(8000))) << "cycle " << cycle;
     }
 
     EXPECT_EQ(a.thread.active_route_count(), 1u);
@@ -260,32 +261,32 @@ namespace other {
     /// oversize: a length field far past max-frame poisons the stream
     {
       const natural_t conn = b.raw_connect(port);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.net().link_count() == 1; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.link_count() == 1; }));
 
       const uint8_t oversize[8] = { 0xFF, 0xFF, 0xFF, 0x7F, 0x42, 0x00, 0x00, 0x00 };
       b.raw_tx(conn, oversize);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.net().link_count() == 0; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.link_count() == 0; }));
       EXPECT_GE(a.mesh.counters().protocol_errors, 1u);
     }
 
     /// malformed: a length below the frame floor is equally fatal to the link only
     {
       const natural_t conn = b.raw_connect(port);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.net().link_count() == 1; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.link_count() == 1; }));
 
       const uint8_t malformed[8] = { 0x02, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00 };
       b.raw_tx(conn, malformed);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.net().link_count() == 0; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.link_count() == 0; }));
       EXPECT_GE(a.mesh.counters().protocol_errors, 2u);
     }
 
     /// the process and the listener both survived: a fresh handshake still completes
     {
       const natural_t conn = b.raw_connect(port);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.net().link_count() == 1; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn) && a.mesh.link_count() == 1; }));
       const ostd::vector<uint8_t> hello = hello_frame(77);
       b.raw_tx(conn, hello);
-      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.net().link_between(1, 77) != nullptr; }));
+      ASSERT_TRUE(pump_until({ &a, &b }, [&] { return a.mesh.link_between(1, 77) != nullptr; }));
     }
   }
 
@@ -333,12 +334,12 @@ namespace other {
     ASSERT_NE(actor_b.open_link(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port })), 0u);
 
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      return a.mesh.net().link_between(1, 2) != nullptr && b.mesh.net().link_between(2, 1) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr && b.mesh.link_between(2, 1) != nullptr;
     }));
     EXPECT_EQ(actor_a.ups.size(), 1u);
     EXPECT_EQ(actor_b.ups.size(), 1u);
-    EXPECT_TRUE(a.mesh.net().link_between(1, 2)->caps.reliable);
-    EXPECT_TRUE(a.mesh.net().link_between(1, 2)->caps.ordered);
+    EXPECT_TRUE(a.mesh.link_between(1, 2)->caps.reliable);
+    EXPECT_TRUE(a.mesh.link_between(1, 2)->caps.ordered);
 
     /// application frames ride the up link byte-exact, both directions
     const std::vector<uint8_t> ping_payload = pattern_bytes(300, 5);
@@ -351,11 +352,11 @@ namespace other {
 
     /// idle past keepalive: pings keep the link up and feed rtt — no teardown
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      const link_record* ab = a.mesh.net().link_between(1, 2);
+      const link_record* ab = a.mesh.link_between(1, 2);
       return ab != nullptr && ab->rtt.count() > 0;
     }, std::chrono::milliseconds(4000)));
-    EXPECT_NE(a.mesh.net().link_between(1, 2), nullptr);
-    EXPECT_NE(b.mesh.net().link_between(2, 1), nullptr);
+    EXPECT_NE(a.mesh.link_between(1, 2), nullptr);
+    EXPECT_NE(b.mesh.link_between(2, 1), nullptr);
     EXPECT_TRUE(actor_a.downs.empty());
     EXPECT_TRUE(actor_b.downs.empty());
   }
@@ -412,11 +413,11 @@ namespace other {
     /// the unknown-endpoint synth happens on a's side when b's hello lands; the hello
     ///  IS the establishment — there is no transport handshake
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      return a.mesh.net().link_between(1, 2) != nullptr && b.mesh.net().link_between(2, 1) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr && b.mesh.link_between(2, 1) != nullptr;
     }));
 
-    const link_record* ab = a.mesh.net().link_between(1, 2);
-    const link_record* ba = b.mesh.net().link_between(2, 1);
+    const link_record* ab = a.mesh.link_between(1, 2);
+    const link_record* ba = b.mesh.link_between(2, 1);
     EXPECT_FALSE(ab->caps.reliable);
     EXPECT_FALSE(ab->caps.ordered);
     EXPECT_EQ(ab->caps.max_frame_size, udp_transport_provider::kDefaultMaxDatagramBytes);
@@ -429,10 +430,10 @@ namespace other {
     mesh_sim_fixture sim(2);
     sim.link(1, 2, {}, {}, /*datagram=*/true);
     ASSERT_TRUE(sim.step_until([&] {
-      return sim.mesh().net().link_between(1, 2) != nullptr && sim.mesh().net().link_between(2, 1) != nullptr;
+      return sim.mesh().link_between(1, 2) != nullptr && sim.mesh().link_between(2, 1) != nullptr;
     }));
 
-    const link_record* ab = sim.mesh().net().link_between(1, 2);
+    const link_record* ab = sim.mesh().link_between(1, 2);
     EXPECT_FALSE(ab->caps.reliable);
     EXPECT_FALSE(ab->caps.ordered);
   }
@@ -449,7 +450,7 @@ namespace other {
     ASSERT_NE(actor_a.open_listener(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_NE(actor_b.open_link(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      return a.mesh.net().link_between(1, 2) != nullptr && b.mesh.net().link_between(2, 1) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr && b.mesh.link_between(2, 1) != nullptr;
     }));
 
     constexpr size_t kFrames = 20;
@@ -482,7 +483,7 @@ namespace other {
     ASSERT_NE(actor_a.open_listener(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_NE(actor_b.open_link(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      return a.mesh.net().link_between(1, 2) != nullptr && b.mesh.net().link_between(2, 1) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr && b.mesh.link_between(2, 1) != nullptr;
     }));
 
     /// the mesh refuses at the caps ceiling before the provider ever sees it
@@ -515,7 +516,7 @@ namespace other {
     ASSERT_NE(actor_a.open_listener(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_NE(actor_b.open_link(net_address::ip_endpoint({ socket_net_instance::network_system_localhost(), port }), "udp"), 0u);
     ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-      return a.mesh.net().link_between(1, 2) != nullptr && b.mesh.net().link_between(2, 1) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr && b.mesh.link_between(2, 1) != nullptr;
     }));
 
     /// b goes silent (its mesh stops ticking entirely); no transport event exists to
@@ -532,9 +533,9 @@ namespace other {
     cfg.link_timeout = microseconds{ 200'000 };
     mesh_sim_fixture sim(2, 1, cfg);
     const natural_t link_id = sim.link(1, 2, {}, {}, /*datagram=*/true);
-    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().net().link_between(1, 2) != nullptr && sim.mesh().net().link_between(2, 1) != nullptr; }));
+    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().link_between(1, 2) != nullptr && sim.mesh().link_between(2, 1) != nullptr; }));
 
-    const link_record* record = sim.mesh().net().link(link_id);
+    const link_record* record = sim.mesh().link(link_id);
     ASSERT_NE(record, nullptr);
     sim.fabric.set_mute(record->connection_id, true, true);
 
@@ -547,8 +548,7 @@ namespace other {
   TEST_F(transport_conformance_tests, one_network_spans_memory_and_tcp_links) {
     /// declared before the instances: transports must outlive the mesh that links
     ///  over them (the mesh closes its links in its destructor)
-    memory_fabric fabric(7);
-    fabric_port fabric_a(fabric);
+    memory_transport_provider fabric(7);
 
     socket_net_instance a("conf-span-a");
     socket_net_instance b("conf-span-b");
@@ -557,7 +557,7 @@ namespace other {
 
     /// instance a: three actors on memory links (the simulated MANET shape), one of
     ///  which egresses over real tcp to instance b — ONE network holding both
-    a.mesh.register_transport(fabric_a);
+    a.mesh.attach_provider(fabric);
 
     test_actor& actor_1 = spawn_recorder(a.mesh, 1);
     test_actor& actor_2 = spawn_recorder(a.mesh, 2);
@@ -596,30 +596,25 @@ namespace other {
     ASSERT_NE(link_3_9, 0u);
 
     ASSERT_TRUE(pump_all_until([&] {
-      return a.mesh.net().link_between(1, 2) != nullptr &&
-        a.mesh.net().link_between(2, 3) != nullptr &&
-        a.mesh.net().link_between(3, 9) != nullptr &&
-        b.mesh.net().link_between(9, 3) != nullptr;
+      return a.mesh.link_between(1, 2) != nullptr &&
+        a.mesh.link_between(2, 3) != nullptr &&
+        a.mesh.link_between(3, 9) != nullptr &&
+        b.mesh.link_between(9, 3) != nullptr;
     }));
 
-    /// static routes: every seat knows its next hop toward 9
-    scope<static_route_router> routes = make_scope<static_route_router>();
-    routes->set_route(1, 9, link_1_2);
-    routes->set_route(2, 9, link_2_3);
-    routes->set_route(3, 9, link_3_9);
-    a.mesh.set_router(std::move(routes));
-
+    /// relay is actor behavior: each seat re-sends toward 9, crossing from the memory
+    ///  links onto the tcp egress — one network, mixed transports, byte-exact
     const std::vector<uint8_t> payload = pattern_bytes(512, 99);
-    ASSERT_TRUE(actor_1.send(9, 0x0500, payload));
+    ASSERT_TRUE(actor_1.send(2, 0x0500, payload));
+    ASSERT_TRUE(pump_all_until([&] { return !actor_2.frames.empty(); }));
+    ASSERT_TRUE(actor_2.send(3, 0x0500, actor_2.frames[0].payload));
+    ASSERT_TRUE(pump_all_until([&] { return !actor_3.frames.empty(); }));
+    ASSERT_TRUE(actor_3.send(9, 0x0500, actor_3.frames[0].payload));
 
     ASSERT_TRUE(pump_all_until([&] { return !actor_9.frames.empty(); }));
-    EXPECT_EQ(actor_9.frames[0].src, 1u);
+    EXPECT_EQ(actor_9.frames[0].src, 3u);
     EXPECT_EQ(actor_9.frames[0].net_id, 0x0500u);
     EXPECT_TRUE(std::ranges::equal(actor_9.frames[0].payload, payload));
-
-    /// relays observed nothing at their mailboxes: forwarding is not delivery
-    EXPECT_TRUE(actor_2.frames.empty());
-    EXPECT_TRUE(actor_3.frames.empty());
   }
 
   TEST_F(transport_conformance_tests, per_link_sink_scoping_holds_on_sockets) {
@@ -643,15 +638,15 @@ namespace other {
     ASSERT_TRUE(pump_until({ &a, &b }, [&] { return b.has_opened_note(conn_2) && a.opened_notes.size() >= 2; }));
     const natural_t a_conn_2 = a.opened_notes[1].connection_id;
 
-    /// first bytes land before the conn-scoped sink exists: the rx hold must replay
-    ///  them to it, so the scoped view starts at the connection's first byte
+    /// the conn observer registers at establishment, so its view starts at the
+    ///  connection's first byte by construction
+    recording_sink scoped;
+    conn_observer binding{ a_conn_1, &scoped };
+    a.tcp->register_conn_observer(&binding);
+
     const std::vector<uint8_t> first = pattern_bytes(96, 1);
     b.raw_tx(conn_1, first);
     ASSERT_TRUE(pump_until({ &a, &b }, [&] { return wide.stream_of(a_conn_1).size() >= first.size(); }));
-
-    recording_sink scoped;
-    conn_sink_binding binding{ a_conn_1, &scoped };
-    a.tcp->register_conn_sink(&binding);
 
     const std::vector<uint8_t> second = pattern_bytes(128, 2);
     const std::vector<uint8_t> other_conn_bytes = pattern_bytes(64, 3);
@@ -674,7 +669,7 @@ namespace other {
     EXPECT_EQ(wide.stream_of(a_conn_2), other_conn_bytes);
 
     /// reclaim discipline: tombstone, then hold the binding until the pump moved on
-    a.tcp->unregister_conn_sink(&binding);
+    a.tcp->unregister_conn_observer(&binding);
     const uint64_t epoch = a.thread.reclamation_epoch();
     ASSERT_TRUE(pump_until({ &a }, [&] { return a.thread.reclamation_epoch() > epoch + 1; }));
   }

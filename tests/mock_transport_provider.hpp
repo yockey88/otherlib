@@ -18,8 +18,11 @@ namespace other {
   class packet_sink;
   struct binding_point;
 
-  class mock_transport_provider : public transport_provider {
+  class mock_transport_provider : public socket_transport_provider {
    public:
+    bool is_stream() const override { return true; }
+    link_caps conn_caps(natural_t) const override { return {}; }
+
     mock_transport_provider() {
       using ::testing::Invoke;
       using ::testing::Return;
@@ -39,7 +42,7 @@ namespace other {
 
     MOCK_METHOD(std::string, name, (), (const, override));
     MOCK_METHOD(void, tx_data, (natural_t connection_id, ostd::vector<uint8_t>&& data), (override));
-    MOCK_METHOD(void, close, (natural_t connection_id), (override));
+    MOCK_METHOD(void, net_close, (natural_t connection_id), (override));
 
     MOCK_METHOD(void, on_registered_packet_sink, (packet_sink * sink), (override));
     MOCK_METHOD(void, on_unregistered_packet_sink, (packet_sink * sink), (override));

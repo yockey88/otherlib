@@ -12,9 +12,14 @@ namespace other {
 
   class network_thread;
 
-  class tcp_transport_provider : public transport_provider {
+  class tcp_transport_provider : public socket_transport_provider {
    public:
     virtual ~tcp_transport_provider() = default;
+
+    bool is_stream() const override { return true; }
+    link_caps conn_caps(natural_t) const override {
+      return { .reliable = true, .ordered = true, .max_frame_size = 0 };
+    }
 
     std::string name() const override { return "TCP"; }
 
@@ -35,7 +40,7 @@ namespace other {
     void on_start_listen(natural_t conn_id, const binding_point& endpoint) override;
     void on_start_connect(natural_t conn_id, const binding_point& endpoint) override;
     void tx_data(natural_t connection_id, ostd::vector<uint8_t>&& data) override;
-    void close(natural_t connection_id) override;
+    void net_close(natural_t connection_id) override;
     void connection_removed(natural_t connection_id) override;
 
     /// connection callbacks, network thread

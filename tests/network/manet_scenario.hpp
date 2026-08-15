@@ -11,10 +11,9 @@
 
 #include "core/scope.hpp"
 
-#include "network/memory/memory_fabric.hpp"
-#include "peer_mesh/mesh_router.hpp"
+#include "network/memory/memory_transport_provider.hpp"
 #include "peer_mesh/peer_mesh.hpp"
-#include "peer_mesh/peer_mesh_actor.hpp"
+#include "peer_mesh/peer_actor.hpp"
 
 namespace other {
 
@@ -26,14 +25,16 @@ namespace other {
     uint64_t seed = 1;
   };
 
-  /// application net ids for the sample's own wire format (D22: the module carries
-  ///  whatever bytes the actors exchange)
+  /// application net ids + envelope for the sample's own wire format (D22: the module
+  ///  carries whatever bytes the actors exchange). multi-hop is member behavior: every
+  ///  frame opens with [dst u8][origin u8][hops u8] and members relay by route table
   constexpr uint16_t kManetTokenId = 0x100;
   constexpr uint16_t kManetPingId = 0x101;
+  constexpr size_t kManetEnvelope = 3;
 
   /// a scenario member: forwards the token around the ring whenever a path exists,
-  ///  pings its ring neighbor for background traffic
-  class manet_member final : public peer_mesh_actor {
+  ///  pings its ring neighbor for background traffic, relays frames for its peers
+  class manet_member final : public peer_actor {
    public:
     manet_member(size_t member_count)
         : member_count(member_count) {}
@@ -41,6 +42,29 @@ namespace other {
     std::string_view name() const override { return "manet-member"; }
 
     void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override {
+      if (payload.size() < kManetEnvelope) {
+        return;
+      }
+      const node_id dst = payload[0];
+      const uint8_t hops = payload[2];
+
+      if (dst != id()) {
+        /// someone else's frame at this seat: relay toward dst, or drop when the
+        ///  route table has no path (partitioned) or the hop budget ran out
+        if (hops > 0) {
+          if (auto hop = next_hops.find(dst); hop != next_hops.end()) {
+            ostd::vector<uint8_t> onward(payload.begin(), payload.end());
+            onward[2] = static_cast<uint8_t>(hops - 1);
+            if (send(hop->second, net_id, onward)) {
+              relays++;
+              return;
+            }
+          }
+        }
+        relay_drops++;
+        return;
+      }
+
       if (net_id == kManetTokenId) {
         token_arrivals++;
         has_token = true;
@@ -51,20 +75,31 @@ namespace other {
 
     void tick(microseconds now, double dt) override {
       if (has_token) {
-        const node_id next = (id() % member_count) + 1;
-        const uint8_t hop_note = static_cast<uint8_t>(id());
-        if (send(next, kManetTokenId, std::span<const uint8_t>(&hop_note, 1))) {
+        if (routed_send((id() % member_count) + 1, kManetTokenId)) {
           has_token = false;
           token_forwards++;
         }
-        /// unroutable (partitioned): keep the token, retry next tick
+        /// no route (partitioned): keep the token, retry next tick
       }
       if (++ping_phase % 16 == 0) {
-        const node_id neighbor = (id() % member_count) + 1;
-        const uint8_t ping = 0;
-        send(neighbor, kManetPingId, std::span<const uint8_t>(&ping, 1));
+        routed_send((id() % member_count) + 1, kManetPingId);
       }
     }
+
+    /// origin-side send along the route table; single-hop when dst is adjacent
+    bool routed_send(node_id dst, uint16_t net_id) {
+      auto hop = next_hops.find(dst);
+      if (hop == next_hops.end()) {
+        return false;
+      }
+      const uint8_t envelope[kManetEnvelope] = {
+        static_cast<uint8_t>(dst), static_cast<uint8_t>(id()), static_cast<uint8_t>(member_count)
+      };
+      return send(hop->second, net_id, envelope);
+    }
+
+    /// route table: dst -> adjacent next hop, rebuilt by the director each tick
+    ostd::map<node_id, node_id> next_hops;
 
     /// mobility state, driven by the director
     float x = 0.f, y = 0.f;
@@ -74,6 +109,8 @@ namespace other {
     natural_t token_arrivals = 0;
     natural_t token_forwards = 0;
     natural_t pings_seen = 0;
+    natural_t relays = 0;
+    natural_t relay_drops = 0;
     size_t ping_phase = 0;
 
    private:
@@ -82,10 +119,10 @@ namespace other {
 
   /// the director: spawns the members, owns the simulated medium, and each tick
   ///  applies mobility + the disc radio model from every member's seat
-  class manet_director final : public peer_mesh_actor {
+  class manet_director final : public peer_actor {
    public:
     explicit manet_director(const manet_config& scenario_cfg = {})
-        : cfg(scenario_cfg), fabric(scenario_cfg.seed), radio(fabric) {}
+        : cfg(scenario_cfg), fabric(scenario_cfg.seed) {}
 
     std::string_view name() const override { return "manet-sample"; }
     void on_frame(const link_record&, node_id, uint16_t, std::span<const uint8_t>) override {}
@@ -104,7 +141,7 @@ namespace other {
     manet_member& member(node_id node) { return *static_cast<manet_member*>(mesh().actor(node)); }
     natural_t member_link_count(node_id node) {
       natural_t count = 0;
-      for (const link_record& link : mesh().net().links()) {
+      for (const link_record& link : mesh().links()) {
         if (link.local == node && link.state == link_state::UP) {
           count++;
         }
@@ -115,8 +152,7 @@ namespace other {
 
    private:
     manet_config cfg;
-    memory_fabric fabric;
-    fabric_port radio;
+    memory_transport_provider fabric;
     bool bootstrapped = false;
     natural_t scenario_ticks = 0;
     uint64_t prng_state = 0;
@@ -139,13 +175,12 @@ namespace other {
     void bootstrap() {
       bootstrapped = true;
       prng_state = cfg.seed;
-      mesh().register_transport(radio);
-      mesh().set_router(make_scope<static_route_router>());
+      mesh().attach_provider(fabric);
 
       for (size_t i = 1; i <= cfg.node_count; ++i) {
         fabric.configure_endpoint(i, false);
         manet_member& node = static_cast<manet_member&>(
-          mesh().spawn_actor(make_scope<manet_member>(cfg.node_count), static_cast<node_id>(i)));
+          mesh().add_secondary(make_scope<manet_member>(cfg.node_count), static_cast<node_id>(i)));
         node.open_listener(net_address::memory_endpoint(i));
         node.x = random_in_cluster();
         node.y = random_in_cluster();
@@ -203,7 +238,7 @@ namespace other {
 
           const link_record* link = nullptr;
           if (auto itr = pair_links.find(key); itr != pair_links.end()) {
-            link = mesh().net().link(itr->second);
+            link = mesh().link(itr->second);
             if (link == nullptr) {
               pair_links.erase(itr);  // died (timeout/close); redial when in range
             }
@@ -228,12 +263,13 @@ namespace other {
       }
     }
 
-    /// BFS over the in-range UP-link adjacency, vantage routes for every pair
+    /// BFS over the in-range UP-link adjacency; every member gets dst -> first-hop
+    ///  rows — the director is the sample's routing protocol, the mesh carries frames
     void rebuild_routes() {
-      auto& router = static_cast<static_route_router&>(mesh().router());
-      router.clear_routes();
-
       const size_t count = cfg.node_count;
+      for (size_t src = 1; src <= count; ++src) {
+        member(static_cast<node_id>(src)).next_hops.clear();
+      }
       for (size_t src = 1; src <= count; ++src) {
         /// BFS from src; parent[] reconstructs first hops
         ostd::vector<node_id> parent(count + 1, 0);
@@ -245,7 +281,7 @@ namespace other {
             if (parent[next] != 0) {
               continue;
             }
-            const link_record* link = mesh().net().link_between(at, next);
+            const link_record* link = mesh().link_between(at, next);
             if (link == nullptr || link->state != link_state::UP) {
               continue;
             }
@@ -263,8 +299,8 @@ namespace other {
           while (parent[hop] != static_cast<node_id>(src)) {
             hop = parent[hop];
           }
-          if (const link_record* out = mesh().net().link_between(src, hop); out != nullptr && out->state == link_state::UP) {
-            router.set_route(static_cast<node_id>(src), static_cast<node_id>(dst), out->link_id);
+          if (mesh().link_between(static_cast<node_id>(src), hop) != nullptr) {
+            member(static_cast<node_id>(src)).next_hops[static_cast<node_id>(dst)] = hop;
           }
         }
       }

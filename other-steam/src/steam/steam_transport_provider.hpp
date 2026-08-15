@@ -1,12 +1,12 @@
 /**
- * \file steam/steam_link_transport.hpp
+ * \file steam/steam_transport_provider.hpp
  **/
-#ifndef OTHER_STEAM_STEAM_STEAM_LINK_TRANSPORT_HPP
-#define OTHER_STEAM_STEAM_STEAM_LINK_TRANSPORT_HPP
+#ifndef OTHER_STEAM_STEAM_STEAM_TRANSPORT_PROVIDER_HPP
+#define OTHER_STEAM_STEAM_STEAM_TRANSPORT_PROVIDER_HPP
 
 #include "core/defines.hpp"
 
-#include "peer_mesh/link_transport.hpp"
+#include "network/transport_provider.hpp"
 
 #include <steam/steam_api.h>
 
@@ -32,22 +32,21 @@ namespace other {
 
   /// the byte mover over ISteamNetworkingSockets P2P (SDR). main-thread home: connection events
   ///  arrive during SteamAPI_RunCallbacks, receives are polled by pump(). construct only when READY
-  class steam_link_transport final : public link_transport {
+  class steam_transport_provider final : public transport_provider {
    public:
-    explicit steam_link_transport(int virtual_port);
-    ~steam_link_transport() override;
+    explicit steam_transport_provider(int virtual_port);
+    ~steam_transport_provider() override;
 
-    std::string_view name() const override { return "steam"; }
+    std::string name() const override { return "steam"; }
+    transport_home execution_home() const override { return transport_home::MAIN_THREAD; }
     bool is_stream() const override { return false; }
-    link_caps conn_caps(natural_t conn_id) const override {
+    link_caps conn_caps(natural_t) const override {
       return { .reliable = true, .ordered = true, .max_frame_size = 0 };
     }
     node_id attested_remote(natural_t conn_id) const override;
 
-    void bind(callbacks cbs) override { consumer = std::move(cbs); }
-
     natural_t dial(const net_address& remote) override;
-    natural_t listen(const net_address& bind_addr) override;
+    natural_t listen(const net_address& bind_addr, accept_delegate on_accept) override;
     void tx(natural_t conn_id, std::span<const uint8_t> bytes) override;
     void close(natural_t conn_id) override;
 
@@ -55,15 +54,14 @@ namespace other {
     void pump();
 
    private:
-    callbacks consumer;
     int virtual_port = 0;
     HSteamNetPollGroup poll_group = 0;
     HSteamListenSocket listen_socket = 0;
     ostd::map<natural_t, fragment_accumulator> assembly;
 
-    STEAM_CALLBACK(steam_link_transport, on_status_changed, SteamNetConnectionStatusChangedCallback_t);
+    STEAM_CALLBACK(steam_transport_provider, on_status_changed, SteamNetConnectionStatusChangedCallback_t);
   };
 
 }  // namespace other
 
-#endif  // OTHER_STEAM_STEAM_STEAM_LINK_TRANSPORT_HPP
+#endif  // OTHER_STEAM_STEAM_STEAM_TRANSPORT_PROVIDER_HPP

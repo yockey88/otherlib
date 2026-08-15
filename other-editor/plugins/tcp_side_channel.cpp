@@ -5,29 +5,29 @@
 #include "driver/driver.hpp"
 #include "plugin/plugin.hpp"
 
-#include "peer_mesh/packet_sink.hpp"
+#include "network/packet_sink.hpp"
 
 using other::packet_sink;
 
+/// observer sink: called on the provider's home thread (net thread for tcp); the
+///  logger is thread-safe, so no marshaling is needed here
 class OTHER_CLASS tcp_side_channel : public other::packet_sink {
  public:
-  tcp_side_channel(other::job_system* jobs)
-      : packet_sink(jobs, "TcpSideChannel") {}
   ~tcp_side_channel() override = default;
 
-  void on_rx_data(other::natural_t from_peer_id, std::span<const uint8_t> data) override {
-    PROFILE_SECTION("tcp_side_channel::on_rx_data");
-    std::string str = "PEER ID: " + std::to_string(from_peer_id) + "\n";
+  void rx_data(other::natural_t conn_id, std::span<const uint8_t> data) override {
+    PROFILE_SECTION("tcp_side_channel::rx_data");
+    std::string str = "CONN ID: " + std::to_string(conn_id) + "\n";
     str += " - DATA: " + std::string(data.begin(), data.end());
     CORE_LOG_INFO("Received data on TCP listener:\n{}", str);
   }
 
-  void on_connection_opened(other::natural_t peer_id) override {
-    CORE_LOG_INFO("TCP connection opened with peer ID {}", peer_id);
+  void connection_opened(other::natural_t conn_id) override {
+    CORE_LOG_INFO("TCP connection opened with conn ID {}", conn_id);
   }
 
-  void on_connection_closed(other::natural_t peer_id) override {
-    CORE_LOG_INFO("TCP connection closed with peer ID {}", peer_id);
+  void connection_closed(other::natural_t conn_id) override {
+    CORE_LOG_INFO("TCP connection closed with conn ID {}", conn_id);
   }
 };
 

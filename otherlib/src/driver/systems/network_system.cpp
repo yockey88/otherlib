@@ -82,9 +82,9 @@ namespace other {
         interface_cardinality::MULTIPLE);
 
       reg.register_interface<packet_sink>(
-        [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "generic"), std::move(s)); },
+        [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "invalid"), std::move(s)); },
         [this](natural_t id) { unregister_transport_listener(id); },
-        packet_sink_args(&get_driver().get_job_system()),
+        no_args(),
         interface_cardinality::MULTIPLE);
     };
     register_interfaces_in_registry(kernel->driver_registry());
@@ -177,7 +177,11 @@ namespace other {
     auto [itr, success] = net_context->registered_transport_providers.emplace(id, std::move(provider));
     OTHER_ASSERT(success, "Failed to register transport provider: {}!", itr->second->name());
 
-    net_context->net_thread->register_provider(itr->second.get());
+    /// net-thread providers ride the thread's registry + command dispatch; main-home
+    ///  providers (memory, steam) are registered rows only — meshes attach them directly
+    if (auto* socket = dynamic_cast<socket_transport_provider*>(itr->second.get()); socket != nullptr) {
+      net_context->net_thread->register_provider(socket);
+    }
 
     return id;
   }
@@ -217,12 +221,18 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
+    auto* provider = dynamic_cast<socket_transport_provider*>(itr->second.get());
+    if (provider == nullptr) {
+      /// main-home row: no thread involvement, the registry entry is the whole story
+      net_context->registered_transport_providers.erase(itr);
+      return;
+    }
+
     /// tombstone, wait out the pump, then tear down ON the net io: shutdown closes asio
     ///  objects the network thread may be polling — running it from here would race
-    net_context->net_thread->unregister_provider(itr->second.get());
+    net_context->net_thread->unregister_provider(provider);
     wait_for_pump_quiescence(net_context->net_thread->reclamation_epoch());
 
-    transport_provider* provider = itr->second.get();
     if (net_context->net_thread->is_running()) {
       /// two posted phases: close sockets, then (after a full pump confirms drain) tear
       ///  down objects — collapsing them would destroy connections with handlers still queued
@@ -454,13 +464,6 @@ namespace other {
     return itr != net_context->registered_transport_providers.end() ? itr->second.get() : nullptr;
   }
 
-  void network_system::set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
-                                           std::function<void(const notification_connection_closed&)> on_close) {
-    ASSERT_MAIN_THREAD();
-    connection_opened_tap = std::move(on_open);
-    connection_closed_tap = std::move(on_close);
-  }
-
   void network_system::initialize_message_handlers() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("network_system::initialize_message_handlers");
@@ -683,9 +686,6 @@ namespace other {
     notification_connection_opened data = deserialize_direct<notification_connection_opened>(msg.data).first;
     CORE_LOG_DEBUG("Connection {} opened ({}, remote {}:{})", data.connection_id, data.outbound != 0 ? "outbound" : "inbound", data.remote.ip, data.remote.port);
     get_driver().get_event_system()->trigger_event("network.connection-opened", data.connection_id);
-    if (connection_opened_tap != nullptr) {
-      connection_opened_tap(data);
-    }
   }
 
   void network_system::handle_notification_connection_closed(driver_kernel* kernel, message&& msg) {
@@ -693,9 +693,6 @@ namespace other {
     notification_connection_closed data = deserialize_direct<notification_connection_closed>(msg.data).first;
     CORE_LOG_DEBUG("Connection {} closed (reason {})", data.connection_id, data.reason);
     get_driver().get_event_system()->trigger_event("network.connection-closed", data.connection_id);
-    if (connection_closed_tap != nullptr) {
-      connection_closed_tap(data);
-    }
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {

@@ -6,11 +6,11 @@
 
 namespace other {
 
-  class transport_provider;
+  class socket_transport_provider;
   class packet_sink;
 
   struct listener_route {
-    transport_provider* provider = nullptr;
+    socket_transport_provider* provider = nullptr;
     void* opaque_handle = nullptr;
     packet_sink* sink = nullptr;
   };

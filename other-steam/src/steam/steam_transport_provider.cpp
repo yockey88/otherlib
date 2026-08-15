@@ -1,7 +1,7 @@
 /**
- * \file steam/steam_link_transport.cpp
+ * \file steam/steam_transport_provider.cpp
  **/
-#include "steam/steam_link_transport.hpp"
+#include "steam/steam_transport_provider.hpp"
 
 #include <algorithm>
 
@@ -56,14 +56,14 @@ namespace other {
     return blob;
   }
 
-  steam_link_transport::steam_link_transport(int virtual_port)
+  steam_transport_provider::steam_transport_provider(int virtual_port)
       : virtual_port(virtual_port) {
     ISteamNetworkingSockets* sockets = SteamNetworkingSockets();
-    OTHER_ASSERT(sockets != nullptr, "steam_link_transport requires a READY steam context.");
+    OTHER_ASSERT(sockets != nullptr, "steam_transport_provider requires a READY steam context.");
     poll_group = sockets->CreatePollGroup();
   }
 
-  steam_link_transport::~steam_link_transport() {
+  steam_transport_provider::~steam_transport_provider() {
     if (ISteamNetworkingSockets* sockets = SteamNetworkingSockets(); sockets != nullptr) {
       if (listen_socket != 0) {
         sockets->CloseListenSocket(listen_socket);
@@ -74,7 +74,7 @@ namespace other {
     }
   }
 
-  node_id steam_link_transport::attested_remote(natural_t conn_id) const {
+  node_id steam_transport_provider::attested_remote(natural_t conn_id) const {
     SteamNetConnectionInfo_t info{};
     if (!SteamNetworkingSockets()->GetConnectionInfo(static_cast<HSteamNetConnection>(conn_id), &info)) {
       return 0;
@@ -82,7 +82,7 @@ namespace other {
     return info.m_identityRemote.GetSteamID64();
   }
 
-  natural_t steam_link_transport::dial(const net_address& remote) {
+  natural_t steam_transport_provider::dial(const net_address& remote) {
     /// lobby establishment resolves to a peer id before any dial (glue's job) —
     ///  the transport only ever connects to an attested peer identity
     if (remote.addressing != net_address::kind::STEAM_PEER || remote.id == 0) {
@@ -92,20 +92,27 @@ namespace other {
     SteamNetworkingIdentity identity;
     identity.SetSteamID64(remote.id);
     const HSteamNetConnection conn = SteamNetworkingSockets()->ConnectP2P(identity, virtual_port, 0, nullptr);
-    return conn == k_HSteamNetConnection_Invalid ? 0 : conn;
+    if (conn == k_HSteamNetConnection_Invalid) {
+      return 0;
+    }
+    create_sink(conn);
+    return conn;
   }
 
-  natural_t steam_link_transport::listen(const net_address& bind_addr) {
+  natural_t steam_transport_provider::listen(const net_address& bind_addr, accept_delegate on_accept) {
     if (listen_socket != 0) {
       CORE_LOG_WARN("[STEAM] listen refused: already listening");
       return 0;
     }
     listen_socket = SteamNetworkingSockets()->CreateListenSocketP2P(virtual_port, 0, nullptr);
+    if (listen_socket != 0) {
+      store_delegate(listen_socket, std::move(on_accept));
+    }
     return listen_socket;
   }
 
-  void steam_link_transport::tx(natural_t conn_id, std::span<const uint8_t> bytes) {
-    PROFILE_SECTION("steam_link_transport::tx");
+  void steam_transport_provider::tx(natural_t conn_id, std::span<const uint8_t> bytes) {
+    PROFILE_SECTION("steam_transport_provider::tx");
     ISteamNetworkingSockets* sockets = SteamNetworkingSockets();
     for (const ostd::vector<uint8_t>& chunk : fragment_blob(bytes)) {
       sockets->SendMessageToConnection(static_cast<HSteamNetConnection>(conn_id), chunk.data(),
@@ -113,16 +120,16 @@ namespace other {
     }
   }
 
-  void steam_link_transport::close(natural_t conn_id) {
+  void steam_transport_provider::close(natural_t conn_id) {
     SteamNetworkingSockets()->CloseConnection(static_cast<HSteamNetConnection>(conn_id), 0, nullptr, false);
     assembly.erase(conn_id);
   }
 
-  void steam_link_transport::pump() {
+  void steam_transport_provider::pump() {
     if (poll_group == 0) {
       return;
     }
-    PROFILE_SECTION("steam_link_transport::pump");
+    PROFILE_SECTION("steam_transport_provider::pump");
     SteamNetworkingMessage_t* messages[64] = {};
     const int count = SteamNetworkingSockets()->ReceiveMessagesOnPollGroup(poll_group, messages, 64);
     for (int i = 0; i < count; ++i) {
@@ -131,13 +138,15 @@ namespace other {
       opt<ostd::vector<uint8_t>> blob = assembly[conn].feed(
         std::span<const uint8_t>(static_cast<const uint8_t*>(message->m_pData), static_cast<size_t>(message->m_cbSize)));
       message->Release();
-      if (blob.has_value() && consumer.received != nullptr) {
-        consumer.received(conn, *blob);
+      if (blob.has_value()) {
+        if (link_sink* sink = sink_of(conn); sink != nullptr) {
+          sink->rx_data(conn, *blob);
+        }
       }
     }
   }
 
-  void steam_link_transport::on_status_changed(SteamNetConnectionStatusChangedCallback_t* status) {
+  void steam_transport_provider::on_status_changed(SteamNetConnectionStatusChangedCallback_t* status) {
     ISteamNetworkingSockets* sockets = SteamNetworkingSockets();
     const natural_t conn = status->m_hConn;
 
@@ -154,11 +163,12 @@ namespace other {
       case k_ESteamNetworkingConnectionState_Connected:
         sockets->SetConnectionPollGroup(status->m_hConn, poll_group);
         if (status->m_info.m_hListenSocket != 0) {
-          if (consumer.accepted != nullptr) {
-            consumer.accepted(status->m_info.m_hListenSocket, conn);
+          if (has_delegate(status->m_info.m_hListenSocket)) {
+            create_sink(conn);
+            dispatch_accept(status->m_info.m_hListenSocket, conn);
           }
-        } else if (consumer.opened != nullptr) {
-          consumer.opened(conn);
+        } else if (link_sink* sink = sink_of(conn); sink != nullptr) {
+          sink->connection_opened(conn);
         }
         return;
 
@@ -167,8 +177,8 @@ namespace other {
         CORE_LOG_TRACE("[STEAM] conn {} closed ({})", conn, status->m_info.m_szEndDebug);
         sockets->CloseConnection(status->m_hConn, 0, nullptr, false);
         assembly.erase(conn);
-        if (consumer.closed != nullptr) {
-          consumer.closed(conn);
+        if (link_sink* sink = sink_of(conn); sink != nullptr) {
+          sink->connection_closed(conn);
         }
         return;
 

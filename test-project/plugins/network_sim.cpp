@@ -5,15 +5,17 @@
 
 #include "plugin/plugin.hpp"
 
-class OTHER_API network_simulator : public other::transport_provider {
+class OTHER_API network_simulator : public other::socket_transport_provider {
  public:
   virtual ~network_simulator() = default;
 
   std::string name() const override { return "Network Simulator"; }
+  bool is_stream() const override { return true; }
+  other::link_caps conn_caps(other::natural_t) const override { return {}; }
 
  private:
   void tx_data(other::natural_t connection_id, ostd::vector<uint8_t>&& data) override {}
-  void close(other::natural_t connection_id) override {}
+  void net_close(other::natural_t connection_id) override {}
 
   void on_initialize() override {}
   void on_tick() override {}

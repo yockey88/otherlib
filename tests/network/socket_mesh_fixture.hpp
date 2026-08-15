@@ -16,22 +16,19 @@
 #include "core/time.hpp"
 
 #include "network/network_thread.hpp"
+#include "network/packet_sink.hpp"
 #include "network/tcp/tcp_transport_provider.hpp"
 #include "network/udp/udp_transport_provider.hpp"
 #include "peer_mesh/peer_mesh.hpp"
-#include "peer_mesh/provider_link_transport.hpp"
 
 #include "message/message_bus.hpp"
 
 namespace other {
 
-  /// transport-wide or conn-scoped byte recorder; delivery entry points overridden so
-  ///  events land synchronously on the network thread, read from the test thread
+  /// transport-wide or conn-scoped byte recorder; events land synchronously on the
+  ///  network thread, read from the test thread under the mutex
   class recording_sink final : public packet_sink {
    public:
-    recording_sink()
-        : packet_sink(nullptr, "recording-sink") {}
-
     void rx_data(natural_t conn_id, std::span<const uint8_t> data) override {
       std::lock_guard lock(mutex);
       auto& stream = streams[conn_id];
@@ -69,11 +66,6 @@ namespace other {
       return closed;
     }
 
-   protected:
-    void on_rx_data(natural_t conn_id, std::span<const uint8_t> data) override {}
-    void on_connection_opened(natural_t conn_id) override {}
-    void on_connection_closed(natural_t conn_id) override {}
-
    private:
     std::mutex mutex;
     std::map<natural_t, std::vector<uint8_t>> streams;
@@ -84,14 +76,12 @@ namespace other {
   };
 
   /// one process-half of a socket conversation: bus + network thread + tcp/udp providers +
-  ///  link-transport adapters + one mesh; two localhost instances form the conformance harness
+  ///  one mesh attached to both; two localhost instances form the conformance harness
   struct socket_net_instance {
     message_bus bus;
     network_thread thread{ bus };
     scope<tcp_transport_provider> tcp = make_scope<tcp_transport_provider>();
     scope<udp_transport_provider> udp = make_scope<udp_transport_provider>();
-    scope<provider_link_transport> tcp_link;
-    scope<provider_link_transport> udp_link;
     peer_mesh mesh;
 
     /// every lifecycle notification the driver side saw, raw commands included
@@ -106,10 +96,8 @@ namespace other {
 
     explicit socket_net_instance(std::string_view name, const peer_mesh_config& cfg = fast_socket_cfg())
         : mesh(name, cfg) {
-      tcp_link = make_scope<provider_link_transport>(thread, *tcp, link_caps{ .reliable = true, .ordered = true, .max_frame_size = 0 }, true);
-      udp_link = make_scope<provider_link_transport>(thread, *udp, link_caps{ .reliable = false, .ordered = false, .max_frame_size = udp->max_datagram() }, false);
-      mesh.register_transport(*tcp_link);
-      mesh.register_transport(*udp_link);
+      mesh.attach_provider(*tcp);
+      mesh.attach_provider(*udp);
     }
 
     ~socket_net_instance() { stop(); }
@@ -151,29 +139,22 @@ namespace other {
       return duration_cast<microseconds>(std::chrono::steady_clock::now() - epoch);
     }
 
-    /// drain notifications to the adapters + note log, pump adapters, tick the mesh
+    /// drain notifications into the note log (raw-row asserts), tick the mesh — link
+    ///  establishment and rx flow through the providers' own sinks
     void pump() {
       while (opt<message> msg = bus.try_receive_message()) {
         route_message(*msg);
       }
-      tcp_link->pump();
-      udp_link->pump();
       mesh.tick(now());
     }
 
     void route_message(const message& msg) {
       if (msg.category == NOTIFICATION && msg.id == CONNECTION_OPENED) {
-        const notification_connection_opened note = deserialize_direct<notification_connection_opened>(msg.data).first;
-        opened_notes.push_back(note);
-        tcp_link->on_connection_opened(note);
-        udp_link->on_connection_opened(note);
+        opened_notes.push_back(deserialize_direct<notification_connection_opened>(msg.data).first);
         return;
       }
       if (msg.category == NOTIFICATION && msg.id == CONNECTION_CLOSED) {
-        const notification_connection_closed note = deserialize_direct<notification_connection_closed>(msg.data).first;
-        closed_notes.push_back(note);
-        tcp_link->on_connection_closed(note);
-        udp_link->on_connection_closed(note);
+        closed_notes.push_back(deserialize_direct<notification_connection_closed>(msg.data).first);
         return;
       }
       if (msg.category == ACKNOWLEDGEMENT && msg.id == ACK) {
