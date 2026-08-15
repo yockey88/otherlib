@@ -112,13 +112,15 @@ namespace other {
   }
 
   TEST_F(transport_conformance_tests, tcp_exchange_1mb_byte_exact) {
+    /// sinks declared before the instances: the net threads deliver into them until
+    ///  stop(), so they must be destroyed after (sink contract, transport_provider.hpp)
+    recording_sink a_rx;
+    recording_sink b_rx;
     socket_net_instance a("conf-1mb-a");
     socket_net_instance b("conf-1mb-b");
     ASSERT_TRUE(a.start());
     ASSERT_TRUE(b.start());
 
-    recording_sink a_rx;
-    recording_sink b_rx;
     a.tcp->register_packet_sink(&a_rx);
     b.tcp->register_packet_sink(&b_rx);
 
@@ -238,9 +240,11 @@ namespace other {
 
       b.raw_close(conn);
       /// generous deadline: route retirement defers a pump, and a loaded scheduler can
-      ///  stretch 20 serialized cycles well past the default window
+      ///  stretch 20 serialized cycles well past the default window; the route count is
+      ///  published before the driver-side close note posts, so gate on the note too
       ASSERT_TRUE(pump_until({ &a, &b }, [&] {
-        return b.closed_note(conn) != nullptr && a.thread.active_route_count() == 1 && b.thread.active_route_count() == 0;
+        return b.closed_note(conn) != nullptr && a.closed_notes.size() > static_cast<size_t>(cycle) &&
+          a.thread.active_route_count() == 1 && b.thread.active_route_count() == 0;
       }, std::chrono::milliseconds(8000))) << "cycle " << cycle;
     }
 
@@ -618,12 +622,14 @@ namespace other {
   }
 
   TEST_F(transport_conformance_tests, per_link_sink_scoping_holds_on_sockets) {
+    /// wide outlives the instances (sink contract); scoped/binding below instead
+    ///  quiesce explicitly before unwinding
+    recording_sink wide;
     socket_net_instance a("conf-scope-a");
     socket_net_instance b("conf-scope-b");
     ASSERT_TRUE(a.start());
     ASSERT_TRUE(b.start());
 
-    recording_sink wide;
     a.tcp->register_packet_sink(&wide);
 
     const uint16_t port = next_test_port();

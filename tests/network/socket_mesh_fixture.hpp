@@ -255,23 +255,26 @@ namespace other {
     }
 
     void stop() {
-      if (!started || stopped) {
-        started = false;
+      if (stopped) {
         return;
       }
       stopped = true;
 
-      /// runner-pattern shutdown: ack-wrapped request, deferred ack arrives once every
-      ///  route has drained
-      const natural_t ack_id = send_acked_command(SHUTDOWN_REQUEST, {});
-      const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
-      while (!ack_result(ack_id).has_value() && std::chrono::steady_clock::now() < deadline) {
-        while (opt<message> msg = bus.try_receive_message()) {
-          route_message(*msg);
+      if (started) {
+        /// runner-pattern shutdown: ack-wrapped request, deferred ack arrives once every
+        ///  route has drained
+        const natural_t ack_id = send_acked_command(SHUTDOWN_REQUEST, {});
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+        while (!ack_result(ack_id).has_value() && std::chrono::steady_clock::now() < deadline) {
+          while (opt<message> msg = bus.try_receive_message()) {
+            route_message(*msg);
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
 
+      /// runs even when start() failed: launch() precedes the started flag, so a failed
+      ///  start still has a live worker that must stop before members destruct
       thread.shutdown();
       thread.wait_for_shutdown_complete();
     }

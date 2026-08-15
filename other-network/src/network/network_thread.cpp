@@ -349,11 +349,21 @@ namespace other {
 
     {
       PROFILE_SECTION("network_thread::handle_request_ack_process_msg--deserialize");
-      request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
-      ack_id = request_data.ack_id;
-      acked_msg.category = request_data.original_header.category;
-      acked_msg.id = request_data.original_header.id;
-      acked_msg.data = std::move(request_data.message_data);
+      /// a malformed wrapper must not escape into the thread error state, and without an
+      ///  ack_id there is nothing to nack — drop it here
+      try {
+        request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
+        ack_id = request_data.ack_id;
+        acked_msg.category = request_data.original_header.category;
+        acked_msg.id = request_data.original_header.id;
+        acked_msg.data = std::move(request_data.message_data);
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Failed to deserialize ACK request wrapper, dropping message: {}", e.what());
+        return;
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to deserialize ACK request wrapper, dropping message");
+        return;
+      }
     }
 
     uint8_t ack = 1;
