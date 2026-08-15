@@ -19,7 +19,7 @@
 
 namespace other {
 
-  class transport_provider;
+  class socket_transport_provider;
   class packet_sink;
 
   class OTHER_CLASS network_thread : public thread {
@@ -30,7 +30,7 @@ namespace other {
     constexpr static size_t kMaxBusMessagesPerPump = 64;
 
     network_thread(message_bus& bus)
-        : thread("OtherServer-Network-Thread"),
+        : thread("Other-Network-Thread"),
           bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
@@ -42,8 +42,8 @@ namespace other {
 
     /// registration runs on the main thread only; the pump reads the registry wait-free.
     ///  unregister only tombstones — destruction waits for reclamation_epoch() to advance past it
-    void register_provider(transport_provider* provider);
-    void unregister_provider(transport_provider* provider);
+    void register_provider(socket_transport_provider* provider);
+    void unregister_provider(socket_transport_provider* provider);
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
 
     /// monotonic pump-iteration counter; reads within one iteration never span into the next,
@@ -52,8 +52,8 @@ namespace other {
       return pump_epoch.load(std::memory_order_seq_cst);
     }
 
-    void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
-    void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
+    void register_connection_route(natural_t connection_id, socket_transport_provider* provider, void* opaque_handle);
+    void register_listener_route(natural_t listener_id, socket_transport_provider* provider, void* opaque_handle);
     /// routes die the moment a connection does; the object teardown behind them is
     ///  deferred one pump so aborted asio handlers drain first
     void retire_connection_route(natural_t connection_id);
@@ -93,7 +93,7 @@ namespace other {
     ostd::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> retired_connections;
 
-    slot_registry<transport_provider, kMaxTransportProviders> providers;
+    slot_registry<socket_transport_provider, kMaxTransportProviders> providers;
 
     acknowledgement_list ack_list;
 

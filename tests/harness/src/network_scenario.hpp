@@ -12,7 +12,7 @@
 #include "core/scope.hpp"
 #include "core/time.hpp"
 
-#include "network/memory/memory_fabric.hpp"
+#include "network/memory/memory_transport_provider.hpp"
 #include "peer_mesh/peer_mesh.hpp"
 
 #include "harness_scenario.hpp"
@@ -69,8 +69,7 @@ namespace other {
     std::string report_path = "logs/network-report.json";
 
     /// the network under test
-    scope<memory_fabric> fabric;
-    scope<fabric_port> port;
+    scope<memory_transport_provider> fabric;
     scope<peer_mesh> mesh;
 
     /// run state
@@ -95,6 +94,9 @@ namespace other {
     natural_t post_recovery_cross_deliveries = 0;
     natural_t unroutable_at_cut_start = 0;
     natural_t refused_at_cut_start = 0;
+    /// scenario-protocol counters: relays that found no path, origin sends refused
+    natural_t relay_drops = 0;
+    natural_t scenario_refused = 0;
 
     natural_t datagram_link = 0;
     natural_t datagram_conn = 0;

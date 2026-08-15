@@ -111,4 +111,11 @@ namespace other {
     on_join_requested(request->m_steamIDLobby.ConvertToUint64());
   }
 
+  int steam_lobby::member_count() const {
+    if (current_lobby == 0 || SteamMatchmaking() == nullptr) {
+      return 0;
+    }
+    return SteamMatchmaking()->GetNumLobbyMembers(CSteamID(current_lobby));
+  }
+
 }  // namespace other

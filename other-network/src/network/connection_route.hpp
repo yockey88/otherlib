@@ -6,10 +6,10 @@
 
 namespace other {
 
-  class transport_provider;
+  class socket_transport_provider;
 
   struct connection_route {
-    transport_provider* provider = nullptr;
+    socket_transport_provider* provider = nullptr;
     void* opaque_handle = nullptr;
   };
 

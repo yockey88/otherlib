@@ -47,12 +47,14 @@ namespace other {
       .original_header = message_header{ shutdown_msg.category, shutdown_msg.id },
       .message_data = std::move(shutdown_msg.data),
     };
-    ASSERT_NO_FATAL_FAILURE(req_ack_msg.data = serialize_direct(req_ack_data));
-    ASSERT_NO_FATAL_FAILURE(context.bus.send_message(std::move(req_ack_msg)));
+    req_ack_msg.data = serialize_direct(req_ack_data);
+    context.bus.send_message(std::move(req_ack_msg));
 
-    ASSERT_TRUE(wait_on_acked_message({ shutdown_msg.category, shutdown_msg.id }, context.bus));
-    ASSERT_NO_FATAL_FAILURE(context.net_thread.shutdown());
-    ASSERT_NO_FATAL_FAILURE(context.net_thread.wait_for_shutdown_complete());
+    /// EXPECT, not ASSERT: an early return here would skip the thread shutdown below and
+    ///  leave ~jthread joining a still-running worker
+    EXPECT_TRUE(wait_on_acked_message({ shutdown_msg.category, shutdown_msg.id }, context.bus));
+    context.net_thread.shutdown();
+    context.net_thread.wait_for_shutdown_complete();
   }
 
   bool network_thread_test_runner::wait_on_message(const message_header& header, message_bus& bus) {

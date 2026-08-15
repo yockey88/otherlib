@@ -22,8 +22,10 @@ namespace other {
       run(stoken, std::move(thread_rx_channel), std::move(thread_tx_channel));
     });
 
-    // first sync, allows communication channels to be set up
-    thread_sync_barrier.arrive_and_wait();
+    // first sync, allows communication channels to be set up; bounded so a worker that
+    //  never schedules dies loudly instead of parking the main thread forever
+    const bool worker_launched = launch_sync.arrive_and_wait(microseconds(5'000'000));
+    OTHER_ASSERT(worker_launched, "Thread [{}] never reached the launch rendezvous", thread_name);
     OTHER_ASSERT(get_current_state() == LAUNCHING, "Thread [{}] failed to enter launching state after barrier synchronization.", thread_name);
 
     OTHER_ASSERT(tx_channel != nullptr, "Thread tx channel is null");
@@ -38,7 +40,9 @@ namespace other {
     std::this_thread::yield();
     std::this_thread::yield();
 
-    opt<message> msg_opt = receive_from_thread(microseconds(500));
+    /// generous budget: the wait returns on ack; a starved runner can take whole
+    ///  milliseconds to first-schedule the new thread, and 500us aborted the process
+    opt<message> msg_opt = receive_from_thread(microseconds(5'000'000));
     OTHER_ASSERT(msg_opt.has_value(), "Thread [{}] did not acknowledge start message", thread_name);
     // clang-format off
     OTHER_ASSERT((message_header{ msg_opt->category, msg_opt->id } == message_header{ ACKNOWLEDGEMENT, ACK }), 
@@ -53,6 +57,9 @@ namespace other {
 
   void thread::shutdown() {
     PROFILE_SECTION("thread::shutdown");
+    /// early returns are safe against the old barrier deadlock: a worker exiting on
+    ///  error/force/stop arrives at the rendezvous without waiting on us, and
+    ///  wait_for_shutdown_complete() is deadline-bounded
     if (checkpoints.force_exit.load(std::memory_order_acquire)) {
       CORE_LOG_WARN("Thread [{}] is already in force exit mode, shutdown request ignored", thread_name);
       return;
@@ -73,9 +80,19 @@ namespace other {
       return;
     }
 
+    if (checkpoints.shutdown_initiated.exchange(true)) {
+      CORE_LOG_WARN("Thread [{}] shutdown already initiated, request ignored", thread_name);
+      return;
+    }
+
     CORE_LOG_DEBUG("Thread [{}] shutdown initiated", thread_name);
     thread_handle.request_stop();
-    thread_sync_barrier.arrive_and_wait();
+    /// met == the worker left its processing loop, so the shutdown message lands in its
+    ///  control loop instead of being swallowed mid-loop; a wedged worker can still pick
+    ///  the message up late, so send it either way
+    if (!shutdown_sync.arrive_and_wait(microseconds(10'000'000))) {
+      CORE_LOG_ERROR("Thread [{}] did not reach the shutdown rendezvous in time, sending shutdown message anyway", thread_name);
+    }
 
     message shutdown_msg(CONTROL, THREAD_SHUTDOWN);
     send_to_thread(std::move(shutdown_msg));
@@ -98,8 +115,21 @@ namespace other {
 
   void thread::wait_for_shutdown_complete() {
     PROFILE_SECTION("thread::wait_for_shutdown_complete");
-    while (get_current_state() != STOPPED) {
-      std::this_thread::yield();
+    if (!thread_handle.joinable() && get_current_state() != STOPPED) {
+      CORE_LOG_WARN("Thread [{}] has no worker to wait on (never launched?), skipping shutdown wait", thread_name);
+      return;
+    }
+
+    /// error/force/stop exits stop on their own; the deadline only fires for a worker
+    ///  wedged in user code or still LAUNCHING, where forcing is all that is left
+    const auto deadline = steady_clock::now() + seconds(5);
+    while (get_current_state() != STOPPED && steady_clock::now() < deadline) {
+      std::this_thread::sleep_for(milliseconds(1));
+    }
+    if (get_current_state() != STOPPED) {
+      CORE_LOG_ERROR("Thread [{}] did not stop within the shutdown deadline, forcing shutdown", thread_name);
+      force_shutdown();
+      return;
     }
 
     opt<message> shutdown_complete_msg = receive_from_thread(get_message_timeout());
@@ -138,18 +168,15 @@ namespace other {
   }
 
   thread::state thread::get_current_state() {
-    std::lock_guard lock(thread_state_mutex);
-    return current_state;
+    return current_state.load(std::memory_order_acquire);
   }
 
   void thread::set_current_state(state new_state) {
-    std::lock_guard lock(thread_state_mutex);
-    current_state = new_state;
+    current_state.store(new_state, std::memory_order_release);
   }
 
   bool thread::is_in_state(state check_state) {
-    std::lock_guard lock(thread_state_mutex);
-    return current_state == check_state;
+    return current_state.load(std::memory_order_acquire) == check_state;
   }
 
   std::string thread::get_thread_name() {
@@ -250,12 +277,17 @@ namespace other {
           CORE_LOG_DEBUG("Thread [{}] started", thread_name);
         } else if (message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_SHUTDOWN }) {
           OTHER_ASSERT(checkpoints.initialized.load(std::memory_order_acquire), "Thread [{}] received shutdown message but is not initialized.", thread_name);
-          OTHER_ASSERT(checkpoints.running.load(std::memory_order_acquire), "Thread [{}] received shutdown message but is not running.", thread_name);
-          checkpoints.initialized.store(false, std::memory_order_release);
-          checkpoints.running.store(false, std::memory_order_release);
-          checkpoints.error_occurred.store(false, std::memory_order_release);
-          on_shutdown();
-          CORE_LOG_DEBUG("Thread [{}] shutdown confirmed", thread_name);
+          if (checkpoints.error_occurred.load(std::memory_order_acquire) || !checkpoints.running.load(std::memory_order_acquire)) {
+            /// a crash raced the clean shutdown handshake: ack so the main thread
+            ///  unblocks, but never run on_shutdown on a thread that already tore down
+            CORE_LOG_WARN("Thread [{}] received shutdown message after crash or stop, acknowledging without shutdown work", thread_name);
+          } else {
+            checkpoints.initialized.store(false, std::memory_order_release);
+            checkpoints.running.store(false, std::memory_order_release);
+            checkpoints.error_occurred.store(false, std::memory_order_release);
+            on_shutdown();
+            CORE_LOG_DEBUG("Thread [{}] shutdown confirmed", thread_name);
+          }
         } else {
           OTHER_ASSERT(false, "Unreachable code reached in thread control loop");
         }
@@ -321,7 +353,9 @@ namespace other {
 
     set_current_state(LAUNCHING);
     // first sync, allows main thread to know it can send control messages for initialization
-    thread_sync_barrier.arrive_and_wait();
+    if (!launch_sync.arrive_and_wait(microseconds(5'000'000))) {
+      CORE_LOG_WARN("Thread [{}] timed out waiting for the launch rendezvous", get_thread_name());
+    }
     if (!thread_control_loop(stoken)) {
       set_current_state(STOPPED);
       return;
@@ -343,7 +377,16 @@ namespace other {
     } while (checkpoints.running.load(std::memory_order_acquire) && thread_loop_condition(stoken));
 
     set_current_state(SHUTTING_DOWN);
-    thread_sync_barrier.arrive_and_wait();
+    /// arrive on every exit path so shutdown() and joins can never park behind us; wait
+    ///  for the main thread only when a clean shutdown handshake is actually in flight
+    if (checkpoints.shutdown_initiated.load(std::memory_order_acquire) &&
+        !checkpoints.force_exit.load(std::memory_order_acquire)) {
+      if (!shutdown_sync.arrive_and_wait(microseconds(5'000'000))) {
+        CORE_LOG_WARN("Thread [{}] timed out waiting for the shutdown rendezvous", get_thread_name());
+      }
+    } else {
+      shutdown_sync.arrive();
+    }
 
     if (checkpoints.force_exit.load(std::memory_order_acquire)) {
       CORE_LOG_WARN("Thread [{}] exiting due to force exit flag during processing loop", get_thread_name());

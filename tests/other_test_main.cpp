@@ -3,6 +3,12 @@
  **/
 #include <gtest/gtest.h>
 
+#include <iostream>
+
+#include <Windows.h>
+
+#include "core/logger.hpp"
+
 #include "audio/audio_environment.hpp"
 #include "thread/thread_safety.hpp"
 
@@ -19,7 +25,17 @@ other::driver* otherlib_create_driver(const other::command_line* cmd, const othe
 void otherlib_destroy_driver(other::driver* instance) {}
 }
 
+/// gtest's SEH guard only covers faults raised on the test's own thread — a fault on a
+///  background thread (net pump, script finalizers) kills the process silently without this
+static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
+  const uint32_t code = info != nullptr && info->ExceptionRecord != nullptr ? info->ExceptionRecord->ExceptionCode : 0;
+  std::cerr << "Unhandled SEH exception 0x" << std::hex << code << std::dec << "\nstacktrace =\n"
+            << OTHER_STACKTRACE << std::endl;
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+
 int main(int argc, char** argv) {
+  SetUnhandledExceptionFilter(&report_unhandled_seh);
   other::disable_thread_check();
 
   // activate all subsystems for the tests

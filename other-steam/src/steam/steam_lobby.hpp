@@ -41,6 +41,8 @@ namespace other {
 
     lobby_state state() const { return current_state; }
     uint64_t lobby_id() const { return current_lobby; }
+    /// live SDK query; 0 without a lobby or a READY steam context
+    int member_count() const;
 
     /// callback entries (also the test seam)
     void on_lobby_created(bool ok, uint64_t lobby_id);

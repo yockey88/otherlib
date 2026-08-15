@@ -5,7 +5,7 @@
 #define OTHER_CORE_THREAD_THREAD_HPP
 
 #include <atomic>
-#include <barrier>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -32,13 +32,14 @@ namespace other {
     };
 
     thread(const std::string& thread_name)
-        : thread_name(thread_name), thread_sync_barrier(kNumThreads) {}
+        : thread_name(thread_name) {}
     virtual ~thread() = default;
 
     inline bool is_running() {
-      return current_state == WAITING ||
-        current_state == PROCESSING ||
-        current_state == PUMPING;
+      const state snapshot = current_state.load(std::memory_order_acquire);
+      return snapshot == WAITING ||
+        snapshot == PROCESSING ||
+        snapshot == PUMPING;
     }
 
     void launch();
@@ -102,18 +103,44 @@ namespace other {
       std::atomic<bool> finalized = false;
       std::atomic<bool> error_occurred = false;
       std::atomic<bool> force_exit = false;
+      std::atomic<bool> shutdown_initiated = false;
     } checkpoints;
 
     std::string error_message;
 
-    constexpr static size_t kNumThreads = 2;
-    std::barrier<> thread_sync_barrier;
+    /// single-use two-party rendezvous. unlike std::barrier every wait is bounded and a
+    ///  party can arrive without waiting, so no exit path can park a thread forever
+    struct sync_point {
+      std::mutex mutex;
+      std::condition_variable cv;
+      uint32_t arrivals = 0;
+
+      void arrive() {
+        {
+          std::lock_guard lock(mutex);
+          ++arrivals;
+        }
+        cv.notify_all();
+      }
+
+      /// true if the peer arrived within the timeout
+      bool arrive_and_wait(microseconds timeout) {
+        std::unique_lock lock(mutex);
+        ++arrivals;
+        cv.notify_all();
+        return cv.wait_for(lock, timeout, [this] { return arrivals >= 2; });
+      }
+    };
+
+    sync_point launch_sync;
+    sync_point shutdown_sync;
 
     std::mutex thread_state_mutex;
     std::jthread thread_handle;
     opt<integer_t> thread_exit_code = std::nullopt;
 
-    state current_state = WAITING;
+    /// atomic: read off-thread (is_running gates sink reclamation) against worker writes
+    std::atomic<state> current_state = WAITING;
     scope<message_channel> tx_channel;
     scope<message_channel> rx_channel;
 

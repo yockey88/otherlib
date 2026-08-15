@@ -23,7 +23,7 @@
 
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
-#include "peer_mesh/packet_sink.hpp"
+#include "network/packet_sink.hpp"
 
 namespace other {
 
@@ -110,12 +110,10 @@ namespace other {
 
     bool network_active() const;
 
-    /// peer-mesh glue: exposes the net thread/providers for link-transport adapters to
-    ///  wrap, plus the only feed for accept attribution and dial failures
+    /// peer-mesh glue: meshes attach providers resolved here; establishment and rx flow
+    ///  through the providers' own link sinks
     network_thread* thread();
     transport_provider* find_provider(const std::string_view transport_name);
-    void set_connection_taps(std::function<void(const notification_connection_opened&)> on_open,
-                             std::function<void(const notification_connection_closed&)> on_close);
 
     /// nullptr when steam.enabled is false; group-0 tick order pumps its callbacks
     ///  before peer_mesh_system ticks the mesh
@@ -129,9 +127,6 @@ namespace other {
     bool network_disabled = false;
     acknowledgement_list ack_list;
     scope<steam_context> steam_ctx = nullptr;
-
-    std::function<void(const notification_connection_opened&)> connection_opened_tap;
-    std::function<void(const notification_connection_closed&)> connection_closed_tap;
 
     /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
     ///  providers/sinks can live in plugins that unload the moment unregister returns

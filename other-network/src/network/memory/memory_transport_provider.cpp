@@ -1,7 +1,7 @@
 /**
- * \file network/memory/memory_fabric.cpp
+ * \file network/memory/memory_transport_provider.cpp
  **/
-#include "network/memory/memory_fabric.hpp"
+#include "network/memory/memory_transport_provider.hpp"
 
 #include <algorithm>
 
@@ -9,7 +9,7 @@
 
 namespace other {
 
-  uint64_t memory_fabric::splitmix64::next() {
+  uint64_t memory_transport_provider::splitmix64::next() {
     state += 0x9E3779B97F4A7C15ull;
     uint64_t z = state;
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
@@ -17,34 +17,34 @@ namespace other {
     return z ^ (z >> 31);
   }
 
-  double memory_fabric::splitmix64::next_double() {
+  double memory_transport_provider::splitmix64::next_double() {
     return static_cast<double>(next() >> 11) * 0x1.0p-53;
   }
 
-  void memory_fabric::configure_endpoint(uint64_t endpoint_id, bool datagram) {
+  void memory_transport_provider::configure_endpoint(uint64_t endpoint_id, bool datagram) {
     endpoints[endpoint_id].datagram = datagram;
   }
 
-  natural_t memory_fabric::listen(fabric_port& port, const net_address& bind_addr) {
+  natural_t memory_transport_provider::listen(const net_address& bind_addr, accept_delegate on_accept) {
     if (bind_addr.addressing != net_address::kind::MEMORY) {
       return 0;
     }
     endpoint& ep = endpoints[bind_addr.id];
     if (ep.listener_id != 0) {
-      CORE_LOG_WARN("[FABRIC] endpoint {} already has a listener", bind_addr.id);
+      CORE_LOG_WARN("[MEMORY] endpoint {} already has a listener", bind_addr.id);
       return 0;
     }
     ep.listener_id = next_id++;
-    ep.owner = &port;
+    store_delegate(ep.listener_id, std::move(on_accept));
     return ep.listener_id;
   }
 
-  natural_t memory_fabric::dial(fabric_port& port, const net_address& remote) {
+  natural_t memory_transport_provider::dial(const net_address& remote) {
     if (remote.addressing != net_address::kind::MEMORY) {
       return 0;
     }
     auto itr = endpoints.find(remote.id);
-    if (itr == endpoints.end() || itr->second.listener_id == 0 || itr->second.owner == nullptr) {
+    if (itr == endpoints.end() || itr->second.listener_id == 0) {
       return 0;
     }
 
@@ -52,19 +52,23 @@ namespace other {
     const natural_t dial_conn = next_id++;
     const natural_t accept_conn = next_id++;
 
-    connection a{ .peer_conn = accept_conn, .datagram = datagram, .owner = &port };
+    connection a{ .peer_conn = accept_conn, .datagram = datagram };
     a.out.prng.state = channel_seed(a.out.profile, dial_conn);
-    connection b{ .peer_conn = dial_conn, .datagram = datagram, .owner = itr->second.owner };
+    connection b{ .peer_conn = dial_conn, .datagram = datagram };
     b.out.prng.state = channel_seed(b.out.profile, accept_conn);
     connections.emplace(dial_conn, std::move(a));
     connections.emplace(accept_conn, std::move(b));
 
-    events.push_back({ .kind = event_kind::ACCEPTED, .target = itr->second.owner, .a = itr->second.listener_id, .b = accept_conn });
-    events.push_back({ .kind = event_kind::OPENED, .target = &port, .a = dial_conn });
+    /// both sinks exist from this moment — the accept side buffers until adopted
+    create_sink(dial_conn);
+    create_sink(accept_conn);
+
+    events.push_back({ .kind = event_kind::ACCEPTED, .a = itr->second.listener_id, .b = accept_conn });
+    events.push_back({ .kind = event_kind::OPENED, .a = dial_conn });
     return dial_conn;
   }
 
-  link_caps memory_fabric::conn_caps(natural_t conn_id) const {
+  link_caps memory_transport_provider::conn_caps(natural_t conn_id) const {
     auto itr = connections.find(conn_id);
     if (itr == connections.end()) {
       return {};
@@ -76,14 +80,14 @@ namespace other {
     };
   }
 
-  uint64_t memory_fabric::channel_seed(const link_profile& profile, natural_t conn_id) const {
+  uint64_t memory_transport_provider::channel_seed(const link_profile& profile, natural_t conn_id) const {
     if (profile.seed != 0) {
       return profile.seed;
     }
     return default_seed ^ (conn_id * 0x9E3779B97F4A7C15ull);
   }
 
-  void memory_fabric::set_profile(natural_t conn_id, const link_profile& to_remote, const link_profile& to_local) {
+  void memory_transport_provider::set_profile(natural_t conn_id, const link_profile& to_remote, const link_profile& to_local) {
     auto itr = connections.find(conn_id);
     if (itr == connections.end()) {
       return;
@@ -98,7 +102,7 @@ namespace other {
     }
   }
 
-  void memory_fabric::set_mute(natural_t conn_id, bool to_remote, bool to_local) {
+  void memory_transport_provider::set_mute(natural_t conn_id, bool to_remote, bool to_local) {
     auto itr = connections.find(conn_id);
     if (itr == connections.end()) {
       return;
@@ -109,12 +113,19 @@ namespace other {
     }
   }
 
-  const memory_fabric::channel_stats* memory_fabric::stats_of(natural_t conn_id) const {
+  const memory_transport_provider::channel_stats* memory_transport_provider::stats_of(natural_t conn_id) const {
     auto itr = connections.find(conn_id);
     return itr != connections.end() ? &itr->second.out.stats : nullptr;
   }
 
-  void memory_fabric::enqueue(connection& conn, std::span<const uint8_t> bytes) {
+  const memory_transport_provider::memory_transform* memory_transport_provider::transform_of(natural_t conn_id) const {
+    if (auto itr = conn_transforms.find(conn_id); itr != conn_transforms.end() && itr->second != nullptr) {
+      return &itr->second;
+    }
+    return global_transform != nullptr ? &global_transform : nullptr;
+  }
+
+  void memory_transport_provider::enqueue(connection& conn, std::span<const uint8_t> bytes, microseconds extra_delay) {
     channel& ch = conn.out;
     const link_profile& profile = ch.profile;
 
@@ -145,7 +156,7 @@ namespace other {
     }
 
     for (natural_t i = 0; i < copies; ++i) {
-      microseconds deliver_at = current_now + profile.latency + jitter_draw();
+      microseconds deliver_at = current_now + extra_delay + profile.latency + jitter_draw();
       if (deliver_at < current_now) {
         deliver_at = current_now;
       }
@@ -177,7 +188,7 @@ namespace other {
     }
   }
 
-  void memory_fabric::tx(natural_t conn_id, std::span<const uint8_t> bytes) {
+  void memory_transport_provider::tx(natural_t conn_id, std::span<const uint8_t> bytes) {
     auto itr = connections.find(conn_id);
     if (itr == connections.end() || !itr->second.open || itr->second.closing) {
       return;
@@ -186,10 +197,35 @@ namespace other {
     if (peer == connections.end() || !peer->second.open) {
       return;
     }
-    enqueue(itr->second, bytes);
+
+    const memory_transform* fn = transform_of(conn_id);
+    if (fn == nullptr) {
+      enqueue(itr->second, bytes, microseconds{ 0 });
+      return;
+    }
+
+    ostd::vector<uint8_t> rewritten(bytes.begin(), bytes.end());
+    memory_transform_context ctx{
+      .conn_id = conn_id,
+      .datagram = itr->second.datagram,
+      .now = current_now,
+      .bytes = rewritten,
+      .prng = itr->second.out.prng,
+    };
+    (*fn)(ctx);
+    if (ctx.drop) {
+      itr->second.out.stats.lost++;
+      return;
+    }
+    for (uint32_t copy = 0; copy < std::max<uint32_t>(ctx.copies, 1); ++copy) {
+      enqueue(itr->second, rewritten, ctx.delay);
+      if (copy > 0) {
+        itr->second.out.stats.duplicated++;
+      }
+    }
   }
 
-  void memory_fabric::close(natural_t conn_id) {
+  void memory_transport_provider::close(natural_t conn_id) {
     auto itr = connections.find(conn_id);
     if (itr == connections.end() || !itr->second.open || itr->second.closing) {
       return;
@@ -202,30 +238,26 @@ namespace other {
     }
   }
 
-  void memory_fabric::tick(microseconds now) {
+  void memory_transport_provider::tick(microseconds now) {
     current_now = now;
 
-    /// establishment/teardown events first, fifo
+    /// establishment/teardown events first, fifo; delivery is straight through the
+    ///  connection's sink (main home = same thread, processed immediately)
     while (!events.empty()) {
       const event e = events.front();
       events.pop_front();
-      if (e.target == nullptr) {
-        continue;
-      }
       switch (e.kind) {
         case event_kind::OPENED:
-          if (e.target->sink.opened) {
-            e.target->sink.opened(e.a);
+          if (link_sink* sink = sink_of(e.a); sink != nullptr) {
+            sink->connection_opened(e.a);
           }
           break;
         case event_kind::ACCEPTED:
-          if (e.target->sink.accepted) {
-            e.target->sink.accepted(e.a, e.b);
-          }
+          dispatch_accept(e.a, e.b);
           break;
         case event_kind::CLOSED:
-          if (e.target->sink.closed) {
-            e.target->sink.closed(e.a);
+          if (link_sink* sink = sink_of(e.a); sink != nullptr) {
+            sink->connection_closed(e.a);
           }
           break;
       }
@@ -234,7 +266,6 @@ namespace other {
     /// snapshot due frames before delivering — frames enqueued by delivery callbacks
     ///  wait for the next tick, so seeded runs replay exactly and echoes cannot spin
     struct due_frame {
-      fabric_port* target = nullptr;
       natural_t to_conn = 0;
       natural_t from_conn = 0;
       microseconds deliver_at{ 0 };
@@ -253,7 +284,6 @@ namespace other {
           continue;
         }
         due.push_back({
-          .target = peer->second.owner,
           .to_conn = conn.peer_conn,
           .from_conn = conn_id,
           .deliver_at = itr->deliver_at,
@@ -270,14 +300,14 @@ namespace other {
 
     for (due_frame& frame : due) {
       auto to = connections.find(frame.to_conn);
-      if (to == connections.end() || !to->second.open || frame.target == nullptr) {
+      if (to == connections.end() || !to->second.open) {
         continue;
       }
       if (auto from = connections.find(frame.from_conn); from != connections.end()) {
         from->second.out.stats.delivered++;
       }
-      if (frame.target->sink.received) {
-        frame.target->sink.received(frame.to_conn, frame.bytes);
+      if (link_sink* sink = sink_of(frame.to_conn); sink != nullptr) {
+        sink->rx_data(frame.to_conn, frame.bytes);
       }
     }
 
@@ -293,7 +323,7 @@ namespace other {
       }
       conn.open = false;
       if (peer != connections.end() && peer->second.open) {
-        events.push_back({ .kind = event_kind::CLOSED, .target = peer->second.owner, .a = conn.peer_conn });
+        events.push_back({ .kind = event_kind::CLOSED, .a = conn.peer_conn });
       }
     }
   }

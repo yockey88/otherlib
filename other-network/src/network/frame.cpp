@@ -58,23 +58,6 @@ namespace other {
     return header;
   }
 
-  void write_route_header(const route_header& route, uint8_t* out) {
-    put_u64(out, route.src);
-    put_u64(out + 8, route.dst);
-    out[16] = route.ttl;
-  }
-
-  opt<route_header> read_route_header(std::span<const uint8_t> payload) {
-    if (payload.size() < kRouteHeaderSize) {
-      return std::nullopt;
-    }
-    route_header route;
-    route.src = get_u64(payload.data());
-    route.dst = get_u64(payload.data() + 8);
-    route.ttl = payload[16];
-    return route;
-  }
-
   ostd::vector<uint8_t> write_frame(uint16_t net_id, std::span<const uint8_t> payload) {
     ostd::vector<uint8_t> frame(kFrameHeaderSize + payload.size());
     const frame_header header{
@@ -84,31 +67,6 @@ namespace other {
     };
     write_frame_header(header, frame.data());
     std::ranges::copy(payload, frame.data() + kFrameHeaderSize);
-    return frame;
-  }
-
-  ostd::vector<uint8_t> write_flagged_frame(uint16_t net_id, uint16_t flags, std::span<const uint8_t> payload) {
-    ostd::vector<uint8_t> frame(kFrameHeaderSize + payload.size());
-    const frame_header header{
-      .length = static_cast<uint32_t>(kFrameLengthFloor + payload.size()),
-      .net_id = net_id,
-      .flags = flags,
-    };
-    write_frame_header(header, frame.data());
-    std::ranges::copy(payload, frame.data() + kFrameHeaderSize);
-    return frame;
-  }
-
-  ostd::vector<uint8_t> write_routed_frame(const route_header& route, uint16_t net_id, std::span<const uint8_t> payload) {
-    ostd::vector<uint8_t> frame(kFrameHeaderSize + kRouteHeaderSize + payload.size());
-    const frame_header header{
-      .length = static_cast<uint32_t>(kFrameLengthFloor + kRouteHeaderSize + payload.size()),
-      .net_id = net_id,
-      .flags = static_cast<uint16_t>(frame_flags::ROUTED),
-    };
-    write_frame_header(header, frame.data());
-    write_route_header(route, frame.data() + kFrameHeaderSize);
-    std::ranges::copy(payload, frame.data() + kFrameHeaderSize + kRouteHeaderSize);
     return frame;
   }
 

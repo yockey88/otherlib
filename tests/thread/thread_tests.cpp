@@ -3,6 +3,8 @@
  **/
 #include "thread/thread_tests.hpp"
 
+#include <stdexcept>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest-matchers.h>
 
@@ -78,22 +80,46 @@ namespace other {
     // Note: on_shutdown is not mocked to simulate unjoinable behavior
   };
 
-  // TEST_F(thread_tests, thread_force_shutdown) {
-  //   thread_test_thread test_thread;
+  TEST_F(thread_tests, thread_force_shutdown) {
+    thread_test_thread test_thread;
 
-  //   EXPECT_CALL(test_thread, on_initialize()).Times(1);
-  //   EXPECT_CALL(test_thread, on_start()).Times(1);
-  //   EXPECT_CALL(test_thread, on_shutdown()).Times(0);  /// should not be called
-  //   EXPECT_CALL(test_thread, pump_thread()).Times(testing::AtLeast(1));
+    EXPECT_CALL(test_thread, on_initialize()).Times(1);
+    EXPECT_CALL(test_thread, on_start()).Times(1);
+    EXPECT_CALL(test_thread, on_shutdown()).Times(0);  /// should not be called
+    EXPECT_CALL(test_thread, pump_thread()).Times(testing::AtLeast(1));
 
-  //   thread* thread_ptr = &test_thread;
+    thread* thread_ptr = &test_thread;
 
-  //   thread_ptr->launch();
-  //   /// let it get to the waiting state
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    thread_ptr->launch();
+    /// let it get to the waiting state
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  //   thread_ptr->force_shutdown();
-  //   EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
-  // }
+    thread_ptr->force_shutdown();
+    EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
+  }
+
+  /// regression: an errored worker used to park at the shutdown barrier forever while
+  ///  shutdown() early-returned without arriving and wait_for_shutdown_complete() spun
+  TEST_F(thread_tests, errored_thread_shutdown_terminates) {
+    thread_test_thread test_thread;
+
+    EXPECT_CALL(test_thread, on_initialize()).Times(1);
+    EXPECT_CALL(test_thread, on_start()).Times(1);
+    EXPECT_CALL(test_thread, on_shutdown()).Times(0);
+    EXPECT_CALL(test_thread, pump_thread()).WillOnce(testing::Throw(std::runtime_error("intentional pump failure")));
+
+    thread* thread_ptr = &test_thread;
+    thread_ptr->launch();
+
+    const auto deadline = steady_clock::now() + seconds(5);
+    while (!thread_ptr->in_error_state() && steady_clock::now() < deadline) {
+      std::this_thread::sleep_for(milliseconds(1));
+    }
+    EXPECT_TRUE(thread_ptr->in_error_state());
+
+    thread_ptr->shutdown();
+    thread_ptr->wait_for_shutdown_complete();
+    EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
+  }
 
 }  // namespace other

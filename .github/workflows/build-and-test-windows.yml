@@ -85,3 +85,17 @@ jobs:
       with:
         name: other-test-results-windows-${{ inputs.configuration }}
         path: other_test_results.windows.*.xml
+
+    ## on failure, ship every runtime log: each test writes logs/tests/<suite>.<test>.log,
+    ##  so when the suite process dies mid-run (no xml written) the most recently
+    ##  modified file there names the dying test; harness runs log to logs/*.log
+    - name: Upload Test Logs
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: other-test-logs-${{ inputs.configuration }}
+        path: |
+          logs/
+          other.log
+          other-log-failure.log
+        if-no-files-found: ignore

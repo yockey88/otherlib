@@ -6,9 +6,9 @@
 
 #include "core/scope.hpp"
 
-#include "network/memory/memory_fabric.hpp"
+#include "network/memory/memory_transport_provider.hpp"
 #include "peer_mesh/peer_mesh.hpp"
-#include "peer_mesh/peer_mesh_actor.hpp"
+#include "peer_mesh/peer_actor.hpp"
 
 namespace other {
 
@@ -24,7 +24,7 @@ namespace other {
     link_close_reason reason = link_close_reason::NONE;
   };
 
-  class test_actor final : public peer_mesh_actor {
+  class test_actor final : public peer_actor {
    public:
     std::string_view name() const override { return "test-actor"; }
 
@@ -43,18 +43,26 @@ namespace other {
   ///  the programmatic layout hook). deterministic virtual clock via step()
   struct mesh_sim_fixture {
     explicit mesh_sim_fixture(size_t actors, uint64_t seed = 1, const peer_mesh_config& cfg = {})
-        : fabric(seed), port(fabric), sim_mesh("sim", cfg) {
-      sim_mesh.register_transport(port);
+        : fabric(seed), sim_mesh("sim", cfg) {
+      sim_mesh.attach_provider(fabric);
       for (size_t i = 1; i <= actors; ++i) {
-        sim_mesh.spawn_actor(make_scope<test_actor>(), static_cast<node_id>(i));
+        spawn(make_scope<test_actor>(), static_cast<node_id>(i));
       }
+    }
+
+    /// first actor spawned = the primary (the local endpoint); the rest are explicit
+    ///  simulated secondaries — the sim posture of the primary/secondary model
+    peer_actor& spawn(scope<peer_actor> actor, node_id node) {
+      return sim_mesh.primary() == nullptr
+        ? sim_mesh.set_primary(std::move(actor), node)
+        : sim_mesh.add_secondary(std::move(actor), node);
     }
 
     peer_mesh& mesh() { return sim_mesh; }
 
     /// works for any spawned actor type; session tests spawn their own actors
-    peer_mesh_actor& base_actor(size_t node) {
-      peer_mesh_actor* a = sim_mesh.actor(static_cast<node_id>(node));
+    peer_actor& base_actor(size_t node) {
+      peer_actor* a = sim_mesh.actor(static_cast<node_id>(node));
       OTHER_ASSERT(a != nullptr, "fixture: no actor {}", node);
       return *a;
     }
@@ -75,7 +83,7 @@ namespace other {
       const natural_t link_id = base_actor(a).open_link(net_address::memory_endpoint(endpoint_id));
       OTHER_ASSERT(link_id != 0, "fixture: dial failed for endpoint {}", endpoint_id);
 
-      const link_record* record = sim_mesh.net().link(link_id);
+      const link_record* record = sim_mesh.link(link_id);
       OTHER_ASSERT(record != nullptr, "fixture: dialed link {} missing", link_id);
       fabric.set_profile(record->connection_id, ab, ba);
       return link_id;
@@ -104,8 +112,7 @@ namespace other {
     microseconds now{ 0 };
     uint64_t next_endpoint = 1;
 
-    memory_fabric fabric;
-    fabric_port port;
+    memory_transport_provider fabric;
     peer_mesh sim_mesh;
   };
 

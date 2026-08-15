@@ -3,11 +3,11 @@
  **/
 #include <gtest/gtest.h>
 
-#include "network/memory/memory_fabric.hpp"
+#include "network/memory/memory_transport_provider.hpp"
 #include "peer_mesh/peer_mesh.hpp"
 
 #include "steam/steam_context.hpp"
-#include "steam/steam_link_transport.hpp"
+#include "steam/steam_transport_provider.hpp"
 #include "steam/steam_lobby.hpp"
 
 #include "network/mesh_sim_fixture.hpp"
@@ -59,9 +59,9 @@ namespace other {
   namespace {
 
     /// the §6 rule without Valve involved: a transport that swears to a remote id
-    class attesting_fabric_port final : public fabric_port {
+    class attesting_memory_provider final : public memory_transport_provider {
      public:
-      using fabric_port::fabric_port;
+      using memory_transport_provider::memory_transport_provider;
 
       node_id attested_remote(natural_t conn_id) const override {
         auto itr = attested.find(conn_id);
@@ -73,14 +73,14 @@ namespace other {
 
     struct attested_sim {
       attested_sim()
-          : fabric(1), port(fabric), mesh("attested", [] {
+          : fabric(1), mesh("attested", [] {
               peer_mesh_config cfg;
               cfg.handshake_timeout = microseconds{ 100'000 };
               return cfg;
             }()) {
-        mesh.register_transport(port);
-        mesh.spawn_actor(make_scope<test_actor>(), 1);
-        mesh.spawn_actor(make_scope<test_actor>(), 2);
+        mesh.attach_provider(fabric);
+        mesh.set_primary(make_scope<test_actor>(), 1);
+        mesh.add_secondary(make_scope<test_actor>(), 2);
         fabric.configure_endpoint(1, false);
       }
 
@@ -95,8 +95,8 @@ namespace other {
       }
 
       microseconds now{ 0 };
-      memory_fabric fabric;
-      attesting_fabric_port port;
+      attesting_memory_provider fabric;
+
       peer_mesh mesh;
     };
 
@@ -109,7 +109,7 @@ namespace other {
     ASSERT_NE(link_id, 0u);
 
     /// the transport attests node 999; the hello will claim node 2
-    sim.port.attested[sim.mesh.net().link(link_id)->connection_id] = 999;
+    sim.fabric.attested[sim.mesh.link(link_id)->connection_id] = 999;
 
     sim.step(16);
     ASSERT_FALSE(sim.actor(1).downs.empty());
@@ -124,7 +124,7 @@ namespace other {
     const natural_t link_id = sim.actor(1).open_link(net_address::memory_endpoint(1));
     ASSERT_NE(link_id, 0u);
 
-    sim.port.attested[sim.mesh.net().link(link_id)->connection_id] = 2;
+    sim.fabric.attested[sim.mesh.link(link_id)->connection_id] = 2;
 
     sim.step(16);
     ASSERT_FALSE(sim.actor(1).ups.empty());
@@ -196,17 +196,17 @@ namespace other {
 
   namespace {
 
-    class recording_stub_transport final : public link_transport {
+    class recording_stub_transport final : public transport_provider {
      public:
-      std::string_view name() const override { return "steam"; }
+      std::string name() const override { return "steam"; }
+      transport_home execution_home() const override { return transport_home::MAIN_THREAD; }
       bool is_stream() const override { return false; }
       link_caps conn_caps(natural_t) const override { return { .reliable = true, .ordered = true, .max_frame_size = 0 }; }
-      void bind(callbacks) override {}
       natural_t dial(const net_address& remote) override {
         dials.push_back(remote);
         return 0;  // refuse: routing is the assertion, not establishment
       }
-      natural_t listen(const net_address& bind_addr) override {
+      natural_t listen(const net_address& bind_addr, accept_delegate) override {
         listens.push_back(bind_addr);
         return 0;
       }
@@ -222,7 +222,7 @@ namespace other {
   TEST_F(steam_tests, steam_address_kinds_route_to_the_steam_transport) {
     mesh_sim_fixture sim(1);
     recording_stub_transport stub;
-    sim.mesh().register_transport(stub);
+    sim.mesh().attach_provider(stub);
 
     sim.base_actor(1).open_link({ .addressing = net_address::kind::STEAM_PEER, .id = 77 });
     ASSERT_EQ(stub.dials.size(), 1u);

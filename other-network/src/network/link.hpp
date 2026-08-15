@@ -1,12 +1,13 @@
 /**
- * \file peer_mesh/link.hpp
+ * \file network/link.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_MESH_LINK_HPP
-#define OTHER_NETWORK_PEER_MESH_LINK_HPP
+#ifndef OTHER_NETWORK_NETWORK_LINK_HPP
+#define OTHER_NETWORK_NETWORK_LINK_HPP
 
+#include "core/defines.hpp"
 #include "core/time.hpp"
 
-#include "peer_mesh/node_id.hpp"
+#include "network/node_id.hpp"
 
 namespace other {
 
@@ -39,16 +40,13 @@ namespace other {
     uint32_t max_frame_size = 0;
   };
 
-  struct link_profile {
-    microseconds latency{ 0 };
-    microseconds jitter{ 0 };
-
-    float loss = 0.0f;
-    float duplicate = 0.0f;
-    float reorder = 0.0f;
-
-    uint32_t bandwidth = 0;
-    uint64_t seed = 0;
+  /// error/refusal tallies shared by a mesh and its link sinks
+  struct mesh_counters {
+    natural_t refused_sends = 0;
+    natural_t malformed_frames = 0;
+    natural_t no_actor_drops = 0;
+    natural_t security_failures = 0;
+    natural_t protocol_errors = 0;
   };
 
   struct link_record {
@@ -75,11 +73,9 @@ namespace other {
       natural_t frames_rx = 0;
       natural_t bytes_tx = 0;
       natural_t bytes_rx = 0;
-      natural_t drops = 0;
-      natural_t ttl_drops = 0;
     } stats{};
   };
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_PEER_MESH_LINK_HPP
+#endif  // OTHER_NETWORK_NETWORK_LINK_HPP
