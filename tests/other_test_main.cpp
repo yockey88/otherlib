@@ -8,6 +8,7 @@
 #include <Windows.h>
 
 #include "core/logger.hpp"
+#include "core/profiler_backend.hpp"
 
 #include "audio/audio_environment.hpp"
 #include "thread/thread_safety.hpp"
@@ -35,6 +36,7 @@ static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
 }
 
 int main(int argc, char** argv) {
+  other::profiling::initialize_host_backend();
   SetUnhandledExceptionFilter(&report_unhandled_seh);
   other::disable_thread_check();
 

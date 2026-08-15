@@ -17,6 +17,7 @@ target_sources(otherlib
   PRIVATE 
     src/plugin/library_handle.cpp
     src/plugin/plugin.cpp
+    src/plugin/plugin_enter.cpp
       
     src/driver/driver_system.cpp
     src/driver/systems/network_system.cpp
