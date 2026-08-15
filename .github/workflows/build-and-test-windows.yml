@@ -34,7 +34,7 @@ jobs:
       run: python ${{ github.workspace }}/cli.py bootstrap -c ${{ inputs.configuration }} --tests
 
     - name: Build
-      run: python ${{ github.workspace }}/cli.py build -c ${{ inputs.configuration }} --tests
+      run: python ${{ github.workspace }}/cli.py build -c ${{ inputs.configuration }} --target other_tests
 
     - name: Run Unit Tests
       run: python ${{ github.workspace }}/cli.py test -c ${{ inputs.configuration }}
