@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_SUBSYSTEM_HPP
 #define OTHER_CORE_SUBSYSTEM_HPP
 
+#include <atomic>
 #include <concepts>
 #include <format>
 #include <memory>
@@ -82,12 +83,12 @@ namespace other {
   class subsystem {
    public:
     static std::mutex subsystem_mtx;
-    static bool inert;
+    static std::atomic<bool> inert;
 
     static void set(T* obj) {
       PROFILE_SECTION("subsystem<>::set");
       std::lock_guard lock(subsystem_mtx);
-      instance = obj;
+      instance.store(obj, std::memory_order_release);
 
       if constexpr (requires(T t) { { T::on_set(std::declval<T*>()) } -> std::same_as<void>; }) {
         if (obj != nullptr) {
@@ -98,29 +99,38 @@ namespace other {
 
     static void initialize() {
       PROFILE_SECTION_VERBOSE("subsystem<>::initialize");
-      if (instance == nullptr) {
+      if (instance.load(std::memory_order_acquire) == nullptr) {
+        /// shutdown re-inerts before unpublishing, so a null instance with inert unset can only
+        ///  be a subsystem that was never activated
         if (inert) {
           unactive_subsystem_initialization_error(typeid(T).name());
           return;
         }
 
         std::lock_guard lock(subsystem_mtx);
-        new (&subsystem_description<T>::storage) T();
-        instance = std::launder(reinterpret_cast<T*>(&subsystem_description<T>::storage));
+        if (instance.load(std::memory_order_acquire) == nullptr) {
+          new (&subsystem_description<T>::storage) T();
+          instance.store(subsystem_description<T>::ptr(), std::memory_order_release);
+        }
       }
     }
 
     static void shutdown() {
       PROFILE_SECTION("subsystem<>::shutdown");
       std::lock_guard lock(subsystem_mtx);
-      subsystem_deleter<T>()(instance);
-      instance = nullptr;
+      /// unpublish before destroying so a concurrent get()/try_get() can not hand out a dying instance
+      subsystem_deleter<T>()(instance.exchange(nullptr, std::memory_order_acq_rel));
     }
 
     static T* get() {
       PROFILE_SECTION_VERBOSE("subsystem<>::get");
       initialize();
-      return instance;
+      return instance.load(std::memory_order_acquire);
+    }
+
+    /// never constructs and never errors: null once shut down, so safe from any thread at any time
+    static T* try_get() {
+      return instance.load(std::memory_order_acquire);
     }
 
     std::string as_string() const {
@@ -137,9 +147,9 @@ namespace other {
         if constexpr (has_description_to_string) {
           return subsystem_description<T>::to_string(*this);
         } else if constexpr (has_instance_to_string) {
-          return ((T*)instance)->to_string();
+          return instance.load(std::memory_order_acquire)->to_string();
         } else {
-          return T::to_string(*instance);
+          return T::to_string(*instance.load(std::memory_order_acquire));
         }
       } else {
         return std::format("Subsystem<{}> [no to-string method available]", typeid(T).name());
@@ -172,7 +182,7 @@ namespace other {
     }
 
    private:
-    static T* instance;
+    static std::atomic<T*> instance;
 
     subsystem(subsystem&&) = delete;
     subsystem(const subsystem&) = delete;
@@ -181,12 +191,12 @@ namespace other {
   };
 
   template <typename T>
-  inline T* subsystem<T>::instance = nullptr;
+  inline std::atomic<T*> subsystem<T>::instance = nullptr;
   template <typename T>
   inline std::mutex subsystem<T>::subsystem_mtx;
   template <typename T>
   // subsystems explicitly activated by subsystem registration
-  inline bool subsystem<T>::inert = true;
+  inline std::atomic<bool> subsystem<T>::inert = true;
 
   class config_table;
 

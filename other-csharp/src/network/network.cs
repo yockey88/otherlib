@@ -44,6 +44,14 @@ namespace Other.Networking
     internal static unsafe delegate*<NativeString, ulong, byte*, int, NativeBool32> NativeRequestOp;
     [NativeFunction("NetworkStageReplicated")]
     internal static unsafe delegate*<byte*, int, void> NativeStageReplicated;
+    [NativeFunction("NetworkPeerCount")]
+    internal static unsafe delegate*<int> NativePeerCount;
+    [NativeFunction("NetworkPeerId")]
+    internal static unsafe delegate*<int, uint> NativePeerId;
+    [NativeFunction("NetworkPeerNode")]
+    internal static unsafe delegate*<int, ulong> NativePeerNode;
+    [NativeFunction("NetworkPeerName")]
+    internal static unsafe delegate*<int, NativeString> NativePeerName;
 
     public static bool IsConnected
     {
@@ -145,6 +153,41 @@ namespace Other.Networking
       }
     }
 
+    /// A session roster row (host is always peer 0).
+    public struct PeerInfo
+    {
+      public ushort Id;
+      public string Name;
+      public ulong Node;
+    }
+
+    public static int PeerCount
+    {
+      get { unsafe { return NativePeerCount(); } }
+    }
+
+    /// Snapshot of the current session roster, self included; empty outside a session.
+    public static PeerInfo[] Peers
+    {
+      get
+      {
+        unsafe
+        {
+          var peers = new PeerInfo[NativePeerCount()];
+          for (int i = 0; i < peers.Length; ++i)
+          {
+            peers[i] = new PeerInfo
+            {
+              Id = (ushort)NativePeerId(i),
+              Name = NativePeerName(i).ToString() ?? "",
+              Node = NativePeerNode(i),
+            };
+          }
+          return peers;
+        }
+      }
+    }
+
     public static Action<ushort>? OnPeerJoined;
     public static Action<ushort>? OnPeerLeft;
     public static Action<ushort, string, byte[]>? OnEvent;
@@ -213,7 +256,8 @@ namespace Other.Networking
     }
 
     /// The native side parks the payload for the duration of the dispatch call.
-    private static byte[] PullPendingPayload(int payloadSize)
+    /// Shared with ScriptActor — one declaration of the copy native, one puller.
+    internal static byte[] PullPendingPayload(int payloadSize)
     {
       byte[] payload = payloadSize > 0 ? new byte[payloadSize] : Array.Empty<byte>();
       if (payloadSize > 0)

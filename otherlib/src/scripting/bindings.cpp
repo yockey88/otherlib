@@ -318,6 +318,15 @@ namespace other {
       .bind("NetworkIsMine", bindings::native_network_is_mine)
       .bind("NetworkRequestOp", bindings::native_network_request_op)
       .bind("NetworkStageReplicated", bindings::native_network_stage_replicated)
+      .bind("NetworkPeerCount", bindings::native_network_peer_count)
+      .bind("NetworkPeerId", bindings::native_network_peer_id)
+      .bind("NetworkPeerNode", bindings::native_network_peer_node)
+      .bind("NetworkPeerName", bindings::native_network_peer_name)
+      .bind("NetworkActorStagePayload", bindings::native_network_actor_stage_payload)
+      .bind("NetworkActorSend", bindings::native_network_actor_send)
+      .bind("NetworkActorOpenLink", bindings::native_network_actor_open_link)
+      .bind("NetworkActorOpenListener", bindings::native_network_actor_open_listener)
+      .bind("NetworkActorCloseLink", bindings::native_network_actor_close_link)
       .bind("NetworkHostSteam", bindings::native_network_host_steam)
       .bind("NetworkJoinLobby", bindings::native_network_join_lobby)
       .bind("SteamIsAvailable", bindings::native_steam_is_available)
@@ -432,7 +441,7 @@ namespace other {
 
     sol::table log_table = lua_state["__other_native"]["__log"];
     log_table.set_function("send_log_message", [](spdlog::level::level_enum level, const std::string& message, const std::string& source, int line) {
-      other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
+      other::logger::send_log_guarded(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
     });
 
     {

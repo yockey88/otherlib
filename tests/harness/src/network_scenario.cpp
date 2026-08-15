@@ -12,8 +12,7 @@
 
 #include "core/logger.hpp"
 
-#include "peer_mesh/mesh_router.hpp"
-#include "peer_mesh/peer_mesh_actor.hpp"
+#include "peer_mesh/peer_actor.hpp"
 
 namespace other {
 
@@ -25,6 +24,25 @@ namespace other {
 
     /// payload: [u64 send_us][u32 round], little-endian, padded to 64 B of traffic
     constexpr size_t kTelemetrySize = 64;
+    /// telemetry lanes open with the scenario's own routing envelope — relaying is
+    ///  actor behavior over director-fed route tables, not a mesh service
+    constexpr size_t kEnvelopeSize = 17;  // [u64 origin][u64 dst][u8 hops]
+
+    uint64_t envelope_u64(std::span<const uint8_t> bytes, size_t at) {
+      uint64_t value = 0;
+      for (size_t i = 0; i < 8; ++i) {
+        value |= static_cast<uint64_t>(bytes[at + i]) << (i * 8);
+      }
+      return value;
+    }
+
+    void write_envelope(uint8_t* out, node_id origin, node_id dst, uint8_t hops) {
+      for (size_t i = 0; i < 8; ++i) {
+        out[i] = static_cast<uint8_t>(origin >> (i * 8));
+        out[8 + i] = static_cast<uint8_t>(dst >> (i * 8));
+      }
+      out[16] = hops;
+    }
 
     ostd::vector<uint8_t> telemetry_payload(microseconds now, uint32_t round) {
       ostd::vector<uint8_t> payload(kTelemetrySize, 0);
@@ -69,8 +87,9 @@ namespace other {
 
   }  // namespace
 
-  /// a scenario member: records deliveries + end-to-end latency into the scenario
-  class scenario_actor final : public peer_mesh_actor {
+  /// a scenario member: relays enveloped telemetry along its route table, records
+  ///  deliveries + end-to-end latency into the scenario at the destination seat
+  class scenario_actor final : public peer_actor {
    public:
     explicit scenario_actor(network_scenario* owner)
         : owner(owner) {}
@@ -78,10 +97,50 @@ namespace other {
     std::string_view name() const override { return "scenario-actor"; }
 
     void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override {
-      const int64_t sent_us = telemetry_send_us(payload);
+      if (net_id == kDatagramLane) {
+        owner->record_delivery(src, id(), -1, net_id);
+        return;
+      }
+      if (payload.size() < kEnvelopeSize) {
+        return;
+      }
+      const node_id origin = envelope_u64(payload, 0);
+      const node_id dst = envelope_u64(payload, 8);
+      const uint8_t hops = payload[16];
+
+      if (dst != id()) {
+        if (hops > 0) {
+          if (auto hop = next_hops.find(dst); hop != next_hops.end()) {
+            ostd::vector<uint8_t> onward(payload.begin(), payload.end());
+            onward[16] = static_cast<uint8_t>(hops - 1);
+            if (send(hop->second, net_id, onward)) {
+              return;
+            }
+          }
+        }
+        owner->relay_drops++;
+        return;
+      }
+
+      const int64_t sent_us = telemetry_send_us(payload.subspan(kEnvelopeSize));
       const int64_t latency_us = sent_us >= 0 ? owner->now.count() - sent_us : -1;
-      owner->record_delivery(src, id(), latency_us, net_id);
+      owner->record_delivery(origin, id(), latency_us, net_id);
     }
+
+    /// origin-side send along the route table; false (counted by the caller) when
+    ///  the table has no path — the partition's refusal signal
+    bool send_routed(node_id dst, uint16_t net_id, std::span<const uint8_t> telemetry, uint8_t hops) {
+      auto hop = next_hops.find(dst);
+      if (hop == next_hops.end()) {
+        return false;
+      }
+      ostd::vector<uint8_t> payload(kEnvelopeSize + telemetry.size());
+      write_envelope(payload.data(), id(), dst, hops);
+      std::ranges::copy(telemetry, payload.data() + kEnvelopeSize);
+      return send(hop->second, net_id, payload);
+    }
+
+    ostd::map<node_id, node_id> next_hops;
 
    private:
     network_scenario* owner = nullptr;
@@ -115,13 +174,12 @@ namespace other {
     mesh_cfg.link_timeout = microseconds{ 60'000'000 };  // partitions are deliberate, not timeouts
     mesh_cfg.max_links = 2 * (actor_count + actor_count / std::max<size_t>(cross_link_stride, 1) + 2);
 
-    fabric = make_scope<memory_fabric>(seed);
-    port = make_scope<fabric_port>(*fabric);
+    fabric = make_scope<memory_transport_provider>(seed);
     mesh = make_scope<peer_mesh>("harness-net", mesh_cfg);
-    mesh->register_transport(*port);
+    mesh->attach_provider(*fabric);
 
     for (size_t i = 1; i <= actor_count; ++i) {
-      mesh->spawn_actor(make_scope<scenario_actor>(this), static_cast<node_id>(i));
+      i == 1 ? mesh->set_primary(make_scope<scenario_actor>(this), 1) : mesh->add_secondary(make_scope<scenario_actor>(this), static_cast<node_id>(i));
     }
 
     /// chain backbone + cross links every stride; the churn cut severs everything
@@ -149,8 +207,8 @@ namespace other {
     for (const planned_link& planned : plan) {
       const uint64_t endpoint = (static_cast<uint64_t>(planned.a) << 16) | planned.b;
       fabric->configure_endpoint(endpoint, false);
-      peer_mesh_actor* listener = mesh->actor(planned.b);
-      peer_mesh_actor* dialer = mesh->actor(planned.a);
+      peer_actor* listener = mesh->actor(planned.b);
+      peer_actor* dialer = mesh->actor(planned.a);
       OTHER_ASSERT(listener != nullptr && dialer != nullptr, "planned link {}-{} has no actors", planned.a, planned.b);
       listener->open_listener(net_address::memory_endpoint(endpoint));
       const natural_t link_id = dialer->open_link(net_address::memory_endpoint(endpoint));
@@ -160,7 +218,7 @@ namespace other {
       link_profile profile;
       profile.latency = microseconds{ latency };
       profile.jitter = microseconds{ static_cast<int64_t>(latency * jitter_pct) };
-      const link_record* record = mesh->net().link(link_id);
+      const link_record* record = mesh->link(link_id);
       OTHER_ASSERT(record != nullptr, "planned link {} vanished", link_id);
       fabric->set_profile(record->connection_id, profile, profile);
     }
@@ -171,8 +229,8 @@ namespace other {
       if (cut_applied && !reopened && planned.crosses_cut) {
         continue;
       }
-      if (mesh->net().link_between(planned.a, planned.b) == nullptr ||
-          mesh->net().link_between(planned.b, planned.a) == nullptr) {
+      if (mesh->link_between(planned.a, planned.b) == nullptr ||
+          mesh->link_between(planned.b, planned.a) == nullptr) {
         return false;
       }
     }
@@ -180,8 +238,8 @@ namespace other {
   }
 
   void network_scenario::rebuild_routes() {
-    /// BFS next-hops over the planned topology (minus an open cut), then per-seat
-    ///  (from, dst) -> link rows; scenario acts as routing director, same as the MANET sample
+    /// BFS next-hops over the planned topology (minus an open cut) into each actor's
+    ///  route table; the scenario is the routing director, same as the MANET sample
     ostd::map<node_id, ostd::vector<node_id>> adjacency;
     for (const planned_link& planned : plan) {
       if (cut_applied && !reopened && planned.crosses_cut) {
@@ -191,9 +249,12 @@ namespace other {
       adjacency[planned.b].push_back(planned.a);
     }
 
-    auto routes = make_scope<static_route_router>();
+    for (size_t src = 1; src <= actor_count; ++src) {
+      static_cast<scenario_actor*>(mesh->actor(static_cast<node_id>(src)))->next_hops.clear();
+    }
     for (size_t src = 1; src <= actor_count; ++src) {
       const node_id origin = static_cast<node_id>(src);
+      scenario_actor* origin_actor = static_cast<scenario_actor*>(mesh->actor(origin));
       ostd::map<node_id, node_id> parent;
       std::deque<node_id> frontier{ origin };
       parent[origin] = origin;
@@ -217,12 +278,11 @@ namespace other {
         while (parent[hop] != origin) {
           hop = parent[hop];
         }
-        if (const link_record* out = mesh->net().link_between(origin, hop); out != nullptr) {
-          routes->set_route(origin, target, out->link_id);
+        if (mesh->link_between(origin, hop) != nullptr) {
+          origin_actor->next_hops[target] = hop;
         }
       }
     }
-    mesh->set_router(std::move(routes));
   }
 
   node_id network_scenario::far_target(node_id from) const {
@@ -255,8 +315,9 @@ namespace other {
 
   void network_scenario::send_traffic_round(bool count_for_churn) {
     const uint32_t round = static_cast<uint32_t>(rounds_sent);
+    const uint8_t hop_budget = static_cast<uint8_t>(actor_count);
     for (size_t i = 1; i <= actor_count; ++i) {
-      peer_mesh_actor* actor = mesh->actor(static_cast<node_id>(i));
+      scenario_actor* actor = static_cast<scenario_actor*>(mesh->actor(static_cast<node_id>(i)));
       if (actor == nullptr) {
         continue;
       }
@@ -264,14 +325,17 @@ namespace other {
       const node_id near_id = static_cast<node_id>(i % actor_count + 1);
       const node_id far_id = far_target(static_cast<node_id>(i));
 
-      if (actor->send(near_id, kTelemetryNear, telemetry_payload(now, round))) {
+      if (actor->send_routed(near_id, kTelemetryNear, telemetry_payload(now, round), hop_budget)) {
         steady_sent++;
+      } else {
+        scenario_refused++;
       }
       if (far_id != near_id && far_id != static_cast<node_id>(i)) {
-        if (actor->send(far_id, kTelemetryFar, telemetry_payload(now, round))) {
+        if (actor->send_routed(far_id, kTelemetryFar, telemetry_payload(now, round), hop_budget)) {
           steady_sent++;
-        } else if (count_for_churn) {
-          /// unroutable during the partition is expected data, not an error
+        } else {
+          /// no route during the partition is expected data, not an error
+          scenario_refused++;
         }
       }
     }
@@ -279,13 +343,13 @@ namespace other {
   }
 
   void network_scenario::apply_cut() {
-    unroutable_at_cut_start = mesh->counters().unroutable_drops;
-    refused_at_cut_start = mesh->counters().refused_sends;
+    unroutable_at_cut_start = relay_drops;
+    refused_at_cut_start = scenario_refused;
     for (const planned_link& planned : plan) {
       if (!planned.crosses_cut) {
         continue;
       }
-      if (const link_record* record = mesh->net().link_between(planned.a, planned.b); record != nullptr) {
+      if (const link_record* record = mesh->link_between(planned.a, planned.b); record != nullptr) {
         mesh->close_link(record->link_id, link_close_reason::SHUTDOWN);
       }
     }
@@ -310,7 +374,7 @@ namespace other {
         link_profile profile;
         profile.latency = microseconds{ latency };
         profile.jitter = microseconds{ static_cast<int64_t>(latency * jitter_pct) };
-        if (const link_record* record = mesh->net().link(link_id); record != nullptr) {
+        if (const link_record* record = mesh->link(link_id); record != nullptr) {
           fabric->set_profile(record->connection_id, profile, profile);
         }
       }
@@ -335,7 +399,7 @@ namespace other {
         if (all_planned_links_up()) {
           establish_ticks = phase_ticks;
           rebuild_routes();
-          CORE_LOG_INFO("[NET-HARNESS] {} links up after {} ticks", mesh->net().link_count(), establish_ticks);
+          CORE_LOG_INFO("[NET-HARNESS] {} links up after {} ticks", mesh->link_count(), establish_ticks);
           enter_phase(phase::STEADY);
           break;
         }
@@ -363,9 +427,9 @@ namespace other {
           churn_rounds_run++;
           if (churn_rounds_run == churn_rounds / 2) {
             /// the partition's footprint so far: sends refused (no route from the
-            ///  origin) or dropped at relays (unroutable) while the cut was open
-            partition_unroutable = mesh->counters().unroutable_drops - unroutable_at_cut_start;
-            partition_refused_sends = mesh->counters().refused_sends - refused_at_cut_start;
+            ///  origin) or dropped at relays while the cut was open
+            partition_unroutable = relay_drops - unroutable_at_cut_start;
+            partition_refused_sends = scenario_refused - refused_at_cut_start;
             reopen_cut();
           }
         }
@@ -385,7 +449,7 @@ namespace other {
       }
 
       case phase::DATAGRAM: {
-        const link_record* lane = mesh->net().link(datagram_link);
+        const link_record* lane = mesh->link(datagram_link);
         if (lane == nullptr) {
           failures.push_back("datagram: lane link vanished");
           enter_phase(phase::TEARDOWN);
@@ -415,7 +479,7 @@ namespace other {
       case phase::TEARDOWN: {
         if (phase_ticks == 1) {
           ostd::vector<natural_t> live;
-          for (const link_record& record : mesh->net().links()) {
+          for (const link_record& record : mesh->links()) {
             live.push_back(record.link_id);
           }
           for (const natural_t id : live) {
@@ -441,7 +505,7 @@ namespace other {
   }
 
   bool network_scenario::finalize(driver& host) {
-    const peer_mesh::mesh_counters& counters = mesh->counters();
+    const mesh_counters& counters = mesh->counters();
 
     /// verdict assembly: every threshold that fails becomes a reason line
     const double delivery_ratio = steady_sent > 0 ? static_cast<double>(steady_delivered) / static_cast<double>(steady_sent) : 0.0;
@@ -479,8 +543,8 @@ namespace other {
       failures.push_back(std::format("dirty counters: protocol_errors={} malformed={} security={}",
                                      counters.protocol_errors, counters.malformed_frames, counters.security_failures));
     }
-    if (mesh->net().link_count() != 0) {
-      failures.push_back(std::format("teardown left {} live links", mesh->net().link_count()));
+    if (mesh->link_count() != 0) {
+      failures.push_back(std::format("teardown left {} live links", mesh->link_count()));
     }
 
     const bool pass = failures.empty();
@@ -521,7 +585,7 @@ namespace other {
       { "datagram-sent", datagram_sent },
       { "datagram-delivered", datagram_delivered },
       { "datagram-observed-loss", observed_loss },
-      { "unroutable-drops", counters.unroutable_drops },
+      { "relay-drops", relay_drops },
       { "refused-sends", counters.refused_sends },
       { "no-actor-drops", counters.no_actor_drops },
       { "protocol-errors", counters.protocol_errors },
@@ -561,7 +625,6 @@ namespace other {
     CORE_LOG_INFO("[NET-HARNESS] report written to '{}'", report_path);
 
     mesh = nullptr;
-    port = nullptr;
     fabric = nullptr;
     return pass;
   }

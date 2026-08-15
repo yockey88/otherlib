@@ -21,18 +21,20 @@
 
 namespace other {
 
-  void network_thread::register_provider(transport_provider* provider) {
+  void network_thread::register_provider(socket_transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot register null provider");
     PROFILE_SECTION("network_thread::register_provider");
 
-    /// initialize before publishing so readers never see a half-built provider
+    /// initialize before publishing so readers never see a half-built provider;
+    ///  attach first so the seam surface (dial/listen/tx/close) can post commands
+    provider->attach_main(this);
     provider->initialize(this, &network_io);
     const bool inserted = providers.insert(provider);
     OTHER_ASSERT(inserted, "Transport provider registry rejected '{}' (full at {} or duplicate)", provider->name(), kMaxTransportProviders);
     CORE_LOG_DEBUG(" - network system registered transport provider '{}' ({:#010x})", provider->name(), provider->hash());
   }
 
-  void network_thread::unregister_provider(transport_provider* provider) {
+  void network_thread::unregister_provider(socket_transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot unregister null provider");
     PROFILE_SECTION("network_thread::unregister_provider");
 
@@ -50,7 +52,7 @@ namespace other {
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
     PROFILE_SECTION("network_thread::register_transport_listener");
 
-    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == transport_hash; });
+    socket_transport_provider* provider = providers.find_if([&](socket_transport_provider& p) { return p.hash() == transport_hash; });
     if (provider == nullptr) {
       CORE_LOG_ERROR("Packet sink [{}] subscription failed: no transport provider with hash {:#010x}", id, transport_hash);
       return;
@@ -60,7 +62,7 @@ namespace other {
     provider->register_packet_sink(sink);
   }
 
-  void network_thread::register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle) {
+  void network_thread::register_connection_route(natural_t connection_id, socket_transport_provider* provider, void* opaque_handle) {
     auto [itr, success] = active_connections.emplace(connection_id, connection_route{
                                                                       .provider = provider,
                                                                       .opaque_handle = opaque_handle,
@@ -70,7 +72,7 @@ namespace other {
     CORE_LOG_DEBUG("Registered connection route for ID {} with provider '{}'", connection_id, provider->name());
   }
 
-  void network_thread::register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle) {
+  void network_thread::register_listener_route(natural_t listener_id, socket_transport_provider* provider, void* opaque_handle) {
     auto [itr, success] = active_listeners.emplace(listener_id, listener_route{
                                                                   .provider = provider,
                                                                   .opaque_handle = opaque_handle,
@@ -132,7 +134,7 @@ namespace other {
 
   void network_thread::on_shutdown() {
     PROFILE_SECTION("network_thread::on_shutdown");
-    providers.for_each([](transport_provider& p) { p.shutdown(); });
+    providers.for_each([](socket_transport_provider& p) { p.shutdown(); });
 
     message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
     send_to_driver(std::move(shutdown_msg));
@@ -149,7 +151,7 @@ namespace other {
     retired_connections.clear();
     for (const natural_t connection_id : retired) {
       CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
-      providers.for_each([&](transport_provider& p) { p.connection_removed(connection_id); });
+      providers.for_each([&](socket_transport_provider& p) { p.connection_removed(connection_id); });
     }
   }
 
@@ -171,7 +173,7 @@ namespace other {
 
     {
       PROFILE_SECTION("network_thread::pump_thread--provider_tick");
-      providers.for_each([](transport_provider& p) { p.tick(); });
+      providers.for_each([](socket_transport_provider& p) { p.tick(); });
     }
 
     {
@@ -259,7 +261,7 @@ namespace other {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
 
-    providers.for_each([](transport_provider& p) { p.begin_shutdown(); });
+    providers.for_each([](socket_transport_provider& p) { p.begin_shutdown(); });
   }
 
   /// \todo check for duplicate endpoints or other invalid connection parameters
@@ -268,7 +270,7 @@ namespace other {
     PROFILE_SECTION("network_thread::handle_command_listen_connection");
     command_listen_connection request = deserialize_direct<command_listen_connection>(msg.data).first;
 
-    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == request.transport_hash; });
+    socket_transport_provider* provider = providers.find_if([&](socket_transport_provider& p) { return p.hash() == request.transport_hash; });
     if (provider == nullptr) {
       throw invalid_provider_network_error(std::format("No transport provider with {:#010x} to listen @ {}:{}", request.transport_hash, request.endpoint.ip, request.endpoint.port));
     }
@@ -284,7 +286,7 @@ namespace other {
     PROFILE_SECTION("network_thread::handle_command_connect_connection");
     command_connect_connection request = deserialize_direct<command_connect_connection>(msg.data).first;
 
-    transport_provider* provider = providers.find_if([&](transport_provider& p) { return p.hash() == request.transport_hash; });
+    socket_transport_provider* provider = providers.find_if([&](socket_transport_provider& p) { return p.hash() == request.transport_hash; });
     if (provider == nullptr) {
       throw invalid_provider_network_error(std::format("No transport provider with {:#010x} to connect @ {}:{}", request.transport_hash, request.endpoint.ip, request.endpoint.port));
     }
@@ -303,13 +305,13 @@ namespace other {
     natural_t connection_id = request.connection_id;
     auto conn_itr = active_connections.find(connection_id);
     if (conn_itr != active_connections.end()) {
-      conn_itr->second.provider->close(connection_id);
+      conn_itr->second.provider->net_close(connection_id);
       return;
     }
 
     auto listener_itr = active_listeners.find(connection_id);
     if (listener_itr != active_listeners.end()) {
-      listener_itr->second.provider->close(connection_id);
+      listener_itr->second.provider->net_close(connection_id);
       return;
     }
 
@@ -347,11 +349,21 @@ namespace other {
 
     {
       PROFILE_SECTION("network_thread::handle_request_ack_process_msg--deserialize");
-      request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
-      ack_id = request_data.ack_id;
-      acked_msg.category = request_data.original_header.category;
-      acked_msg.id = request_data.original_header.id;
-      acked_msg.data = std::move(request_data.message_data);
+      /// a malformed wrapper must not escape into the thread error state, and without an
+      ///  ack_id there is nothing to nack — drop it here
+      try {
+        request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
+        ack_id = request_data.ack_id;
+        acked_msg.category = request_data.original_header.category;
+        acked_msg.id = request_data.original_header.id;
+        acked_msg.data = std::move(request_data.message_data);
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Failed to deserialize ACK request wrapper, dropping message: {}", e.what());
+        return;
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to deserialize ACK request wrapper, dropping message");
+        return;
+      }
     }
 
     uint8_t ack = 1;

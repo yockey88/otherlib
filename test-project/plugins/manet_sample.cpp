@@ -11,5 +11,5 @@
 ///  so it must be visible unqualified
 using other::manet_director;
 
-OTHER_PROVIDES(manet_director, other::peer_mesh_actor, "manet-sample");
+OTHER_PROVIDES(manet_director, other::peer_actor, "manet-sample");
 OTHER_PLUGIN(manet_sample, "0.1.0", "N/A", "N/A")

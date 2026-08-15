@@ -10,14 +10,11 @@
 #include "core/defines.hpp"
 
 #include "message/message_serialization.hpp"
-
-#include "peer_mesh/mesh_messages.hpp"
-#include "peer_mesh/node_id.hpp"
+#include "network/mesh_messages.hpp"
+#include "network/node_id.hpp"
 
 namespace other {
 
-  /// the shipped session actor's message space — one application's use of the
-  ///  pass-through net_id tag (D22), imposed on nobody below otherlib
   enum class net_message : uint16_t {
     INVALID = 0,
     JOIN_REQUEST = 1,
@@ -26,13 +23,12 @@ namespace other {
     PEER_JOINED,
     PEER_LEFT,
     DISCONNECT_NOTICE,
-    /// 05-replication
+    /// replication
     JOIN_SNAPSHOT = 32,
     SPAWN,
     DESPAWN,
     TRANSFORM_BATCH,
     COMPONENT_STATE,
-    /// 06-world-ops
     SCENE_OP = 64,
     /// gameplay
     GAME_EVENT = 96,
@@ -40,8 +36,7 @@ namespace other {
   };
 
   /// an application respecting the module's reserved control page
-  static_assert(!is_mesh_control(static_cast<uint16_t>(net_message::INPUT_COMMAND)),
-                "session message ids must stay below the mesh control page");
+  static_assert(!is_mesh_control(static_cast<uint16_t>(net_message::INPUT_COMMAND)), "session message ids must stay below the mesh control page");
 
   enum class net_reject_reason : uint16_t {
     NONE = 0,

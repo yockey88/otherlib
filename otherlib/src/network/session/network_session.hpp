@@ -9,31 +9,41 @@
 #include "core/defines.hpp"
 #include "core/scope.hpp"
 
-#include "peer_mesh/peer_mesh_actor.hpp"
-#include "peer_mesh/peer_state_machine.hpp"
-
 #include "network/session/net_messages.hpp"
+
+#include "peer_mesh/peer_actor.hpp"
 
 namespace other {
 
   enum class session_event : uint8_t {
-    STARTED,     // arg = local peer id
-    ENDED,       // arg = reason (net_reject_reason on reject, else link/leave reason)
-    PEER_JOINED, // arg = peer id
-    PEER_LEFT,   // arg = peer id
+    STARTED,      // arg = local peer id
+    ENDED,        // arg = reason (net_reject_reason on reject, else link/leave reason)
+    PEER_JOINED,  // arg = peer id
+    PEER_LEFT,    // arg = peer id
+  };
+
+  /// UNJOINED -> JOINING -> PEER (client) | UNJOINED -> SERVER (host); any -> UNJOINED on leave.
+  ///  election/migration roles live with the deferred peer-mesh-1 work, not here
+  enum class session_role : uint8_t {
+    UNJOINED,
+    JOINING,
+    PEER,
+    SERVER,
   };
 
   struct session_member {
     node_id node = 0;
     uint16_t peer_id = 0;
-    /// host: the link to that member; client: the host link on entry 0, else 0
+    /// host: the link to that member
+    /// client: the host link on entry 0, else 0
     natural_t link_id = 0;
     std::string name;
   };
 
-  /// shipped default actor: client-server, host-authoritative star topology (its policy
-  ///  only). handles membership/authority; framing/keepalive/RTT live at link/mesh level
-  class OTHER_CLASS network_session final : public peer_mesh_actor {
+  /// shipped default actor: client-server
+  /// host-authoritative star topology (its policy only) handles membership/authority
+  /// framing/keepalive/RTT live at link/mesh level
+  class OTHER_CLASS network_session final : public peer_actor {
    public:
     constexpr static std::string_view kDefaultActorName = "client-server";
 
@@ -41,9 +51,9 @@ namespace other {
       uint16_t max_peers = 8;  // total members, host included
       /// JOIN_REQUEST must follow link-up (and WELCOME must follow the request)
       ///  within this window or the link closes
-      microseconds join_timeout{ 3'000'000 };
-      std::string display_name = "peer";
+      microseconds join_timeout = microseconds{ 3'000'000 };
       /// opaque to the session; a join validator's token channel
+      std::string display_name = "peer";
       uint32_t client_flags = 0;
     };
 
@@ -54,7 +64,8 @@ namespace other {
     using frame_handler = std::function<void(node_id src, std::span<const uint8_t> payload)>;
     using game_event_handler = std::function<void(uint16_t sender_peer, std::string_view name, std::span<const uint8_t> payload)>;
 
-    explicit network_session(const session_config& cfg = {})
+    network_session() : cfg(session_config{}) {}
+    explicit network_session(const session_config& cfg)
         : cfg(cfg) {}
 
     std::string_view name() const override { return kDefaultActorName; }
@@ -66,9 +77,9 @@ namespace other {
     bool join(const net_address& remote);
     void leave(uint16_t reason = 0);
 
-    const peer_state_machine& role() const { return state; }
-    bool is_host() const { return state.get_current_state() == role_state::SERVER; }
-    bool in_session() const { return is_host() || state.get_current_state() == role_state::PEER; }
+    session_role role() const { return state; }
+    bool is_host() const { return state == session_role::SERVER; }
+    bool in_session() const { return is_host() || state == session_role::PEER; }
     uint16_t local_peer_id() const { return local_peer; }
     const ostd::vector<session_member>& peers() const { return members; }
 
@@ -87,7 +98,7 @@ namespace other {
     void set_observer(session_observer fn) { observer = std::move(fn); }
     void set_game_event_handler(game_event_handler fn) { on_game_event = std::move(fn); }
 
-    // peer_mesh_actor
+    // peer_actor
     void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override;
     void on_link_up(const link_record& link) override;
     void on_link_down(const link_record& link, link_close_reason reason) override;
@@ -95,7 +106,7 @@ namespace other {
 
    private:
     session_config cfg;
-    peer_state_machine state;
+    session_role state = session_role::UNJOINED;
 
     /// all session members including this seat; host is always peer 0
     ostd::vector<session_member> members;
@@ -114,6 +125,8 @@ namespace other {
     session_observer observer;
     game_event_handler on_game_event;
     ostd::map<uint16_t, frame_handler> handlers;
+
+    void set_role(session_role next);
 
     session_member* member_by_peer(uint16_t peer_id);
     session_member* member_by_link(natural_t link_id);
@@ -139,16 +152,16 @@ namespace other {
    public:
     struct taken {
       natural_t provider_id = 0;
-      scope<peer_mesh_actor> actor;
+      scope<peer_actor> actor;
     };
 
-    natural_t provide(scope<peer_mesh_actor> actor);
+    natural_t provide(scope<peer_actor> actor);
     void revoke(natural_t id);
     /// null actor = unknown name
     taken take(std::string_view actor_name);
 
    private:
-    ostd::vector<std::pair<natural_t, scope<peer_mesh_actor>>> pending;
+    ostd::vector<std::pair<natural_t, scope<peer_actor>>> pending;
     natural_t next_id = 1;
   };
 

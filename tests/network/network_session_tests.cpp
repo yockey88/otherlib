@@ -5,15 +5,17 @@
 
 #include <gtest/gtest.h>
 
+#include "network/mesh_sim_fixture.hpp"
 #include "network/session/net_messages.hpp"
 #include "network/session/network_session.hpp"
-#include "peer_mesh/peer_mesh.hpp"
+#include "network/session/script_actor.hpp"
+#include "network/socket_mesh_fixture.hpp"
 
 #include "driver/environment_registry.hpp"
 
-#include "network/mesh_sim_fixture.hpp"
-#include "network/socket_mesh_fixture.hpp"
 #include "other_test.hpp"
+#include "peer_mesh/peer_mesh.hpp"
+
 
 namespace other {
 
@@ -40,7 +42,9 @@ namespace other {
       ostd::vector<std::pair<session_event, uint16_t>> log;
 
       network_session::session_observer handler() {
-        return [this](session_event ev, uint16_t arg) { log.push_back({ ev, arg }); };
+        return [this](session_event ev, uint16_t arg) {
+          log.push_back({ ev, arg });
+        };
       }
       size_t count(session_event ev) const {
         return std::ranges::count(log, ev, &std::pair<session_event, uint16_t>::first);
@@ -64,7 +68,7 @@ namespace other {
     }
 
     network_session& spawn_session(mesh_sim_fixture& sim, node_id node, const network_session::session_config& cfg) {
-      return static_cast<network_session&>(sim.mesh().spawn_actor(make_scope<network_session>(cfg), node));
+      return static_cast<network_session&>(sim.spawn(make_scope<network_session>(cfg), node));
     }
 
     uint64_t open_endpoint(mesh_sim_fixture& sim, bool datagram = false) {
@@ -108,10 +112,6 @@ namespace other {
     ASSERT_NE(client_seen_by_host, nullptr);
     EXPECT_EQ(client_seen_by_host->node, 2u);
     EXPECT_EQ(client_seen_by_host->name, "bravo");
-
-    /// session alias lands in the mesh graph
-    ASSERT_NE(sim.mesh().graph().record(2), nullptr);
-    EXPECT_EQ(sim.mesh().graph().record(2)->session_alias, 1);
 
     EXPECT_EQ(host_probe.count(session_event::STARTED), 1u);
     EXPECT_EQ(host_probe.count(session_event::PEER_JOINED), 1u);
@@ -187,7 +187,7 @@ namespace other {
     probe refused_probe;
     mesh_sim_fixture sim(0, 1, fast_cfg());
     network_session& host = spawn_session(sim, 1, fast_session_cfg());
-    host.set_join_validator([](const link_record&, const net_join_request& request) -> opt<uint16_t> {
+    host.set_join_validator([kNoTokenReason](const link_record&, const net_join_request& request) -> opt<uint16_t> {
       if (request.client_flags != 7) {
         return kNoTokenReason;
       }
@@ -214,16 +214,16 @@ namespace other {
   TEST_F(network_session_tests, join_timeout_drops_silent_link_member) {
     mesh_sim_fixture sim(0, 1, fast_cfg());
     network_session& host = spawn_session(sim, 1, fast_session_cfg());
-    sim.mesh().spawn_actor(make_scope<test_actor>(), 9);
+    sim.spawn(make_scope<test_actor>(), 9);
 
     const uint64_t endpoint = open_endpoint(sim);
     ASSERT_TRUE(host.host(net_address::memory_endpoint(endpoint)));
 
     /// a mesh-level dial that never speaks the session protocol
     ASSERT_NE(sim.base_actor(9).open_link(net_address::memory_endpoint(endpoint)), 0u);
-    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().net().link_between(1, 9) != nullptr; }));
+    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().link_between(1, 9) != nullptr; }));
 
-    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().net().link_between(1, 9) == nullptr; }, 128));
+    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().link_between(1, 9) == nullptr; }, 128));
     EXPECT_EQ(host.peers().size(), 1u);
   }
 
@@ -272,7 +272,7 @@ namespace other {
     const uint16_t beta_peer = beta.local_peer_id();
 
     /// kill the fabric channel under beta's host link
-    const link_record* beta_link = sim.mesh().net().link_between(3, 1);
+    const link_record* beta_link = sim.mesh().link_between(3, 1);
     ASSERT_NE(beta_link, nullptr);
     sim.fabric.set_mute(beta_link->connection_id, true, true);
 
@@ -350,7 +350,7 @@ namespace other {
 
   namespace {
 
-    class parrot_actor final : public peer_mesh_actor {
+    class parrot_actor final : public peer_actor {
      public:
       std::string_view name() const override { return "parrot"; }
       void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override {
@@ -370,14 +370,14 @@ namespace other {
     ///  name with zero engine edits — exactly what a plugin DLL ships
     environment_registry registry(interface_scope::DRIVER);
     session_actor_source source;
-    registry.register_interface<peer_mesh_actor>(
-      std::function<natural_t(scope<peer_mesh_actor>)>([&](scope<peer_mesh_actor> actor) { return source.provide(std::move(actor)); }),
+    registry.register_interface<peer_actor>(
+      std::function<natural_t(scope<peer_actor>)>([&](scope<peer_actor> actor) { return source.provide(std::move(actor)); }),
       [&](natural_t id) { source.revoke(id); },
       no_args(),
       interface_cardinality::MULTIPLE);
 
     const plugin_manifest manifest{
-      .interface_hash = peer_mesh_actor::kInterfaceHash,
+      .interface_hash = peer_actor::kInterfaceHash,
       .factory_function = &parrot_factory,
       .class_name = "parrot",
       .plugin_instance_name = "test-parrot",
@@ -391,9 +391,9 @@ namespace other {
     EXPECT_NE(custom.provider_id, 0u);
 
     mesh_sim_fixture sim(1);
-    sim.mesh().spawn_actor(std::move(custom.actor), 7);
+    sim.mesh().add_secondary(std::move(custom.actor), 7);
     sim.link(1, 7);
-    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().net().link_between(1, 7) != nullptr; }));
+    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().link_between(1, 7) != nullptr; }));
 
     const ostd::vector<uint8_t> payload{ 0xAB, 0xCD };
     ASSERT_TRUE(sim.base_actor(1).send(7, 100, payload));
@@ -410,9 +410,9 @@ namespace other {
     ASSERT_TRUE(client_side.start());
 
     network_session& host = static_cast<network_session&>(
-      host_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
+      host_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
     network_session& client = static_cast<network_session&>(
-      client_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
+      client_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
     host.set_game_event_handler(record_into(host_seen));
 
     const uint16_t port = next_test_port();
@@ -430,6 +430,41 @@ namespace other {
     ASSERT_TRUE(pump_until({ &host_side, &client_side }, [&] { return !host_seen.empty(); }));
     EXPECT_EQ(host_seen[0].sender, 1);
     EXPECT_EQ(host_seen[0].payload, ping);
+  }
+
+  TEST_F(network_session_tests, script_actor_shim_forwards_callbacks) {
+    mesh_sim_fixture sim(1);
+
+    natural_t frames = 0, ups = 0, ticks = 0;
+    ostd::vector<uint8_t> last_payload;
+    script_actor::callbacks hooks{
+      .frame = [&](const link_record&, node_id src, uint16_t net_id, std::span<const uint8_t> payload) {
+        frames++;
+        EXPECT_EQ(src, 1u);
+        EXPECT_EQ(net_id, 77u);
+        last_payload.assign(payload.begin(), payload.end());
+      },
+      .link_up = [&](const link_record&) { ups++; },
+      .link_down = [](const link_record&, link_close_reason) {},
+      .ticked = [&](microseconds, double) { ticks++; },
+    };
+    script_actor& script = static_cast<script_actor&>(
+      sim.mesh().add_secondary(make_scope<script_actor>("script:Test.Actor", "Test.Actor", std::move(hooks)), 7));
+    EXPECT_EQ(script.managed_type(), "Test.Actor");
+
+    sim.link(1, 7);
+    ASSERT_TRUE(sim.step_until([&] { return sim.mesh().link_between(1, 7) != nullptr && ups > 0; }));
+
+    const ostd::vector<uint8_t> payload{ 0x11, 0x22, 0x33 };
+    ASSERT_TRUE(sim.base_actor(1).send(7, 77, payload));
+    ASSERT_TRUE(sim.step_until([&] { return frames > 0; }));
+    EXPECT_EQ(last_payload, payload);
+    EXPECT_GT(ticks, 0u);
+
+    /// the seat surface works from the shim side too
+    EXPECT_TRUE(script.send(1, 78, payload));
+    ASSERT_TRUE(sim.step_until([&] { return !sim.actor(1).frames.empty(); }));
+    EXPECT_EQ(sim.actor(1).frames[0].net_id, 78u);
   }
 
 }  // namespace other

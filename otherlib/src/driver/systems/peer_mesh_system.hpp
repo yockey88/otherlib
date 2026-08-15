@@ -7,22 +7,20 @@
 #include "core/scope.hpp"
 #include "core/value.hpp"
 
-#include "driver/systems/core_system.hpp"
-
 #include "network/session/network_session.hpp"
 #include "network/session/replication.hpp"
 #include "network/session/scene_ops.hpp"
-#include "peer_mesh/peer_mesh.hpp"
-#include "peer_mesh/provider_link_transport.hpp"
+#include "network/session/script_actor.hpp"
 
-#include "steam/steam_link_transport.hpp"
+#include "driver/systems/core_system.hpp"
+
+#include "peer_mesh/peer_mesh.hpp"
+#include "steam/steam_transport_provider.hpp"
 
 namespace other {
 
   class steam_context;
 
-  /// owns the driver's default mesh + default session actor (resolved via
-  ///  networking.session-host); inert when networking is force-disabled
   class OTHER_CLASS peer_mesh_system : public core_system<peer_mesh_system> {
    public:
     peer_mesh_system(driver* driver)
@@ -36,11 +34,26 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    /// the default session actor, when it is the built-in client-server one
     network_session* session() { return active_session; }
     peer_mesh* mesh() { return driver_mesh.get(); }
     replication* replicator() { return scene_replication.get(); }
     op_channel* ops() { return scene_ops.get(); }
+    script_actor* script() { return active_script; }
+
+    /// the application's other logical networks: one mesh per network, beside the
+    ///  driver session mesh. callers attach providers and spawn actors themselves
+    peer_mesh& create_mesh(std::string_view mesh_name, const peer_mesh_config& cfg = {});
+    peer_mesh* mesh(std::string_view mesh_name);
+    void destroy_mesh(std::string_view mesh_name);
+
+    /// script-actor natives (payloads ride the staging buffer, marshal stays primitive)
+    void stage_actor_payload(const uint8_t* data, size_t length) {
+      staged_actor_payload.assign(data, data + length);
+    }
+    bool script_send(node_id dst, uint16_t net_id);
+    natural_t script_open_link(std::string_view address, uint16_t port, std::string_view transport);
+    natural_t script_open_listener(uint16_t port, std::string_view transport);
+    void script_close_link(natural_t link_id, uint16_t reason);
 
     /// honors networking.transport: "steam" hosts a lobby + P2P listen, else tcp
     bool host_session(uint16_t port);
@@ -52,6 +65,7 @@ namespace other {
     /// GAME_EVENT payload handoff for the C# pull (primitives-only invoke marshal)
     size_t pending_event_payload_size() const { return pending_event_payload.size(); }
     size_t copy_pending_event_payload(uint8_t* dst, size_t capacity);
+
     /// the reverse direction: C# stages its [Replicated] blob during a collect call
     void stage_script_fields(const uint8_t* data, size_t length) {
       staged_script_fields.assign(data, data + length);
@@ -59,17 +73,26 @@ namespace other {
 
    private:
     scope<peer_mesh> driver_mesh;
-    scope<provider_link_transport> tcp_link;
-    scope<steam_link_transport> steam_link;
+    scope<steam_transport_provider> steam_link;
+
     /// borrowed from network_system, set only when READY; it outlives this system
     steam_context* steam_ctx = nullptr;
     network_session* active_session = nullptr;
     scope<replication> scene_replication;
     scope<op_channel> scene_ops;
     node_id session_node = 0;
+
     /// provider id of a spawned registry-provided actor; plugin revoke destroys it
     natural_t spawned_provider = 0;
     session_actor_source actors;
+    script_actor* active_script = nullptr;
+    ostd::vector<uint8_t> staged_actor_payload;
+
+    /// registry-provided security layers parked until networking.security picks one
+    ostd::vector<std::pair<natural_t, scope<link_security>>> provided_security;
+    natural_t next_security_id = 1;
+    natural_t installed_security_provider = 0;
+    ostd::vector<std::pair<std::string, scope<peer_mesh>>> extra_meshes;
 
     microseconds engine_now{ 0 };
     bool networking_off = false;
@@ -81,8 +104,11 @@ namespace other {
     bool authored_active = false;
     std::string authored_spawn_template;
 
-    void build(driver_kernel* kernel);
     void handle_network_command(const value& data);
+
+    void build(driver_kernel* kernel);
+    scope<peer_actor> make_script_actor(const std::string& spec);
+    scope<link_security> take_security(std::string_view security_name);
     void handle_lobby_join_request(uint64_t lobby_id);
     void watch_authored_playback(driver_kernel* kernel);
     void apply_authored_settings(scene& s);

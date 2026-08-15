@@ -75,8 +75,19 @@ namespace OtherCsBindings
             continue;
           }
 
-          if (binding_points.ContainsKey(attr.Name))
+          if (binding_points.TryGetValue(attr.Name, out var existing))
           {
+            /// discovery re-runs over already-known assemblies; seeing the same field
+            ///  again is idempotent. a DIFFERENT field on the same name is a real
+            ///  collision — only the first declaration binds, the second would stay a
+            ///  null pointer forever, so make that case loud
+            var same_field = existing.managed_name == field.Name &&
+                             existing.field.DeclaringType?.FullName == type.FullName;
+            if (!same_field)
+            {
+              Logger.LogError($"Native function '{attr.Name}' is declared again at {type.FullName}.{field.Name} " +
+                              $"(bound at {existing.field.DeclaringType?.FullName}.{existing.managed_name}); the duplicate stays unbound");
+            }
             continue;
           }
 

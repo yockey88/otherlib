@@ -50,6 +50,11 @@ namespace other {
     void send_log(spdlog::level::level_enum level, natural_t log_idx, const std::string_view msg);
     void send_log(level lvl, natural_t log_idx, const std::string_view msg) { send_log(static_cast<spdlog::level::level_enum>(lvl), log_idx, msg); }
 
+    /// the only safe entry for code that can outlive the logger (background threads, cached managed
+    ///  handles): never resurrects a torn-down logger, drops to other-log-failure.log instead
+    static void send_log_guarded(spdlog::level::level_enum level, natural_t log_idx, const std::string_view msg);
+    static void send_log_guarded(level lvl, natural_t log_idx, const std::string_view msg) { send_log_guarded(static_cast<spdlog::level::level_enum>(lvl), log_idx, msg); }
+
     void set_config(const config_table* config);
 
    private:
@@ -73,6 +78,7 @@ namespace other {
 
     void log_failure_error(const std::string& message);
     void log_failure_error_unlocked(const std::string& message);
+    static void dropped_log_error(spdlog::level::level_enum level, const std::string_view msg);
   };
 
 }  // namespace other
@@ -82,8 +88,8 @@ OTHER_SUBSYSTEM(other::logger);
 /// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
 #define VAR_ARGS(...) , ##__VA_ARGS__
 
-#define LOG(level, log_id, frmt, ...) ::other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(frmt VAR_ARGS(__VA_ARGS__)))
-#define CORE_LOG(level, log_id, fmt, ...) ::other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(fmt VAR_ARGS(__VA_ARGS__)))
+#define LOG(level, log_id, frmt, ...) ::other::logger::send_log_guarded(level, log_id, std::format(frmt VAR_ARGS(__VA_ARGS__)))
+#define CORE_LOG(level, log_id, fmt, ...) ::other::logger::send_log_guarded(level, log_id, std::format(fmt VAR_ARGS(__VA_ARGS__)))
 #define OENV_LOG(level, log_id, fmt, ...) CORE_LOG(::other::logger::level::level, log_id, fmt VAR_ARGS(__VA_ARGS__))
 
 #define OENV_LOG_TRACE(log_id, fmt, ...) LOG(spdlog::level::trace, log_id, fmt VAR_ARGS(__VA_ARGS__))

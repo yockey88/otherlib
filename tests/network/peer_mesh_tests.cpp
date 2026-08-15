@@ -5,10 +5,10 @@
 
 #include <gtest/gtest.h>
 
-#include "network/memory/memory_fabric.hpp"
-#include "peer_mesh/link_security.hpp"
-#include "peer_mesh/mesh_messages.hpp"
-#include "peer_mesh/mesh_router.hpp"
+#include "network/link_security.hpp"
+#include "network/link_sink.hpp"
+#include "network/memory/memory_transport_provider.hpp"
+#include "network/mesh_messages.hpp"
 #include "peer_mesh/peer_mesh.hpp"
 
 #include "network/mesh_sim_fixture.hpp"
@@ -40,7 +40,7 @@ namespace other {
     }
 
     bool link_up_both(mesh_sim_fixture& sim, node_id a, node_id b) {
-      return sim.mesh().net().link_between(a, b) != nullptr && sim.mesh().net().link_between(b, a) != nullptr;
+      return sim.mesh().link_between(a, b) != nullptr && sim.mesh().link_between(b, a) != nullptr;
     }
 
   }  // namespace
@@ -51,8 +51,8 @@ namespace other {
 
     ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
 
-    const link_record* ab = sim.mesh().net().link_between(1, 2);
-    const link_record* ba = sim.mesh().net().link_between(2, 1);
+    const link_record* ab = sim.mesh().link_between(1, 2);
+    const link_record* ba = sim.mesh().link_between(2, 1);
     ASSERT_NE(ab, nullptr);
     ASSERT_NE(ba, nullptr);
     EXPECT_EQ(ab->remote, 2u);
@@ -62,16 +62,12 @@ namespace other {
 
     EXPECT_EQ(sim.actor(1).ups.size(), 1u);
     EXPECT_EQ(sim.actor(2).ups.size(), 1u);
-    EXPECT_TRUE(sim.mesh().graph().contains(1));
-    EXPECT_TRUE(sim.mesh().graph().contains(2));
-    const ostd::vector<node_id> neighbors = sim.mesh().graph().neighbors(1);
-    EXPECT_TRUE(std::ranges::find(neighbors, 2u) != neighbors.end());
+    EXPECT_TRUE(sim.actor(1).is_primary());
+    EXPECT_FALSE(sim.actor(2).is_primary());
   }
 
   TEST_F(peer_mesh_tests, handshake_rejects_wrong_app_hash) {
-    memory_fabric fabric(7);
-    fabric_port port_a(fabric);
-    fabric_port port_b(fabric);
+    memory_transport_provider fabric(7);
 
     peer_mesh_config cfg_a = fast_cfg();
     cfg_a.app_hash = 111;
@@ -80,10 +76,10 @@ namespace other {
 
     peer_mesh mesh_a("a", cfg_a);
     peer_mesh mesh_b("b", cfg_b);
-    mesh_a.register_transport(port_a);
-    mesh_b.register_transport(port_b);
-    test_actor& actor_a = static_cast<test_actor&>(mesh_a.spawn_actor(make_scope<test_actor>(), 1));
-    mesh_b.spawn_actor(make_scope<test_actor>(), 2);
+    mesh_a.attach_provider(fabric);
+    mesh_b.attach_provider(fabric);
+    test_actor& actor_a = static_cast<test_actor&>(mesh_a.set_primary(make_scope<test_actor>(), 1));
+    mesh_b.set_primary(make_scope<test_actor>(), 2);
 
     fabric.configure_endpoint(1, false);
     ASSERT_NE(mesh_b.actor(2)->open_listener(net_address::memory_endpoint(1)), 0u);
@@ -97,8 +93,8 @@ namespace other {
       fabric.tick(now);
     }
 
-    EXPECT_EQ(mesh_a.net().link_count(), 0u);
-    EXPECT_EQ(mesh_b.net().link_count(), 0u);
+    EXPECT_EQ(mesh_a.link_count(), 0u);
+    EXPECT_EQ(mesh_b.link_count(), 0u);
     EXPECT_GE(mesh_a.counters().protocol_errors + mesh_b.counters().protocol_errors, 1u);
     ASSERT_FALSE(actor_a.downs.empty());
     EXPECT_EQ(actor_a.downs.front().reason, link_close_reason::PROTOCOL_ERROR);
@@ -107,18 +103,16 @@ namespace other {
   TEST_F(peer_mesh_tests, handshake_timeout_drops_silent_link) {
     mesh_sim_fixture sim(1, 1, fast_cfg());
 
-    /// a listener owned by a port bound to nothing: accepts, never speaks
-    fabric_port silent(sim.fabric);
-    silent.bind({});
+    /// a listener whose delegate adopts nothing: accepts, never speaks
     sim.fabric.configure_endpoint(99, false);
-    ASSERT_NE(silent.listen(net_address::memory_endpoint(99)), 0u);
+    ASSERT_NE(sim.fabric.listen(net_address::memory_endpoint(99), [](link_sink&, natural_t) {}), 0u);
 
     const natural_t link_id = sim.actor(1).open_link(net_address::memory_endpoint(99));
     ASSERT_NE(link_id, 0u);
 
     ASSERT_TRUE(sim.step_until([&] { return !sim.actor(1).downs.empty(); }, 256));
     EXPECT_EQ(sim.actor(1).downs.front().reason, link_close_reason::HANDSHAKE_TIMEOUT);
-    EXPECT_EQ(sim.mesh().net().link_count(), 0u);
+    EXPECT_EQ(sim.mesh().link_count(), 0u);
   }
 
   TEST_F(peer_mesh_tests, keepalive_measures_rtt_over_shaped_link) {
@@ -129,18 +123,14 @@ namespace other {
 
     /// idle past keepalive_idle -> ping; pong returns after ~2x latency
     ASSERT_TRUE(sim.step_until([&] {
-      const link_record* ab = sim.mesh().net().link_between(1, 2);
+      const link_record* ab = sim.mesh().link_between(1, 2);
       return ab != nullptr && ab->rtt.count() > 0;
     }, 256));
 
-    const link_record* ab = sim.mesh().net().link_between(1, 2);
+    const link_record* ab = sim.mesh().link_between(1, 2);
     ASSERT_NE(ab, nullptr);
     EXPECT_GE(ab->rtt.count(), 18'000);
     EXPECT_LE(ab->rtt.count(), 30'000);
-
-    const peer_record* remote = sim.mesh().graph().record(2);
-    ASSERT_NE(remote, nullptr);
-    EXPECT_EQ(remote->rtt_estimate.count(), ab->rtt.count());
   }
 
   TEST_F(peer_mesh_tests, keepalive_timeout_drops_muted_link) {
@@ -148,14 +138,14 @@ namespace other {
     const natural_t link_id = sim.link(1, 2);
     ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
 
-    const link_record* record = sim.mesh().net().link(link_id);
+    const link_record* record = sim.mesh().link(link_id);
     ASSERT_NE(record, nullptr);
     sim.fabric.set_mute(record->connection_id, true, true);
 
     ASSERT_TRUE(sim.step_until([&] { return !sim.actor(1).downs.empty() && !sim.actor(2).downs.empty(); }, 512));
     EXPECT_EQ(sim.actor(1).downs.front().reason, link_close_reason::KEEPALIVE_TIMEOUT);
     EXPECT_EQ(sim.actor(2).downs.front().reason, link_close_reason::KEEPALIVE_TIMEOUT);
-    EXPECT_EQ(sim.mesh().net().link_count(), 0u);
+    EXPECT_EQ(sim.mesh().link_count(), 0u);
   }
 
   TEST_F(peer_mesh_tests, two_actors_on_one_mesh_exchange_frames) {
@@ -212,107 +202,16 @@ namespace other {
     EXPECT_GE(sim.mesh().counters().refused_sends, 2u);
   }
 
-  TEST_F(peer_mesh_tests, rx_filter_observes_rewrites_and_drops) {
+  TEST_F(peer_mesh_tests, send_to_unlinked_dst_refused_not_fatal) {
     mesh_sim_fixture sim(2);
     sim.link(1, 2);
     ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
 
-    natural_t seen = 0;
-    sim.mesh().add_rx_filter([&](mesh_frame_view& view) {
-      seen++;
-      if (view.net_id == 100) {
-        view.dropped = true;
-        return;
-      }
-      if (view.net_id == 101) {
-        view.scratch.assign(4, 0xAB);
-        view.payload = view.scratch;
-      }
-    });
-
-    EXPECT_TRUE(sim.actor(1).send(2, 100, seq_payload(1)));
-    EXPECT_TRUE(sim.actor(1).send(2, 101, seq_payload(2)));
-    EXPECT_TRUE(sim.actor(1).send(2, 102, seq_payload(3)));
-    sim.step(microseconds{ 1000 }, 8);
-
-    EXPECT_EQ(seen, 3u);
-    ASSERT_EQ(sim.actor(2).frames.size(), 2u);
-    EXPECT_EQ(sim.actor(2).frames[0].net_id, 101u);
-    EXPECT_EQ(sim.actor(2).frames[0].payload, ostd::vector<uint8_t>(4, 0xAB));
-    EXPECT_EQ(sim.actor(2).frames[1].net_id, 102u);
-  }
-
-  TEST_F(peer_mesh_tests, tx_filter_sees_outbound_frames) {
-    mesh_sim_fixture sim(2);
-    sim.link(1, 2);
-    ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
-
-    natural_t outbound = 0;
-    sim.mesh().add_tx_filter([&](mesh_frame_view& view) {
-      if (!is_mesh_control(view.net_id)) {
-        outbound++;
-        EXPECT_EQ(view.dst, 2u);
-      }
-    });
-
-    EXPECT_TRUE(sim.actor(1).send(2, 55, seq_payload(1)));
-    sim.step(microseconds{ 1000 }, 4);
-    EXPECT_EQ(outbound, 1u);
-    EXPECT_EQ(sim.actor(2).frames.size(), 1u);
-  }
-
-  TEST_F(peer_mesh_tests, routed_frame_forwards_a_b_c_with_src_preserved) {
-    mesh_sim_fixture sim(3);
-    const natural_t link12 = sim.link(1, 2);
-    const natural_t link23 = sim.link(2, 3);
-    ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2) && link_up_both(sim, 2, 3); }));
-
-    auto routes = make_scope<static_route_router>();
-    routes->set_route(1, 3, link12);
-    routes->set_route(2, 3, link23);
-    sim.mesh().set_router(std::move(routes));
-
-    const ostd::vector<uint8_t> payload = seq_payload(77, 24);
-    EXPECT_TRUE(sim.actor(1).send(3, 42, payload));
-    ASSERT_TRUE(sim.step_until([&] { return !sim.actor(3).frames.empty(); }));
-
-    ASSERT_EQ(sim.actor(3).frames.size(), 1u);
-    EXPECT_EQ(sim.actor(3).frames[0].src, 1u);
-    EXPECT_EQ(sim.actor(3).frames[0].net_id, 42u);
-    EXPECT_EQ(sim.actor(3).frames[0].payload, payload);
-    EXPECT_TRUE(sim.actor(2).frames.empty());
-  }
-
-  TEST_F(peer_mesh_tests, ttl_zero_drops_at_relay) {
-    peer_mesh_config cfg;
-    cfg.default_ttl = 0;
-    mesh_sim_fixture sim(3, 1, cfg);
-    const natural_t link12 = sim.link(1, 2);
-    const natural_t link23 = sim.link(2, 3);
-    ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2) && link_up_both(sim, 2, 3); }));
-
-    auto routes = make_scope<static_route_router>();
-    routes->set_route(1, 3, link12);
-    routes->set_route(2, 3, link23);
-    sim.mesh().set_router(std::move(routes));
-
-    EXPECT_TRUE(sim.actor(1).send(3, 42, seq_payload(1)));
-    sim.step(microseconds{ 1000 }, 8);
-
-    EXPECT_TRUE(sim.actor(3).frames.empty());
-    const link_record* relay_in = sim.mesh().net().link_between(2, 1);
-    ASSERT_NE(relay_in, nullptr);
-    EXPECT_EQ(relay_in->stats.ttl_drops, 1u);
-  }
-
-  TEST_F(peer_mesh_tests, unroutable_dst_counted_not_fatal) {
-    mesh_sim_fixture sim(2);
-    sim.link(1, 2);
-    ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
-
+    /// multi-hop is actor behavior now (the MANET sample carries the relay proof);
+    ///  the mesh itself only ever sends on a direct UP link
     EXPECT_FALSE(sim.actor(1).send(999, 42, seq_payload(1)));
-    EXPECT_GE(sim.mesh().counters().unroutable_drops, 1u);
-    EXPECT_EQ(sim.mesh().net().link_count(), 2u);  // nothing torn down
+    EXPECT_GE(sim.mesh().counters().refused_sends, 1u);
+    EXPECT_EQ(sim.mesh().link_count(), 2u);  // nothing torn down
   }
 
   TEST_F(peer_mesh_tests, reliable_shaping_preserves_order_under_jitter) {
@@ -342,7 +241,7 @@ namespace other {
       const natural_t link_id = sim.link(1, 2, {}, {}, /*datagram=*/true);
       EXPECT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }, 256));
 
-      const link_record* shaped = sim.mesh().net().link(link_id);
+      const link_record* shaped = sim.mesh().link(link_id);
       EXPECT_NE(shaped, nullptr);
       const link_profile lossy{ .loss = 0.25f, .duplicate = 0.1f };
       sim.fabric.set_profile(shaped->connection_id, lossy, {});
@@ -354,9 +253,9 @@ namespace other {
       }
       sim.step(microseconds{ 1000 }, 32);
 
-      const link_record* record = sim.mesh().net().link(link_id);
+      const link_record* record = sim.mesh().link(link_id);
       EXPECT_NE(record, nullptr);
-      const memory_fabric::channel_stats* stats = sim.fabric.stats_of(record->connection_id);
+      const memory_transport_provider::channel_stats* stats = sim.fabric.stats_of(record->connection_id);
       EXPECT_NE(stats, nullptr);
 
       ostd::vector<uint8_t> trace;
@@ -401,11 +300,63 @@ namespace other {
     EXPECT_EQ(sim.actor(2).frames[0].payload.size(), bulk.size());
   }
 
-  TEST_F(peer_mesh_tests, sixteen_actor_chain_relays_a_token) {
+  TEST_F(peer_mesh_tests, memory_transform_rewrites_drops_duplicates_and_delays) {
+    mesh_sim_fixture sim(2);
+    const natural_t link_id = sim.link(1, 2);
+    ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2); }));
+
+    const link_record* record = sim.mesh().link(link_id);
+    ASSERT_NE(record, nullptr);
+
+    /// user-space shaping over the framed wire bytes: the net_id tag sits at [4..5]
+    sim.fabric.set_transform(record->connection_id, [](memory_transport_provider::memory_transform_context& ctx) {
+      const uint16_t net_id = static_cast<uint16_t>(ctx.bytes[4] | (ctx.bytes[5] << 8));
+      if (net_id == 13) {
+        ctx.drop = true;
+      } else if (net_id == 21) {
+        ctx.copies = 2;
+      } else if (net_id == 30) {
+        ctx.delay = microseconds{ 5'000 };
+      } else if (net_id == 40) {
+        for (size_t i = kFrameHeaderSize; i < ctx.bytes.size(); ++i) {
+          ctx.bytes[i] ^= 0xFF;
+        }
+      }
+    });
+
+    EXPECT_TRUE(sim.actor(1).send(2, 13, seq_payload(1)));
+    EXPECT_TRUE(sim.actor(1).send(2, 21, seq_payload(2)));
+    sim.step(microseconds{ 1000 }, 8);
+
+    ASSERT_EQ(sim.actor(2).frames.size(), 2u);  // 13 dropped, 21 doubled
+    EXPECT_EQ(sim.actor(2).frames[0].net_id, 21u);
+    EXPECT_EQ(sim.actor(2).frames[1].net_id, 21u);
+    EXPECT_GE(sim.fabric.stats_of(record->connection_id)->lost, 1u);
+    EXPECT_GE(sim.fabric.stats_of(record->connection_id)->duplicated, 1u);
+
+    const ostd::vector<uint8_t> payload = seq_payload(3, 16);
+    EXPECT_TRUE(sim.actor(1).send(2, 40, payload));
+    sim.step(microseconds{ 1000 }, 4);
+    ASSERT_EQ(sim.actor(2).frames.size(), 3u);
+    ostd::vector<uint8_t> flipped = payload;
+    for (uint8_t& b : flipped) {
+      b ^= 0xFF;
+    }
+    EXPECT_EQ(sim.actor(2).frames[2].payload, flipped);
+
+    /// delayed by the transform: not there after 2 ms, there by 12
+    EXPECT_TRUE(sim.actor(1).send(2, 30, seq_payload(4)));
+    sim.step(microseconds{ 1000 }, 2);
+    EXPECT_EQ(sim.actor(2).frames.size(), 3u);
+    sim.step(microseconds{ 1000 }, 10);
+    ASSERT_EQ(sim.actor(2).frames.size(), 4u);
+    EXPECT_EQ(sim.actor(2).frames[3].net_id, 30u);
+  }
+
+  TEST_F(peer_mesh_tests, sixteen_actor_chain_passes_a_token_hop_by_hop) {
     mesh_sim_fixture sim(16);
-    ostd::vector<natural_t> chain_links;
     for (size_t i = 1; i < 16; ++i) {
-      chain_links.push_back(sim.link(i, i + 1));
+      sim.link(i, i + 1);
     }
     ASSERT_TRUE(sim.step_until([&] {
       for (size_t i = 1; i < 16; ++i) {
@@ -416,19 +367,19 @@ namespace other {
       return true;
     }, 256));
 
-    auto routes = make_scope<static_route_router>();
-    for (size_t i = 1; i <= 8; ++i) {
-      routes->set_route(i, 9, chain_links[i - 1]);
-    }
-    sim.mesh().set_router(std::move(routes));
-
+    /// relay as actor behavior, the smallest form: each hop re-sends on its own seat
     const ostd::vector<uint8_t> token = seq_payload(0xBEEF, 16);
-    EXPECT_TRUE(sim.actor(1).send(9, 42, token));
-    ASSERT_TRUE(sim.step_until([&] { return !sim.actor(9).frames.empty(); }, 128));
-
-    EXPECT_EQ(sim.actor(9).frames[0].src, 1u);
+    EXPECT_TRUE(sim.actor(1).send(2, 42, token));
+    for (size_t hop = 2; hop <= 8; ++hop) {
+      ASSERT_TRUE(sim.step_until([&] { return !sim.actor(hop).frames.empty(); }, 64));
+      EXPECT_EQ(sim.actor(hop).frames[0].src, hop - 1);
+      EXPECT_EQ(sim.actor(hop).frames[0].payload, token);
+      EXPECT_TRUE(sim.actor(hop).send(hop + 1, 42, sim.actor(hop).frames[0].payload));
+    }
+    ASSERT_TRUE(sim.step_until([&] { return !sim.actor(9).frames.empty(); }, 64));
+    EXPECT_EQ(sim.actor(9).frames[0].src, 8u);
     EXPECT_EQ(sim.actor(9).frames[0].payload, token);
-    for (size_t i = 2; i <= 8; ++i) {
+    for (size_t i = 10; i <= 16; ++i) {
       EXPECT_TRUE(sim.actor(i).frames.empty());
     }
   }
@@ -447,10 +398,9 @@ namespace other {
       ostd::vector<uint8_t> tricky;
       const ostd::vector<uint8_t> fake_frame = write_frame(static_cast<uint16_t>(mesh_message::LINK_BYE), seq_payload(1));
       tricky.insert(tricky.end(), fake_frame.begin(), fake_frame.end());
-      route_header fake_route{ .src = 0xDEAD, .dst = 0xBEEF, .ttl = 0 };
-      uint8_t route_bytes[kRouteHeaderSize];
-      write_route_header(fake_route, route_bytes);
-      tricky.insert(tricky.end(), std::begin(route_bytes), std::end(route_bytes));
+      /// bytes shaped like an application routing envelope + control-page ids
+      const uint8_t envelope_like[] = { 0xAD, 0xDE, 0, 0, 0, 0, 0, 0, 0xEF, 0xBE, 0, 0, 0, 0, 0, 0, 0x08, 0x01, 0xFF };
+      tricky.insert(tricky.end(), std::begin(envelope_like), std::end(envelope_like));
       payloads.push_back(std::move(tricky));
     }
     {
@@ -478,16 +428,14 @@ namespace other {
   }
 
   TEST_F(peer_mesh_tests, second_mesh_is_isolated_from_the_first) {
-    memory_fabric fabric(3);
-    fabric_port port_a(fabric);
-    fabric_port port_b(fabric);
+    memory_transport_provider fabric(3);
 
     peer_mesh mesh_a("a");
     peer_mesh mesh_b("b");
-    mesh_a.register_transport(port_a);
-    mesh_b.register_transport(port_b);
-    test_actor& a1 = static_cast<test_actor&>(mesh_a.spawn_actor(make_scope<test_actor>(), 1));
-    test_actor& b1 = static_cast<test_actor&>(mesh_b.spawn_actor(make_scope<test_actor>(), 1));
+    mesh_a.attach_provider(fabric);
+    mesh_b.attach_provider(fabric);
+    test_actor& a1 = static_cast<test_actor&>(mesh_a.set_primary(make_scope<test_actor>(), 1));
+    test_actor& b1 = static_cast<test_actor&>(mesh_b.set_primary(make_scope<test_actor>(), 1));
 
     /// same node ids on both meshes: separate networks, no bleed
     fabric.configure_endpoint(10, false);
@@ -506,9 +454,9 @@ namespace other {
     step_all(8);
 
     /// the cross-mesh link is up: a's remote is b's node id, learned over the wire
-    ASSERT_EQ(mesh_a.net().link_count(), 1u);
-    ASSERT_EQ(mesh_b.net().link_count(), 1u);
-    EXPECT_EQ(mesh_a.net().links()[0].remote, 1u);
+    ASSERT_EQ(mesh_a.link_count(), 1u);
+    ASSERT_EQ(mesh_b.link_count(), 1u);
+    EXPECT_EQ(mesh_a.links()[0].remote, 1u);
 
     ASSERT_TRUE(a1.send(1, 30, seq_payload(1)));
     step_all(4);
@@ -530,13 +478,13 @@ namespace other {
 
       std::string_view name() const override { return "test-psk"; }
 
-      auth_result begin_auth(peer_mesh& mesh, link_record& link) override {
+      auth_result begin_auth(link_sink& link, link_record& record) override {
         const ostd::vector<uint8_t> blob(key.begin(), key.end());
-        mesh.send_link_auth(link, blob);
+        link.send_auth(blob);
         return auth_result::PENDING;
       }
 
-      auth_result on_auth_frame(peer_mesh& mesh, link_record& link, std::span<const uint8_t> payload) override {
+      auth_result on_auth_frame(link_sink& link, link_record& record, std::span<const uint8_t> payload) override {
         const bool match = std::ranges::equal(payload, std::span<const char>(key.data(), key.size()),
                                               [](uint8_t a, char b) { return a == static_cast<uint8_t>(b); });
         return match ? auth_result::ESTABLISHED : auth_result::FAILED;
@@ -554,8 +502,8 @@ namespace other {
 
       std::string_view name() const override { return "test-xor"; }
 
-      auth_result begin_auth(peer_mesh& mesh, link_record& link) override { return auth_result::ESTABLISHED; }
-      auth_result on_auth_frame(peer_mesh& mesh, link_record& link, std::span<const uint8_t> payload) override {
+      auth_result begin_auth(link_sink& link, link_record& record) override { return auth_result::ESTABLISHED; }
+      auth_result on_auth_frame(link_sink& link, link_record& record, std::span<const uint8_t> payload) override {
         return auth_result::FAILED;
       }
 
@@ -578,17 +526,17 @@ namespace other {
 
     struct dual_mesh {
       explicit dual_mesh(scope<link_security> sec_a, scope<link_security> sec_b, const peer_mesh_config& cfg = fast_cfg())
-          : fabric(5), port_a(fabric), port_b(fabric), mesh_a("a", cfg), mesh_b("b", cfg) {
-        mesh_a.register_transport(port_a);
-        mesh_b.register_transport(port_b);
+          : fabric(5), mesh_a("a", cfg), mesh_b("b", cfg) {
+        mesh_a.attach_provider(fabric);
+        mesh_b.attach_provider(fabric);
         if (sec_a != nullptr) {
           mesh_a.set_security(std::move(sec_a));
         }
         if (sec_b != nullptr) {
           mesh_b.set_security(std::move(sec_b));
         }
-        a = static_cast<test_actor*>(&mesh_a.spawn_actor(make_scope<test_actor>(), 1));
-        b = static_cast<test_actor*>(&mesh_b.spawn_actor(make_scope<test_actor>(), 2));
+        a = static_cast<test_actor*>(&mesh_a.set_primary(make_scope<test_actor>(), 1));
+        b = static_cast<test_actor*>(&mesh_b.set_primary(make_scope<test_actor>(), 2));
         fabric.configure_endpoint(1, false);
         b->open_listener(net_address::memory_endpoint(1));
         link_id = a->open_link(net_address::memory_endpoint(1));
@@ -604,13 +552,11 @@ namespace other {
       }
 
       bool both_up() {
-        return mesh_a.net().link_between(1, 2) != nullptr && mesh_b.net().link_between(2, 1) != nullptr;
+        return mesh_a.link_between(1, 2) != nullptr && mesh_b.link_between(2, 1) != nullptr;
       }
 
       microseconds now{ 0 };
-      memory_fabric fabric;
-      fabric_port port_a;
-      fabric_port port_b;
+      memory_transport_provider fabric;
       peer_mesh mesh_a;
       peer_mesh mesh_b;
       test_actor* a = nullptr;
@@ -627,7 +573,7 @@ namespace other {
     bool saw_authenticating = false;
     for (int i = 0; i < 32 && !sim.both_up(); ++i) {
       sim.step();
-      if (const link_record* record = sim.mesh_a.net().link(sim.link_id);
+      if (const link_record* record = sim.mesh_a.link(sim.link_id);
           record != nullptr && record->state == link_state::AUTHENTICATING) {
         saw_authenticating = true;
       }
@@ -646,8 +592,8 @@ namespace other {
     sim.step(32);
 
     EXPECT_FALSE(sim.both_up());
-    EXPECT_EQ(sim.mesh_a.net().link_count(), 0u);
-    EXPECT_EQ(sim.mesh_b.net().link_count(), 0u);
+    EXPECT_EQ(sim.mesh_a.link_count(), 0u);
+    EXPECT_EQ(sim.mesh_b.link_count(), 0u);
     EXPECT_GE(sim.mesh_a.counters().security_failures + sim.mesh_b.counters().security_failures, 1u);
     ASSERT_FALSE(sim.a->downs.empty());
   }
@@ -687,7 +633,7 @@ namespace other {
 
     bool saw_authenticating = false;
     ASSERT_TRUE(sim.step_until([&] {
-      if (const link_record* record = sim.mesh().net().link(link_id);
+      if (const link_record* record = sim.mesh().link(link_id);
           record != nullptr && record->state == link_state::AUTHENTICATING) {
         saw_authenticating = true;
       }
@@ -696,21 +642,21 @@ namespace other {
     EXPECT_FALSE(saw_authenticating);
   }
 
-  TEST_F(peer_mesh_tests, destroy_actor_closes_its_links) {
+  TEST_F(peer_mesh_tests, remove_actor_closes_its_links) {
     mesh_sim_fixture sim(3);
     sim.link(1, 2);
     sim.link(1, 3);
     ASSERT_TRUE(sim.step_until([&] { return link_up_both(sim, 1, 2) && link_up_both(sim, 1, 3); }));
-    ASSERT_EQ(sim.mesh().net().link_count(), 4u);
+    ASSERT_EQ(sim.mesh().link_count(), 4u);
 
-    sim.mesh().destroy_actor(1);
+    sim.mesh().remove_actor(1);
     sim.step(microseconds{ 1000 }, 8);
 
     EXPECT_EQ(sim.mesh().actor_count(), 2u);
-    EXPECT_EQ(sim.mesh().net().link_count(), 0u);
+    EXPECT_EQ(sim.mesh().link_count(), 0u);
     EXPECT_FALSE(sim.actor(2).downs.empty());
     EXPECT_FALSE(sim.actor(3).downs.empty());
-    EXPECT_FALSE(sim.mesh().graph().contains(1));
+    EXPECT_EQ(sim.mesh().primary(), nullptr);
   }
 
 }  // namespace other

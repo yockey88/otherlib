@@ -234,7 +234,7 @@ namespace other {
     begin_receive(socket_id);
   }
 
-  void udp_transport_provider::close(natural_t connection_id) {
+  void udp_transport_provider::net_close(natural_t connection_id) {
     PROFILE_SECTION("udp_transport_provider::close");
     auto socket_itr = sockets.find(connection_id);
     if (socket_itr != sockets.end()) {

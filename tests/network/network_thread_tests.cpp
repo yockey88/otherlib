@@ -18,12 +18,14 @@ namespace other {
   namespace {
 
     /// plain counting fake: gmock expectations add noise the concurrency tests don't want
-    struct counting_transport_provider : public transport_provider {
+    struct counting_transport_provider : public socket_transport_provider {
       std::atomic<uint64_t> ticks = 0;
 
       std::string name() const override { return "CountingTransport"; }
+      bool is_stream() const override { return true; }
+      link_caps conn_caps(natural_t) const override { return {}; }
       void tx_data(natural_t connection_id, ostd::vector<uint8_t>&& data) override {}
-      void close(natural_t connection_id) override {}
+      void net_close(natural_t connection_id) override {}
 
      private:
       void on_initialize() override {}

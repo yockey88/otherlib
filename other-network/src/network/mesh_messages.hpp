@@ -1,14 +1,14 @@
 /**
- * \file peer_mesh/mesh_messages.hpp
+ * \file network/mesh_messages.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_MESH_MESH_MESSAGES_HPP
-#define OTHER_NETWORK_PEER_MESH_MESH_MESSAGES_HPP
+#ifndef OTHER_NETWORK_NETWORK_MESH_MESSAGES_HPP
+#define OTHER_NETWORK_NETWORK_MESH_MESSAGES_HPP
 
 #include "core/defines.hpp"
 
 #include "message/message_serialization.hpp"
 
-#include "peer_mesh/node_id.hpp"
+#include "network/node_id.hpp"
 
 namespace other {
 
@@ -78,4 +78,4 @@ OTHER_REFLECT(
   other::mesh_link_bye,
   OTHER_MSG_FIELD(reason, REASON))
 
-#endif  // OTHER_NETWORK_PEER_MESH_MESH_MESSAGES_HPP
+#endif  // OTHER_NETWORK_NETWORK_MESH_MESSAGES_HPP

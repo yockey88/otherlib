@@ -45,7 +45,7 @@ namespace other {
       listeners.push_back(id);
     }
     for (const natural_t id : listeners) {
-      close(id);
+      net_close(id);
     }
 
     ostd::vector<natural_t> conns;
@@ -143,7 +143,7 @@ namespace other {
     itr->second->send(std::move(data));
   }
 
-  void tcp_transport_provider::close(natural_t connection_id) {
+  void tcp_transport_provider::net_close(natural_t connection_id) {
     PROFILE_SECTION("tcp_transport_provider::close");
     auto itr = active_connections.find(connection_id);
     if (itr != active_connections.end()) {

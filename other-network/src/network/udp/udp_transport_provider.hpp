@@ -13,15 +13,20 @@ namespace other {
 
   /// the real datagram transport: unreliable, unordered, 1 datagram = 1 delivery, uninterpreted.
   ///  connectionless, so connections are synthesized; liveness lives above (mesh LINK_HELLO/keepalive) — no handshake, no EOF
-  class udp_transport_provider : public transport_provider {
+  class udp_transport_provider : public socket_transport_provider {
    public:
     /// safe-MTU posture: radio/MANET conditions sit well below ethernet's 1472, and ip
-    ///  fragmentation is the failure mode a datagram transport must avoid (networking.udp.max-datagram-bytes)
+    ///  fragmentation is the failure mode a datagram transport must avoid (ctor-set, provider-internal)
     constexpr static uint32_t kDefaultMaxDatagramBytes = 1200;
 
     explicit udp_transport_provider(uint32_t max_datagram_bytes = kDefaultMaxDatagramBytes)
         : max_datagram_bytes(max_datagram_bytes) {}
     virtual ~udp_transport_provider() = default;
+
+    bool is_stream() const override { return false; }
+    link_caps conn_caps(natural_t) const override {
+      return { .reliable = false, .ordered = false, .max_frame_size = max_datagram_bytes };
+    }
 
     std::string name() const override { return "UDP"; }
 
@@ -75,7 +80,7 @@ namespace other {
     void on_start_listen(natural_t conn_id, const binding_point& endpoint) override;
     void on_start_connect(natural_t conn_id, const binding_point& endpoint) override;
     void tx_data(natural_t connection_id, ostd::vector<uint8_t>&& data) override;
-    void close(natural_t connection_id) override;
+    void net_close(natural_t connection_id) override;
     void connection_removed(natural_t connection_id) override;
 
     void begin_receive(natural_t socket_id);

@@ -185,18 +185,10 @@ nested = { a = 1.5, b = "text", c = false }
             const frame_parse_result parsed = parse_frame_exact(bytes);
             parsed.frame.has_value() ? result.clean_parses++ : result.graceful_rejects++;
           } break;
-          case 1: {  /// mutated routed frame; surviving ROUTED payloads run the route header too
-            const route_header route{ .src = rng(), .dst = rng(), .ttl = static_cast<uint8_t>(rng() % 16) };
-            const ostd::vector<uint8_t> bytes = mutate(write_routed_frame(route, net_id, random_bytes(256)));
+          case 1: {  /// mutated tiny frame: the length-floor edge cases live down here
+            const ostd::vector<uint8_t> bytes = mutate(write_frame(net_id, random_bytes(rng() % 9)));
             const frame_parse_result parsed = parse_frame_exact(bytes);
-            if (parsed.frame.has_value()) {
-              result.clean_parses++;
-              if ((parsed.frame->flags & static_cast<uint16_t>(frame_flags::ROUTED)) != 0) {
-                (void)read_route_header(parsed.frame->payload);
-              }
-            } else {
-              result.graceful_rejects++;
-            }
+            parsed.frame.has_value() ? result.clean_parses++ : result.graceful_rejects++;
           } break;
           case 2: {  /// stream reassembly: several frames, sometimes mutated, dribbled in chunks
             ostd::vector<uint8_t> stream;
@@ -226,8 +218,8 @@ nested = { a = 1.5, b = "text", c = false }
               }
             }
           } break;
-          case 3:  /// raw garbage against the route header reader
-            (void)read_route_header(random_bytes(64));
+          case 3:  /// raw garbage against the exact-frame parser
+            (void)parse_frame_exact(random_bytes(64));
             result.graceful_rejects++;
             break;
         }

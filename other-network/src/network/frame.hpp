@@ -8,20 +8,13 @@
 
 #include "core/defines.hpp"
 
-#include "peer_mesh/node_id.hpp"
+#include "network/node_id.hpp"
 
 namespace other {
 
   enum class frame_flags : uint16_t {
     NONE = 0,
-    ROUTED = 1 << 0,
     // reserved: compression, fragmentation, etc..
-  };
-
-  struct route_header {
-    node_id src = 0;
-    node_id dst = 0;
-    uint8_t ttl = 0;
   };
 
   struct frame_header {
@@ -32,7 +25,6 @@ namespace other {
   };
 
   constexpr static size_t kFrameHeaderSize = 8;
-  constexpr static size_t kRouteHeaderSize = 17;
   constexpr static uint32_t kFrameLengthFloor = 4;
   constexpr static uint32_t kDefaultMaxFrameSize = 2 * 1024 * 1024;
 
@@ -40,13 +32,7 @@ namespace other {
   void write_frame_header(const frame_header& header, uint8_t* out);
   frame_header read_frame_header(std::span<const uint8_t> bytes);
 
-  void write_route_header(const route_header& route, uint8_t* out);
-  opt<route_header> read_route_header(std::span<const uint8_t> payload);
-
   ostd::vector<uint8_t> write_frame(uint16_t net_id, std::span<const uint8_t> payload);
-  ostd::vector<uint8_t> write_routed_frame(const route_header& route, uint16_t net_id, std::span<const uint8_t> payload);
-  /// payload passed pre-composed (e.g. route header + ciphertext); flags verbatim
-  ostd::vector<uint8_t> write_flagged_frame(uint16_t net_id, uint16_t flags, std::span<const uint8_t> payload);
 
   struct parsed_frame {
     uint16_t net_id = 0;

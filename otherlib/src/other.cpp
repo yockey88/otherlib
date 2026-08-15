@@ -188,32 +188,32 @@ namespace other {
 
   }  // namespace detail
 
+  namespace detail {
+
+    /// final teardown: re-inert first (get() must error afterwards, not resurrect) and reach the
+    ///  instance through try_get so an already-null subsystem is skipped instead of manufactured
+    template <typename T>
+    void shutdown_and_inert() {
+      if (!subsystem<T>::inert) {
+        subsystem<T>::inert = true;
+        if (T* instance = subsystem<T>::try_get(); instance != nullptr) {
+          instance->shutdown();
+        }
+      }
+    }
+
+  }  // namespace detail
+
   void shutdown_subsystems() {
     PROFILE_SECTION("other::shutdown_subsystems");
-    if (!subsystem<scripting_environment>::inert) {
-      subsystem<scripting_environment>::get()->shutdown();
-    }
-    if (!subsystem<renderer_backend>::inert) {
-      subsystem<renderer_backend>::get()->shutdown();
-    }
-    if (!subsystem<physics_environment>::inert) {
-      subsystem<physics_environment>::get()->shutdown();
-    }
-    if (!subsystem<type_database>::inert) {
-      subsystem<type_database>::get()->shutdown();
-    }
-    if (!subsystem<input_system>::inert) {
-      subsystem<input_system>::get()->shutdown();
-    }
-    if (!subsystem<file_system>::inert) {
-      subsystem<file_system>::get()->shutdown();
-    }
-    if (!subsystem<arena>::inert) {
-      subsystem<arena>::get()->shutdown();
-    }
-    if (!subsystem<logger>::inert) {
-      subsystem<logger>::get()->shutdown();
-    }
+    detail::shutdown_and_inert<scripting_environment>();
+    detail::shutdown_and_inert<renderer_backend>();
+    detail::shutdown_and_inert<physics_environment>();
+    detail::shutdown_and_inert<type_database>();
+    detail::shutdown_and_inert<input_system>();
+    detail::shutdown_and_inert<file_system>();
+    detail::shutdown_and_inert<arena>();
+    detail::shutdown_and_inert<logger>();
   }
 
 }  // namespace other

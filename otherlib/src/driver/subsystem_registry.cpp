@@ -470,43 +470,59 @@ namespace other {
       env->initialize(audio_cfg);
     }
 
+    /** shutdown fns re-inert symmetrically with their initialize fn un-inerting: a subsystem that
+        was torn down must error on get(), not silently resurrect empty (the arena is the one
+        deliberate exception) **/
+
     void shutdown_logger() {
       CORE_LOG_INFO("Shutting down logger subsystem.");
-      subsystem<logger>::get()->shutdown();
+      /// re-inert before unpublishing: a straggler get() must error, not resurrect an empty logger
+      subsystem<logger>::inert = true;
+      subsystem<logger>::shutdown();
     }
 
     void shutdown_arena() {
+      /// deliberately not torn down and not re-inerted: the arena outlives the registry so late
+      ///  frees from surviving objects (instance_ref in arena.cpp) keep working; the instance is
+      ///  never destroyed, so there is no resurrection hole to close here
     }
 
     void shutdown_file_system() {
       PROFILE_SECTION("other::detail::shutdown_file_system");
+      subsystem<file_system>::inert = true;
       subsystem<file_system>::get()->shutdown_file_system();
     }
 
     void shutdown_input_system() {
+      subsystem<input_system>::inert = true;
     }
 
     void shutdown_type_database() {
+      subsystem<type_database>::inert = true;
     }
 
     void shutdown_physics_environment() {
       PROFILE_SECTION("other::detail::shutdown_physics_environment");
+      subsystem<physics_environment>::inert = true;
       subsystem<physics_environment>::get()->shutdown_physics_environment();
       subsystem<physics_environment>::get()->unload_backend();
     }
 
     void shutdown_renderer_backend() {
       PROFILE_SECTION("other::detail::shutdown_renderer_backend");
+      subsystem<renderer_backend>::inert = true;
       subsystem<renderer_backend>::get()->unload_backend();
     }
 
     void shutdown_audio_environment() {
       PROFILE_SECTION("other::detail::shutdown_audio_environment");
+      subsystem<audio_environment>::inert = true;
       subsystem<audio_environment>::get()->shutdown();
     }
 
     void shutdown_scripting_environment() {
       PROFILE_SECTION("other::detail::shutdown_scripting_environment");
+      subsystem<scripting_environment>::inert = true;
       subsystem<scripting_environment>::get()->destroy_all_objects();
       subsystem<scripting_environment>::get()->unload_dotnet_module(subsystem<scripting_environment>::get()->dotnet_binding_assembly);
       subsystem<scripting_environment>::get()->dotnet_binding_assembly = nullptr;

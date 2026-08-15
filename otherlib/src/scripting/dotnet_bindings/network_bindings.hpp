@@ -32,6 +32,21 @@ namespace other {
     /// C# -> native blob handoff during a [Replicated] collect call
     void native_network_stage_replicated(const uint8_t* data, int32_t length);
 
+    /// roster snapshot, index-addressed 0..count-1; membership can shift between
+    ///  calls, so out-of-range reads answer 0/empty rather than assert
+    int32_t native_network_peer_count();
+    uint32_t native_network_peer_id(int32_t index);
+    uint64_t native_network_peer_node(int32_t index);
+    native_string native_network_peer_name(int32_t index);
+
+    /// the script-actor bridge (networking.session-host = "script:<Type>"): payloads
+    ///  ride a staging buffer so the invoke marshal stays primitive
+    void native_network_actor_stage_payload(const uint8_t* data, int32_t length);
+    nbool32 native_network_actor_send(uint64_t dst, uint32_t net_id);
+    uint64_t native_network_actor_open_link(native_string address, uint16_t port, native_string transport);
+    uint64_t native_network_actor_open_listener(uint16_t port, native_string transport);
+    void native_network_actor_close_link(uint64_t link_id, uint32_t reason);
+
   }  // namespace bindings
 }  // namespace other
 

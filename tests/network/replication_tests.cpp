@@ -79,7 +79,7 @@ namespace other {
       }
 
       network_session& spawn(node_id node, const network_session::session_config& cfg) {
-        return static_cast<network_session&>(sim.mesh().spawn_actor(make_scope<network_session>(cfg), node));
+        return static_cast<network_session&>(sim.spawn(make_scope<network_session>(cfg), node));
       }
 
       void step(size_t ticks = 1, microseconds dt = microseconds{ 5'000 }) {
@@ -428,9 +428,9 @@ namespace other {
 
     /// real sockets under real suite load: default join timeout, not the sim-scale one
     network_session& host = static_cast<network_session&>(
-      host_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
+      host_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-a" }), 1));
     network_session& client = static_cast<network_session&>(
-      client_side.mesh.spawn_actor(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
+      client_side.mesh.set_primary(make_scope<network_session>(network_session::session_config{ .display_name = "editor-b" }), 2));
     replication host_repl(host, [&] { return &host_scene; });
     replication client_repl(client, [&] { return &client_scene; });
     host.set_observer([&](session_event ev, uint16_t arg) { host_repl.on_session_event(ev, arg); });

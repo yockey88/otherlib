@@ -90,6 +90,9 @@ namespace other {
     virtual bool script_and_physics() const { return false; }
 
     void initialize_test_logger(const config_table* config) {
+      /// shutdown_logger re-inerts on every TearDown; this override replaces
+      ///  detail::initialize_logger and must un-inert the same way it does
+      subsystem<logger>::inert = false;
       logger* log = subsystem<logger>::get();
       if (log == nullptr) {
         throw std::runtime_error("Logger subsystem is null.");
