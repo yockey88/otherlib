@@ -15,6 +15,7 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "core/profiler_backend.hpp"
 #include "core/subsystem.hpp"
 #include "core/version.hpp"
 #include "file/filesystem.hpp"
@@ -25,6 +26,7 @@
 #include "thread/thread_safety.hpp"
 
 #include "physics/physics_environment.hpp"
+#include "renderer/backends/gl_profiler_backend.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -83,6 +85,9 @@ namespace other {
   }
 
   exit_code other_environment_program_entry_point(const command_line& cmd, const config_table& cfg, const std::string_view prof) {
+    /// the exe image hosts the one tracy client; plugins reach it through the handshake
+    profiling::initialize_host_backend();
+    profiling::initialize_host_gpu_backend();
     SetUnhandledExceptionFilter(&report_unhandled_seh);
     exit_code res = invoke_other_main(cmd, cfg, prof);
     CORE_LOG_INFO("Other Environment exit with code: {}", res);
