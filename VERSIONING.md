@@ -2,7 +2,7 @@
 
 Other Environment ships under one semantic version, `MAJOR.MINOR.PATCH`. The root
 `VERSION` file is the single source of truth; everything else derives from it.
-Current: **0.1.0** — the first enforced release (the full networking stack).
+Current: **0.1.1** — the first enforced release (the full networking stack).
 
 ## Bump rules
 
