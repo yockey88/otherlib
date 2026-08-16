@@ -37,7 +37,7 @@ metadata = [
   { key = "name", value = "${project-name}" },
   { key = "description", value = "${project-description}" },
   { key = "author", value = "${project-author}" },
-  { key = "version", value = "0.1.0" }
+  { key = "version", value = "0.0.0" }
 ]
 
 [filesystem]
