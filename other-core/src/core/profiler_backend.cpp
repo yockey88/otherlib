@@ -24,20 +24,27 @@ namespace other {
     static_assert(offsetof(source_location, file) == offsetof(struct ___tracy_source_location_data, file));
     static_assert(offsetof(source_location, line) == offsetof(struct ___tracy_source_location_data, line));
     static_assert(offsetof(source_location, color) == offsetof(struct ___tracy_source_location_data, color));
-    static_assert(sizeof(zone_ctx) == sizeof(struct ___tracy_c_zone_context));
-    static_assert(offsetof(zone_ctx, id) == offsetof(struct ___tracy_c_zone_context, id));
-    static_assert(offsetof(zone_ctx, active) == offsetof(struct ___tracy_c_zone_context, active));
-
     namespace {
 
       constexpr int32_t kCallstackDepth = TRACY_CALLSTACK;
 
-      zone_ctx to_ctx(TracyCZoneCtx ctx) { return zone_ctx{ ctx.id, ctx.active }; }
+      /// converted member-wise (no layout cast): tracy's context grows a connectionId
+      ///  field under TRACY_ON_DEMAND (0.14) and may grow again
+      zone_ctx to_ctx(TracyCZoneCtx ctx) {
+        zone_ctx res{ ctx.id, ctx.active, 0 };
+#ifdef TRACY_ON_DEMAND
+        res.connection_id = ctx.connectionId;
+#endif
+        return res;
+      }
 
       TracyCZoneCtx from_ctx(zone_ctx ctx) {
         TracyCZoneCtx res;
         res.id = ctx.id;
         res.active = ctx.active;
+#ifdef TRACY_ON_DEMAND
+        res.connectionId = ctx.connection_id;
+#endif
         return res;
       }
 
@@ -52,7 +59,7 @@ namespace other {
       ///  events survive the plugin image unloading
       zone_ctx copying_zone_begin(const source_location* loc) {
         if (___tracy_connected() == 0) {
-          return zone_ctx{ 0, 0 };
+          return zone_ctx{ 0, 0, 0 };
         }
         const char* name = loc->name != nullptr ? loc->name : "";
         const uint64_t srcloc = ___tracy_alloc_srcloc_name(
@@ -73,11 +80,11 @@ namespace other {
       }
 
       void table_memory_alloc(const void* ptr, size_t size) {
-        ___tracy_emit_memory_alloc_callstack(ptr, size, kCallstackDepth, 0);
+        ___tracy_emit_memory_alloc_callstack(ptr, size, kCallstackDepth);
       }
 
       void table_memory_free(const void* ptr) {
-        ___tracy_emit_memory_free_callstack(ptr, kCallstackDepth, 0);
+        ___tracy_emit_memory_free_callstack(ptr, kCallstackDepth);
       }
 
       void table_frame_mark(const char* name) {
@@ -93,7 +100,7 @@ namespace other {
       }
 
       void table_message(const char* txt, size_t size) {
-        ___tracy_emit_message(txt, size, 0);
+        ___tracy_emit_logString(TracyMessageSeverityInfo, 0, kCallstackDepth, size, txt);
       }
 
       void table_plot(const char* name, double value) {

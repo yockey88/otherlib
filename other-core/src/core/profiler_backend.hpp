@@ -21,9 +21,12 @@ namespace other {
       uint32_t color;
     };
 
+    /// converted member-wise against tracy's context in profiler_backend.cpp;
+    ///  connection_id lets on-demand zone ends reconcile across viewer reconnects
     struct zone_ctx {
       uint32_t id;
       int32_t active;
+      uint64_t connection_id;
     };
 
     /// per-image indirection to the single host-owned tracy client; plugins receive the
@@ -82,7 +85,7 @@ namespace other {
 
      private:
       const profiler_backend* backend = nullptr;
-      zone_ctx ctx{ 0, 0 };
+      zone_ctx ctx{ 0, 0, 0 };
     };
 
     inline void emit_memory_alloc(const void* ptr, size_t size) {
