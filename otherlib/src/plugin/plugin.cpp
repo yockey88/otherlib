@@ -95,6 +95,8 @@ namespace other {
     if (!subsystem<scripting_environment>::inert) {
       argv.scripting_environment = subsystem<scripting_environment>::get();
     }
+    argv.profiler = profiling::plugin_table();
+
     if (argv.arena == nullptr || argv.logger == nullptr || argv.file_system == nullptr || argv.input_system == nullptr || argv.type_database == nullptr) {
       CORE_LOG_ERROR("Failed to bind plugin '{}': one or more required subsystems are not available", plugin_path);
       return nullptr;
@@ -155,47 +157,6 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Plugin library '{}' not found in loaded libraries", plugin_name);
     }
-  }
-
-  void plugin::on_enter(const std::string_view pl_name, other_plugin_argv* argv) {
-    PROFILE_SECTION("plugin::on_enter");
-    register_main_thread();
-    set_subsystem_flags(pl_name, argv);
-    plugin_binding(pl_name, argv);
-  }
-
-  void plugin::set_subsystem_flags(const std::string_view pl_name, other_plugin_argv* argv) {
-    subsystem<arena>::inert = argv->arena == nullptr;
-    subsystem<logger>::inert = argv->logger == nullptr;
-    subsystem<file_system>::inert = argv->file_system == nullptr;
-    subsystem<input_system>::inert = argv->input_system == nullptr;
-    subsystem<type_database>::inert = argv->type_database == nullptr;
-    subsystem<physics_environment>::inert = argv->physics_environment == nullptr;
-    subsystem<renderer_backend>::inert = argv->renderer == nullptr;
-    subsystem<scripting_environment>::inert = argv->scripting_environment == nullptr;
-  }
-
-  void plugin::plugin_binding(const std::string_view pl_name, other_plugin_argv* argv) {
-    subsystem<arena>::set(argv->arena);
-    subsystem<logger>::set(argv->logger);
-    subsystem<file_system>::set(argv->file_system);
-    subsystem<input_system>::set(argv->input_system);
-    subsystem<type_database>::set(argv->type_database);
-    subsystem<physics_environment>::set(argv->physics_environment);
-    subsystem<renderer_backend>::set(argv->renderer);
-    subsystem<scripting_environment>::set(argv->scripting_environment);
-
-    std::stringstream ss;
-    ss << "Plugin '" << pl_name << "' bound to subsystems: \n";
-    ss << std::format("arena={:p}\n", static_cast<void*>(argv->arena));
-    ss << std::format("logger={:p}\n", static_cast<void*>(argv->logger));
-    ss << std::format("file_system={:p}\n", static_cast<void*>(argv->file_system));
-    ss << std::format("input_system={:p}\n", static_cast<void*>(argv->input_system));
-    ss << std::format("type_database={:p}\n", static_cast<void*>(argv->type_database));
-    ss << std::format("physics_environment={:p}\n", static_cast<void*>(argv->physics_environment));
-    ss << std::format("renderer_backend={:p}\n", static_cast<void*>(argv->renderer));
-    ss << std::format("scripting_environment={:p}", static_cast<void*>(argv->scripting_environment));
-    CORE_LOG_DEBUG("Plugin '{}' initialized with subsystems: {}", pl_name, ss.str());
   }
 
 }  // namespace other

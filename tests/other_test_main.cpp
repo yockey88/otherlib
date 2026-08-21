@@ -1,18 +1,19 @@
 /**
  * \file tests/test_main.cpp
  **/
-#include <gtest/gtest.h>
-
 #include <iostream>
+
+#include <gtest/gtest.h>
 
 #include <Windows.h>
 
 #include "core/logger.hpp"
-
-#include "audio/audio_environment.hpp"
+#include "core/profiler_backend.hpp"
 #include "thread/thread_safety.hpp"
 
+#include "audio/audio_environment.hpp"
 #include "other_test.hpp"
+
 
 using other::command_line;
 using other::config_table;
@@ -35,6 +36,7 @@ static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
 }
 
 int main(int argc, char** argv) {
+  other::profiling::initialize_host_backend();
   SetUnhandledExceptionFilter(&report_unhandled_seh);
   other::disable_thread_check();
 

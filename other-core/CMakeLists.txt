@@ -19,6 +19,7 @@ target_sources(other_core
 		src/core/config_table.cpp
 		src/core/defines.cpp
 		src/core/logger.cpp
+		src/core/profiler_backend.cpp
 		src/core/arena_buffer.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
@@ -111,6 +112,13 @@ endforeach()
 
 target_sources(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp>)
 target_include_directories(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy>)
+## tracy is a private implementation detail of profiler_backend.cpp: the client lives in the
+##  host image only, everything else routes through the seam (core/profiler_backend.hpp)
+target_compile_definitions(other_core PRIVATE
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ENABLE>"
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_CALLSTACK=10>"
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ON_DEMAND>"
+)
 
 target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
 target_link_libraries(other_core PRIVATE glad Threads::Threads xxhash)

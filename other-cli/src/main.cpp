@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "core/profiler_backend.hpp"
 #include "core/version.hpp"
 
 #include "tools/scene_cli_tool.hpp"
@@ -44,6 +45,7 @@ namespace {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  other::profiling::initialize_host_backend();
   auto& registry = other::cli::default_tool_registry();
 #ifdef OTHER_CLI_DEV_TOOLS
   other::cli::register_dev_tools(registry);

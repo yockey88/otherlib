@@ -9,6 +9,7 @@
 #include <imgui/imgui.h>
 
 #include "core/defines.hpp"
+#include "core/profiler_backend.hpp"
 
 #include "plugin/library_handle.hpp"
 #include "plugin/plugin_interface.hpp"
@@ -36,6 +37,9 @@ namespace other {
     physics_environment* physics_environment = nullptr;
     renderer_backend* renderer = nullptr;
     scripting_environment* scripting_environment = nullptr;
+    /// host-owned profiling table: the plugin records into the host's tracy client instead
+    ///  of embedding its own (whose unload would deadlock the loader lock)
+    const profiling::profiler_backend* profiler = nullptr;
   };
 
   class plugin {

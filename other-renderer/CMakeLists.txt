@@ -41,6 +41,7 @@ target_sources(other_renderer
       src/renderer/renderer.cpp
 
       src/renderer/backends/opengl_api.cpp
+      src/renderer/backends/gl_profiler_backend.cpp
 )
 
 target_include_directories(other_renderer 
@@ -53,6 +54,16 @@ target_link_directories(other_renderer PUBLIC
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
+
+## gpu timestamp zones (gl_profiler.hpp) talk to the host image's tracy client directly;
+##  renderer objects must never be pulled into an unloadable plugin image (the client's
+##  DLL-unload deadlock — see core/profiler_backend.hpp). flags mirror other_core's.
+target_include_directories(other_renderer PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy>)
+target_compile_definitions(other_renderer PRIVATE
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ENABLE>"
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_CALLSTACK=10>"
+  "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ON_DEMAND>"
+)
 
 ## imgui/SDL are in most renderer TUs but deliberately kept out of public headers;
 ##  precompile them for this target only
