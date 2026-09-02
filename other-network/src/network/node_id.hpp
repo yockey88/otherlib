@@ -8,7 +8,6 @@
 
 namespace other {
 
-  /// the mesh-level name of a node; 0 = invalid/unknown
   using node_id = uint64_t;
 
 }  // namespace other

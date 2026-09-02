@@ -1,16 +1,9 @@
 add_library(other_network STATIC)
 target_sources(other_network
   PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/frame.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/transport_provider.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/acknowledgement_list.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/memory/memory_transport_provider.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/tcp/connection.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/tcp/tcp_transport_provider.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/udp/udp_transport_provider.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/link_sink.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/peer_mesh/peer_mesh.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/peer_mesh/peer_actor.cpp"
 )

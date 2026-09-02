@@ -3,8 +3,6 @@
 add_static_driver(other_soak
   src/harness_driver.cpp
   src/soak_scenario.cpp
-  src/network_scenario.cpp
-  src/fuzz_scenario.cpp
   src/stress_scenario.cpp
   src/memory_sampler.cpp
 )

@@ -27,7 +27,6 @@ namespace other {
       PROFILE_SECTION("acknowledgement_list::register_ack--timeout_handler");
       auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == id; });
       if (itr == pending_acks.end()) {
-        /// already acked (handle_ack cancelled us and erased the entry) — nothing to do
         return;
       }
 
@@ -42,13 +41,11 @@ namespace other {
       CORE_LOG_WARN("Acknowledgment timeout for message {} (ACK ID: {})", itr->header, id);
       if (itr->handler.on_timeout) {
         itr->handler.on_timeout(itr->header);
-        /// the handler may have mutated the list (registering new acks) — re-find before reaping
         itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == id; });
         if (itr == pending_acks.end()) {
           return;
         }
       }
-      /// timed-out entries always reap — a null on_timeout must not leak the entry
       pending_acks.erase(itr);
     });
 
@@ -81,8 +78,6 @@ namespace other {
     }
 
     CORE_LOG_WARN("[ACK FAILED: {}] (ACK ID: {})", original_header, ack_id);
-    /// resolve the entry before invoking: the handler may register new acks and
-    ///  invalidate deque iterators
     message_handler::handler_fn on_failure = std::move(itr->handler.on_failure);
     itr->timer->cancel();
     pending_acks.erase(itr);

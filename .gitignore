@@ -1,7 +1,7 @@
 # build artifacts/things not ready yet (cmake configuration for versioning etc)
 build/
 logs/
-docs/
+docs*/
 */logs/*
 other_test_results.*.xml
 bin/
@@ -22,7 +22,6 @@ artifacts/
 wip/
 analysis/
 scratch/
-code-generator/
 *.svg
 *.d2
 
@@ -36,12 +35,8 @@ resources/models/*
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.fbx
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.omesh
 
-# non-public sandboxes
-development-drivers/pbrt
-
 # configuration files
 *-log-failure.log
-
 
 ----- required dependencies -----
 ----- must find way to get to client bc too large to push to git -----
@@ -49,8 +44,7 @@ development-drivers/pbrt
 extern/python312/DLLs
 extern/python312/include
 extern/python312/Lib
-# local scratch / prompt context (untracked by design)
 test.ps1
 
-# dev-loop steam artifact (steam_context writes it for the spacewar appid)
+# dev-loop steam artifact
 steam_appid.txt

@@ -14,14 +14,12 @@ namespace other {
   enum class link_state : uint8_t {
     CONNECTING = 0,
     HANDSHAKING = 1,
-    /// entered only when a link_security is installed
     AUTHENTICATING = 2,
     UP = 3,
     DISCONNECTING = 4,
     DOWN = 5,
   };
 
-  /// LINK_BYE reasons + local teardown causes; u16 on the wire
   enum class link_close_reason : uint16_t {
     NONE = 0,
     SHUTDOWN = 1,
@@ -40,23 +38,12 @@ namespace other {
     uint32_t max_frame_size = 0;
   };
 
-  /// error/refusal tallies shared by a mesh and its link sinks
-  struct mesh_counters {
-    natural_t refused_sends = 0;
-    natural_t malformed_frames = 0;
-    natural_t no_actor_drops = 0;
-    natural_t security_failures = 0;
-    natural_t protocol_errors = 0;
-  };
-
   struct link_record {
     natural_t link_id = 0;
-    /// a link is an edge between two nodes; local names the owning actor's seat
     node_id local = 0;
     node_id remote = 0;
 
     natural_t connection_id = 0;
-    natural_t transport_hash = 0;
 
     link_state state = link_state::DOWN;
     link_caps caps;

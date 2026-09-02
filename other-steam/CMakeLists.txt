@@ -3,7 +3,6 @@ target_sources(other_steam
   PRIVATE
     src/steam/steam_context.cpp
     src/steam/steam_lobby.cpp
-    src/steam/steam_transport_provider.cpp
 )
 
 ## include root is the SDK folder so sources write #include <steam/steam_api.h>;

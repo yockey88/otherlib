@@ -13,8 +13,6 @@
 #include "event/event_system.hpp"
 #include "thread/thread_safety.hpp"
 
-#include "network/tcp/tcp_transport_provider.hpp"
-
 #include "driver/driver.hpp"
 
 #include "message/message.hpp"
@@ -56,7 +54,7 @@ namespace other {
       ///  UNAVAILABLE — tcp/memory untouched, CI (no client) never notices
       if (get_driver().get_config_value<bool>("steam.enabled", false)) {
         steam_ctx = make_scope<steam_context>();
-        steam_ctx->initialize(static_cast<uint32_t>(get_driver().get_config_value<size_t>("steam.app-id", 480)));
+        steam_ctx->initialize(get_driver().get_config_value<uint32_t>("steam.app-id", 0));
       }
     }
 
@@ -74,21 +72,21 @@ namespace other {
     events.register_event("network.listen-failed");
     events.register_event("network.connect-failed");
 
-    auto register_interfaces_in_registry = [this](environment_registry& reg) {
-      reg.register_interface<transport_provider>(
-        [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
-        [this](natural_t id) { unregister_transport_provider(id); },
-        no_args(),  // empty
-        interface_cardinality::MULTIPLE);
+    // auto register_interfaces_in_registry = [this](environment_registry& reg) {
+    //   reg.register_interface<transport_provider>(
+    //     [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
+    //     [this](natural_t id) { unregister_transport_provider(id); },
+    //     no_args(),  // empty
+    //     interface_cardinality::MULTIPLE);
 
-      reg.register_interface<packet_sink>(
-        [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "invalid"), std::move(s)); },
-        [this](natural_t id) { unregister_transport_listener(id); },
-        no_args(),
-        interface_cardinality::MULTIPLE);
-    };
-    register_interfaces_in_registry(kernel->driver_registry());
-    register_interfaces_in_registry(kernel->project_registry());
+    //   reg.register_interface<packet_sink>(
+    //     [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "invalid"), std::move(s)); },
+    //     [this](natural_t id) { unregister_transport_listener(id); },
+    //     no_args(),
+    //     interface_cardinality::MULTIPLE);
+    // };
+    // register_interfaces_in_registry(kernel->driver_registry());
+    // register_interfaces_in_registry(kernel->project_registry());
   }
 
   void network_system::tick(driver_kernel* kernel, double dt) {
@@ -128,9 +126,6 @@ namespace other {
     if (!network_disabled) {
       net_context->net_thread->wait_for_shutdown_complete();
       net_context->net_thread = nullptr;
-      /// thread joined: orphans from timed-out posted teardowns are finally safe to free
-      net_context->orphaned_transport_providers.clear();
-      net_context->registered_transport_providers.clear();
       net_context = nullptr;
     }
 
@@ -156,173 +151,17 @@ namespace other {
     }
   }
 
-  natural_t network_system::register_transport_provider(scope<transport_provider> provider) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    OTHER_ASSERT(provider != nullptr, "Cannot register null transport provider.");
-    PROFILE_SECTION("network_system::register_transport_provider");
-
-    if (net_context->net_thread == nullptr) {
-      CORE_LOG_WARN("Ignoring transport provider '{}': networking is disabled (no network thread).", provider->name());
-      return 0;
-    }
-
-    natural_t id = provider->hash();
-    if (net_context->registered_transport_providers.find(id) != net_context->registered_transport_providers.end()) {
-      CORE_LOG_ERROR("Failed to register transport provider with name '{}', a provider with the same name already exists.", provider->name());
-      return 0;
-    }
-
-    CORE_LOG_DEBUG("Registering transport provider '{}' ({:#010x})", provider->name(), id);
-    auto [itr, success] = net_context->registered_transport_providers.emplace(id, std::move(provider));
-    OTHER_ASSERT(success, "Failed to register transport provider: {}!", itr->second->name());
-
-    /// net-thread providers ride the thread's registry + command dispatch; main-home
-    ///  providers (memory, steam) are registered rows only — meshes attach them directly
-    if (auto* socket = dynamic_cast<socket_transport_provider*>(itr->second.get()); socket != nullptr) {
-      net_context->net_thread->register_provider(socket);
-    }
-
-    return id;
-  }
-
-  natural_t network_system::register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink.");
-    PROFILE_SECTION("network_system::register_transport_listener");
-
-    if (net_context->net_thread == nullptr) {
-      CORE_LOG_WARN("Ignoring packet sink for transport [{}]: networking is disabled (no network thread).", transport_name);
-      return 0;
-    }
-
-    natural_t id = net_context->generate_packet_sink_id();
-    OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
-
-    CORE_LOG_DEBUG("Registering packet sink [{}] to transport [{}]", id, transport_name);
-    auto [itr, success] = net_context->registered_packet_sinks.emplace(id, std::move(sink));
-    OTHER_ASSERT(success, "Failed to register packet sink with ID {}!", id);
-
-    net_context->net_thread->register_transport_listener(transport_provider::hash_name(transport_name), id, itr->second.get());
-
-    return id;
-  }
-
-  void network_system::unregister_transport_provider(natural_t provider_id) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    PROFILE_SECTION("network_system::unregister_transport_provider");
-
-    auto itr = net_context->registered_transport_providers.find(provider_id);
-    if (itr == net_context->registered_transport_providers.end()) {
-      CORE_LOG_ERROR("Failed to unregister transport provider with ID {}: no such provider registered.", provider_id);
-      return;
-    }
-
-    CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
-    auto* provider = dynamic_cast<socket_transport_provider*>(itr->second.get());
-    if (provider == nullptr) {
-      /// main-home row: no thread involvement, the registry entry is the whole story
-      net_context->registered_transport_providers.erase(itr);
-      return;
-    }
-
-    /// tombstone, wait out the pump, then tear down ON the net io: shutdown closes asio
-    ///  objects the network thread may be polling — running it from here would race
-    net_context->net_thread->unregister_provider(provider);
-    wait_for_pump_quiescence(net_context->net_thread->reclamation_epoch());
-
-    if (net_context->net_thread->is_running()) {
-      /// two posted phases: close sockets, then (after a full pump confirms drain) tear
-      ///  down objects — collapsing them would destroy connections with handlers still queued
-      auto phase = std::make_shared<std::atomic<int>>(0);
-      asio::post(net_context->net_thread->get_io_context(), [provider, phase]() {
-        provider->begin_shutdown();
-        phase->store(1, std::memory_order_release);
-      });
-
-      const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
-      auto wait_for = [&](auto&& pred) {
-        while (!pred() && net_context->net_thread->is_running() && std::chrono::steady_clock::now() < deadline) {
-          std::this_thread::yield();
-        }
-        return pred();
-      };
-
-      bool torn_down = false;
-      if (wait_for([&] { return phase->load(std::memory_order_acquire) == 1; })) {
-        const uint64_t epoch = net_context->net_thread->reclamation_epoch();
-        wait_for([&] { return net_context->net_thread->reclamation_epoch() > epoch + 1; });
-        asio::post(net_context->net_thread->get_io_context(), [provider, phase]() {
-          provider->shutdown();
-          phase->store(2, std::memory_order_release);
-        });
-        torn_down = wait_for([&] { return phase->load(std::memory_order_acquire) == 2; });
-      }
-
-      if (!torn_down) {
-        if (!net_context->net_thread->is_running()) {
-          /// pump stopped before running the posts: no poll can race an inline teardown
-          provider->shutdown();
-        } else {
-          /// wedged pump: keep the object alive so the posted teardown cannot UAF;
-          ///  freed after the thread joins
-          CORE_LOG_WARN("Timed out waiting for posted teardown of provider '{}'; orphaning it.", provider->name());
-          net_context->orphaned_transport_providers.push_back(std::move(itr->second));
-        }
-      }
-    } else {
-      provider->shutdown();
-    }
-
-    net_context->registered_transport_providers.erase(itr);
-  }
-
-  void network_system::unregister_transport_listener(natural_t sink_id) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    PROFILE_SECTION("network_system::unregister_transport_listener");
-
-    auto itr = net_context->registered_packet_sinks.find(sink_id);
-    if (itr == net_context->registered_packet_sinks.end()) {
-      CORE_LOG_ERROR("Failed to unregister packet sink with ID {}: no such packet sink registered.", sink_id);
-      return;
-    }
-
-    CORE_LOG_DEBUG("Unregistering packet sink [{}]", sink_id);
-    /// strip every provider's fan-out (stale entry = UAF once traffic flows),
-    ///  then wait out the pump before destroying
-    for (auto& [provider_id, provider] : net_context->registered_transport_providers) {
-      provider->unregister_packet_sink(itr->second.get());
-    }
-    const uint64_t epoch = net_context->net_thread != nullptr ? net_context->net_thread->reclamation_epoch() : 0;
-    wait_for_pump_quiescence(epoch);
-    net_context->registered_packet_sinks.erase(itr);
-  }
-
-  natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name) {
+  natural_t network_system::listen(const net_address& local, const std::string_view transport_name) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     PROFILE_SECTION("network_system::listen_at_endpoint");
 
     if (net_context->net_thread == nullptr) {
-      CORE_LOG_WARN("Ignoring listen at {}:{}: networking is disabled.", ep.ip, ep.port);
+      CORE_LOG_WARN("Ignoring listen at {}: networking is disabled.", local.binding);
       return 0;
     }
 
-    natural_t connection_id = net_context->net_thread->generate_connection_id();
-    message msg(COMMAND, LISTEN_CONNECTION);
-    command_listen_connection request{
-      .endpoint = ep,
-      .connection_id = connection_id,
-      .transport_hash = transport_provider::hash_name(transport_name),
-    };
-    msg.data = serialize_direct(request);
-
-    send_message(&get_driver().get_kernel(), std::move(msg));
-
-    return connection_id;
+    return 0;
   }
 
   natural_t network_system::connect(const net_address& remote, const std::string_view transport_name) {
@@ -335,32 +174,7 @@ namespace other {
       return 0;
     }
 
-    std::string_view resolved = transport_name;
-    if (resolved.empty()) {
-      switch (remote.addressing) {
-        case net_address::kind::IP: resolved = "tcp"; break;
-        default: break;
-      }
-    }
-    /// only net-thread socket transports dial through the bus today; the main-thread
-    ///  provider home (memory, steam) joins this dispatch with the mesh driver glue
-    if (remote.addressing != net_address::kind::IP || resolved.empty()) {
-      CORE_LOG_WARN("connect refused: no dialable transport for address kind {}", static_cast<uint8_t>(remote.addressing));
-      return 0;
-    }
-
-    natural_t connection_id = net_context->net_thread->generate_connection_id();
-    message msg(COMMAND, CONNECT_CONNECTION);
-    command_connect_connection request{
-      .endpoint = remote.ip,
-      .connection_id = connection_id,
-      .transport_hash = transport_provider::hash_name(resolved),
-    };
-    msg.data = serialize_direct(request);
-
-    send_message(&get_driver().get_kernel(), std::move(msg));
-
-    return connection_id;
+    return 0;
   }
 
   void network_system::close(natural_t connection_id) {
@@ -453,15 +267,6 @@ namespace other {
   network_thread* network_system::thread() {
     ASSERT_MAIN_THREAD();
     return net_context != nullptr ? net_context->net_thread.get() : nullptr;
-  }
-
-  transport_provider* network_system::find_provider(const std::string_view transport_name) {
-    ASSERT_MAIN_THREAD();
-    if (net_context == nullptr) {
-      return nullptr;
-    }
-    auto itr = net_context->registered_transport_providers.find(transport_provider::hash_name(transport_name));
-    return itr != net_context->registered_transport_providers.end() ? itr->second.get() : nullptr;
   }
 
   void network_system::initialize_message_handlers() {

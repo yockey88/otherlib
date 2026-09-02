@@ -6,29 +6,17 @@
 #include <filesystem>
 #include <fstream>
 
+#include <steam/steam_api.h>
+
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
-#include <steam/steam_api.h>
-
 namespace other {
-
-  namespace {
-
-    constexpr uint32_t kSpacewarDevAppId = 480;
-
-  }  // namespace
 
   steam_state steam_context::initialize(uint32_t app_id) {
     PROFILE_SECTION("steam_context::initialize");
-    if (current_state != steam_state::DISABLED) {
+    if (current_state != steam_state::DISABLED || app_id == 0) {
       return current_state;
-    }
-
-    /// the dev loop: spacewar + steam_appid.txt in the working directory. real
-    ///  AppIDs never write it — their deployment is project compilation settings (S6)
-    if (app_id == kSpacewarDevAppId && !std::filesystem::exists("steam_appid.txt")) {
-      std::ofstream("steam_appid.txt") << app_id;
     }
 
     SteamErrMsg error{};
@@ -39,8 +27,6 @@ namespace other {
       return current_state;
     }
 
-    steam_id = SteamUser()->GetSteamID().ConvertToUint64();
-    persona = SteamFriends()->GetPersonaName();
     /// SDR warm-up so the first P2P dial doesn't pay the route-discovery latency
     SteamNetworkingUtils()->InitRelayNetworkAccess();
 

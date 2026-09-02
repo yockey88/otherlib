@@ -14,16 +14,14 @@
 #include "network/acknowledgement_list.hpp"
 #include "network/net_address.hpp"
 #include "network/network_thread.hpp"
-#include "network/transport_provider.hpp"
-
-#include "steam/steam_context.hpp"
+#include "network/packet_sink.hpp"
 
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
 
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
-#include "network/packet_sink.hpp"
+#include "steam/steam_context.hpp"
 
 namespace other {
 
@@ -52,10 +50,6 @@ namespace other {
       scope<network_thread> net_thread = nullptr;
 
       ostd::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
-      ostd::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
-      /// providers whose posted net-io teardown never confirmed; destroyed only after
-      ///  the network thread has joined
-      ostd::vector<scope<transport_provider>> orphaned_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
       constexpr static uint32_t kPrimarySessionBindingPort = 49222;
@@ -86,16 +80,8 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    natural_t register_transport_provider(scope<transport_provider> provider);
-    void unregister_transport_provider(natural_t provider_id);
-
-    natural_t register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink);
-    void unregister_transport_listener(natural_t sink_id);
-
-    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp");
-    /// dials by kind-tagged address (empty transport resolves via kind, e.g. IP->tcp);
-    ///  returns conn id or 0 if refused. completion arrives via connection-opened/closed events
-    natural_t connect(const net_address& remote, const std::string_view transport_name = "");
+    natural_t listen(const net_address& local, const std::string_view transport_name = "tcp");
+    natural_t connect(const net_address& remote, const std::string_view transport_name = "tcp");
     void close(natural_t connection_id);
 
     void tx_data(natural_t connection_id, std::span<const uint8_t> data);
@@ -110,14 +96,7 @@ namespace other {
 
     bool network_active() const;
 
-    /// peer-mesh glue: meshes attach providers resolved here; establishment and rx flow
-    ///  through the providers' own link sinks
     network_thread* thread();
-    transport_provider* find_provider(const std::string_view transport_name);
-
-    /// nullptr when steam.enabled is false; group-0 tick order pumps its callbacks
-    ///  before peer_mesh_system ticks the mesh
-    steam_context* steam() { return steam_ctx.get(); }
 
    private:
     signal_catcher signal_handler{ this };
@@ -128,12 +107,12 @@ namespace other {
     acknowledgement_list ack_list;
     scope<steam_context> steam_ctx = nullptr;
 
+    ostd::map<message_header, message_handler> message_handlers;
+    ostd::map<message_header, microseconds> message_handler_timeouts;
+
     /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
     ///  providers/sinks can live in plugins that unload the moment unregister returns
     void wait_for_pump_quiescence(uint64_t recorded_epoch);
-
-    ostd::map<message_header, message_handler> message_handlers;
-    ostd::map<message_header, microseconds> message_handler_timeouts;
 
     void initialize_message_handlers();
     bool message_requires_acknowledgment(const message_header& header) const;
