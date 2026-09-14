@@ -31,6 +31,7 @@ spacesim/
 resources/models/*
 !resources/models/floor.fbx
 !resources/models/spinning-torus.fbx
+!resources/models/Rumba-Dancing.fbx
 # this is really large, don't have a better way to do this yet
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.fbx
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.omesh

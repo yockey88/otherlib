@@ -48,7 +48,7 @@ namespace other {
     /// case-collision landmine detection: legal on Linux, breaks on NTFS
     for (size_t i = 1; i < out.size(); ++i) {
       if (detail::equals_case_insensitive(out[i - 1].virtual_path, out[i].virtual_path)) {
-        CORE_LOG_WARN("case-colliding paths '{}' / '{}' — unportable",
+        CORE_LOG_WARN("case-colliding paths '{}' / '{}' - unportable",
                       out[i - 1].virtual_path, out[i].virtual_path);
       }
     }

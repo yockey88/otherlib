@@ -13,7 +13,7 @@ namespace other {
   class driver;
   class driver_kernel;
 
-  /** \note also defines core-system boot/update order — keep consistent
+  /** \note also defines core-system boot/update order - keep consistent
    **/
   enum driver_system_type : uint32_t {
     /// group 0

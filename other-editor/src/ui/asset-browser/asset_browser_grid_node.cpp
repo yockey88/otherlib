@@ -271,7 +271,7 @@ namespace other {
         return true;
       }
 
-      /// "All" pill (index 0) — if active, show everything
+      /// "All" pill (index 0) - if active, show everything
       if (!filters.empty() && filters[0].active) {
         return true;
       }
@@ -289,7 +289,7 @@ namespace other {
     void asset_browser_grid_node::on_render_node_body() {
       PROFILE_SECTION("asset_browser_grid_node::on_render_node_body");
       using namespace colors;
-      /// the listing is a full mount walk — refresh on a cadence, not per frame
+      /// the listing is a full mount walk - refresh on a cadence, not per frame
       if (++frames_since_refresh >= 30) {
         refresh_listing();
         frames_since_refresh = 0;

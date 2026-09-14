@@ -19,7 +19,7 @@ namespace other {
   };
 
   /// component snapshot/restore lives in serialization/component_codec.hpp (real payloads),
-  ///  not here — this registry only backs ui-driven has/add/remove
+  ///  not here - this registry only backs ui-driven has/add/remove
   struct component_registration {
     std::string component_name;
     natural_t type_id = 0;

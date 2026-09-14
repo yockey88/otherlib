@@ -25,10 +25,10 @@ namespace other {
     ~steam_context() { shutdown(); }
 
     /// SteamAPI_InitEx; the dev AppID (480) also writes steam_appid.txt beside the
-    ///  process when missing — real AppIDs ship via project compilation settings (S6)
+    ///  process when missing - real AppIDs ship via project compilation settings (S6)
     steam_state initialize(uint32_t app_id);
     void shutdown();
-    /// SteamAPI_RunCallbacks — main thread, every tick
+    /// SteamAPI_RunCallbacks - main thread, every tick
     void pump();
 
     steam_state state() const { return current_state; }

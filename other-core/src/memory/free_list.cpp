@@ -11,7 +11,7 @@ namespace other {
     OTHER_ASSERT(bin < kNumBins, "free_list bin {} out of range.", bin);
     OTHER_ASSERT(block != nullptr, "free_list::push called with a null block.");
     OTHER_ASSERT((reinterpret_cast<uintptr_t>(block) & (page::kAlignment - 1)) == 0,
-                 "free_list::push block {:p} is not {}-aligned — not a block start.", block, page::kAlignment);
+                 "free_list::push block {:p} is not {}-aligned - not a block start.", block, page::kAlignment);
 
     auto* node = static_cast<free_node*>(block);
     // #ifdef OTHER_MEMORY_DEBUG
@@ -35,7 +35,7 @@ namespace other {
     }
     // #ifdef OTHER_MEMORY_DEBUG
     //     /// a clobbered stamp here means something wrote through a dangling pointer into a freed
-    //     /// block — caught at recycle time, at the exact block, before the corruption spreads
+    //     /// block - caught at recycle time, at the exact block, before the corruption spreads
     //     OTHER_ASSERT(node->free_magic == kFreeMagic,
     //                  "Use-after-free write detected: head of bin {} ({:p}) lost its free-list stamp.", bin, static_cast<void*>(node));
     //     node->free_magic = 0;

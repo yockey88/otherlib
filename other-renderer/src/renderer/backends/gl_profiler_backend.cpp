@@ -2,8 +2,8 @@
  * \file renderer/backends/gl_profiler_backend.cpp
  *
  * the renderer's only tracy reference. reached exclusively from exe entry points
- *  (initialize_host_gpu_backend), so the linker can never drag it — and the client with
- *  it — into a plugin image through the renderer objects the handshake pulls
+ *  (initialize_host_gpu_backend), so the linker can never drag it - and the client with
+ *  it - into a plugin image through the renderer objects the handshake pulls
  **/
 #include "renderer/backends/gl_profiler_backend.hpp"
 

@@ -5,13 +5,15 @@
 
 #include <string>
 
+#include <imgui/imgui_internal.h>
+
 #include "theme/colors.hpp"
 #include "ui/ui_helpers.hpp"
 #include "ui/unicode.hpp"
 
 #include "asset/asset_handler.hpp"
 #include "imgui.h"
-#include <imgui/imgui_internal.h>
+
 
 namespace other {
   namespace ui {
@@ -123,7 +125,7 @@ namespace other {
 
         ImGui::PushID(component_name.data());
 
-        /// header background — use invisible button for click detection
+        /// header background - use invisible button for click detection
         ImVec2 header_min = cursor;
         ImVec2 header_max = { cursor.x + avail_w, cursor.y + kComponentHeaderHeight };
 

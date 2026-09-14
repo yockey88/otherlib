@@ -51,7 +51,7 @@ namespace other {
     template <typename TArg>
     constexpr managed_type get_managed_type() {
       /// callers forward arguments through tuples/std::apply (see dotnet_callback), so TArg
-      ///  arrives as a (possibly const) lvalue reference — classify the underlying value type
+      ///  arrives as a (possibly const) lvalue reference - classify the underlying value type
       using T = std::remove_cvref_t<TArg>;
       if constexpr (std::is_pointer_v<T>) {
         return managed_type::POINTER_TYPE;

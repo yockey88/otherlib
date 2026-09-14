@@ -4,6 +4,7 @@
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 
 #include "core/profiler.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "theme/colors.hpp"
@@ -11,6 +12,7 @@
 #include "ui/ui_node.hpp"
 
 #include "imgui.h"
+
 
 namespace other {
   namespace ui {
@@ -109,7 +111,7 @@ namespace other {
 
       draw_hierarchy_context_menu(active_scene);
       if (editor_ctx.has_selection()) {
-        /// the selected id can be stale right after a snapshot restore — no menu for
+        /// the selected id can be stale right after a snapshot restore - no menu for
         ///  ids that no longer resolve
         scene_object* selected = active_scene->find_object(editor_ctx.current_selection.objects.front());
         if (selected != nullptr) {

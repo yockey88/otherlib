@@ -19,9 +19,9 @@ namespace other {
   class peer_mesh;
 
   /// a node in a network. the primary actor is the local endpoint; a secondary is the
-  ///  mesh's record — and optionally behavior — for a remote endpoint, which may be
+  ///  mesh's record - and optionally behavior - for a remote endpoint, which may be
   ///  simulated locally. the base is concrete: an inert record secondary is just this.
-  ///  payloads are opaque — on_frame is the whole mailbox contract
+  ///  payloads are opaque - on_frame is the whole mailbox contract
   class OTHER_CLASS peer_actor {
     OTHER_ENVIRONMENT_INTERFACE("Network", "PeerActor");
 

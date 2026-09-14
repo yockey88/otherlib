@@ -6,24 +6,27 @@
  **/
 #include <gtest/gtest.h>
 
-#include "audio/audio_environment.hpp"
+#include "serialization/component_codec.hpp"
 
 #include "object/audio_listener_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "scene/scene.hpp"
-#include "serialization/component_codec.hpp"
 
 #include "driver/systems/audio_system.hpp"
 
+#include "audio/audio_environment.hpp"
 #include "audio/audio_test_fixtures.hpp"
 #include "other_test.hpp"
+
 
 namespace other {
 
   namespace {
 
-    /// tests key the registry directly by asset id — identity mapping
-    const asset_hash_fn kIdentityHash = [](natural_t asset_id) -> natural_t { return asset_id; };
+    /// tests key the registry directly by asset id - identity mapping
+    const asset_hash_fn kIdentityHash = [](natural_t asset_id) -> natural_t {
+      return asset_id;
+    };
 
     constexpr natural_t kClipId = 0xC11A;
 
@@ -75,7 +78,7 @@ namespace other {
     EXPECT_EQ(env.live_voice_count(), 0u);
 
     /// the fake asset id cannot survive the snapshot's id->path->id conversion in a
-    ///  headless test (no asset system) — reassign it, as an editor edit would
+    ///  headless test (no asset system) - reassign it, as an editor edit would
     scene_object* revived = s.find_object(std::string_view{ "Emitter" });
     ASSERT_NE(revived, nullptr);
     audio_source_component* restored = s.try_get_component<audio_source_component>(revived->id);
@@ -192,7 +195,7 @@ namespace other {
     ASSERT_NE(voice, 0u);
 
     /// component removed while the scene still lives, so the diff never sees the source
-    ///  again — the voice must not leak past this cleanup
+    ///  again - the voice must not leak past this cleanup
     s.remove_component<audio_source_component>(emitter.id);
     reconcile_scene_audio(&s, &env, kIdentityHash, 1.0 / 60.0, state);
     EXPECT_EQ(env.live_voice_count(), 0u);

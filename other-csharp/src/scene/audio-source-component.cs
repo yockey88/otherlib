@@ -36,7 +36,7 @@ namespace Other
     }
 
     /// desired state: set true to play. flips back to false when a non-looping
-    /// voice finishes — poll it to detect completion.
+    /// voice finishes - poll it to detect completion.
     [NativeField("playing")]
     public bool Playing { get => GetBool(); set => SetBool(value); }
     [NativeField("looping")]

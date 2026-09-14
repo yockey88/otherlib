@@ -34,7 +34,7 @@ namespace other {
         log->set_config(&cli_config);
         log->create_logger("other-core-log", spdlog::level::warn);
 
-        /// console only at warn — a cli tool must not scatter log files around
+        /// console only at warn - a cli tool must not scatter log files around
         log_sink console_sink = {
           1,
           "console-sink",

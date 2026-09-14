@@ -51,7 +51,7 @@ namespace other {
       net_context->net_thread_message_bus.register_thread();
 
       /// degradation contract: init failure warns once and leaves the context
-      ///  UNAVAILABLE — tcp/memory untouched, CI (no client) never notices
+      ///  UNAVAILABLE - tcp/memory untouched, CI (no client) never notices
       if (get_driver().get_config_value<bool>("steam.enabled", false)) {
         steam_ctx = make_scope<steam_context>();
         steam_ctx->initialize(get_driver().get_config_value<uint32_t>("steam.app-id", 0));

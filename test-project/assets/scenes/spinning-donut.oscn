@@ -16,8 +16,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]
@@ -40,8 +40,8 @@ k = [ -1.0, 0.0, 0.0 ]
 [objects.components.script]
 behaviors = [ "TestBehavior" ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/Rumba-Dancing.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
+model_asset_id = "resources/models/Rumba-Dancing.fbx"
+material_asset_id = "test-project/assets/materials/donut.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.animation]
@@ -63,8 +63,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]
@@ -91,8 +91,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]
@@ -123,7 +123,7 @@ k = [ -1.0, 0.0, 0.0 ]
 position = [ 2.0, 4.0, 2.0 ]
 color = [ 1.0, 0.44, 0.77, 1.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"   # placeholder: set a .wav/.mp3 path to hear it
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"   # placeholder: set a .wav/.mp3 path to hear it
 playing = true
 looping = true
 volume = 1.0

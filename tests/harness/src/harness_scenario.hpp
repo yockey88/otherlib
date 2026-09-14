@@ -2,7 +2,7 @@
  * \file tests/harness/src/harness_scenario.hpp
  *
  * runs exactly one scenario per process inside a real engine driver, selected by config key
- *  `harness.scenario`; today only "soak" exists — seam for future work (fuzzing, replay, stress)
+ *  `harness.scenario`; today only "soak" exists - seam for future work (fuzzing, replay, stress)
  **/
 #ifndef OTHER_TESTS_HARNESS_SCENARIO_HPP
 #define OTHER_TESTS_HARNESS_SCENARIO_HPP

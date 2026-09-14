@@ -32,9 +32,9 @@ namespace other {
 
     ostd::vector<param> params;
     ostd::vector<texture_slot> texture_slots;
-    uint32_t element_size = 0;       //< std430 struct stride, one instance slot
+    uint32_t element_size = 0;         //< std430 struct stride, one instance slot
     uint32_t instance_capacity = 100;  //< instance slots per draw block (kMaxMaterials today)
-    opt<uint32_t> base_color_offset;   //< vec4 param named "base_color" — per-instance tint fold target
+    opt<uint32_t> base_color_offset;   //< vec4 param named "base_color" - per-instance tint fold target
 
     /// computes std430 offsets (vec3 aligns to 16, scalars pack to 4) + element_size + base_color_offset;
     ///  layout declarations are engine-owned pipeline contracts, so malformed ones are fatal

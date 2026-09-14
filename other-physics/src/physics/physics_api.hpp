@@ -14,7 +14,7 @@ namespace other {
   class physics_world;
 
   /// borrowed geometry spans for hull/mesh shape builds; extracted scene-side from the
-  ///   entity's render model — physics never learns about models
+  ///   entity's render model - physics never learns about models
   struct shape_geometry {
     std::span<const glm::vec3> positions;
     std::span<const uint32_t> indices;  /// triangle list; may be empty for hull-from-points

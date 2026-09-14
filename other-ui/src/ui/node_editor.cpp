@@ -95,7 +95,7 @@ namespace other {
     OTHER_ASSERT(current_node == kInvalidId, "begin_node('{}') called inside node {}", title, current_node);
     OTHER_ASSERT(draw_list != nullptr, "begin_node called outside of begin/end");
     OTHER_ASSERT(splitter != nullptr, "begin_node called outside of begin/end");
-    OTHER_ASSERT(!submitted_nodes.contains(nid), "node '{}' submitted twice this frame — node titles must be unique per canvas", title);
+    OTHER_ASSERT(!submitted_nodes.contains(nid), "node '{}' submitted twice this frame - node titles must be unique per canvas", title);
 
     current_node = nid;
     submitted_nodes.emplace(nid, node_submission_order.size());

@@ -6,7 +6,7 @@
  **/
 #include <gtest/gtest.h>
 
-#include "other_test.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "object/animation_component.hpp"
 #include "object/audio_source_component.hpp"
@@ -15,7 +15,9 @@
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 #include "scene/scene.hpp"
-#include "serialization/scene_serializer.hpp"
+
+#include "other_test.hpp"
+
 
 namespace other {
 
@@ -245,7 +247,7 @@ namespace other {
     EXPECT_TRUE(comp->playing);
     EXPECT_FALSE(comp->looping);
     EXPECT_FLOAT_EQ(comp->speed, 2.f);
-    /// mid-clip time round-trips — play/stop resumes the pre-play pose
+    /// mid-clip time round-trips - play/stop resumes the pre-play pose
     EXPECT_FLOAT_EQ(comp->time, 0.75f);
 
     /// runtime state never serializes; the next tick rebuilds it from the resolved clip

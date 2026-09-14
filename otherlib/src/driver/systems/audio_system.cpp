@@ -5,14 +5,15 @@
 
 #include <glm/gtc/quaternion.hpp>
 
-#include "audio/audio_environment.hpp"
-
 #include "object/audio_listener_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "scene/scene.hpp"
 
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+
+#include "audio/audio_environment.hpp"
+
 
 namespace other {
 
@@ -63,7 +64,7 @@ namespace other {
     resolve_listener(active_scene, env, dt);
 
     if (active_scene == nullptr) {
-      /// scene gone: stop only live voices — shutdown clip unloads may have killed some
+      /// scene gone: stop only live voices - shutdown clip unloads may have killed some
       for (const auto& [id, voice] : state.bound) {
         if (env->voice_alive(voice)) {
           env->stop_voice(voice);
@@ -80,7 +81,7 @@ namespace other {
       seen[handle.id] = true;
 
       /// tree-id reuse guard (high-water pool wrap): a stale entry under this id
-      ///  belongs to a destroyed owner — end its voice before this component binds
+      ///  belongs to a destroyed owner - end its voice before this component binds
       if (const auto it = state.bound.find(handle.id); it != state.bound.end() && it->second != source.voice) {
         if (env->voice_alive(it->second)) {
           env->stop_voice(it->second);
@@ -90,7 +91,7 @@ namespace other {
       }
 
       /// handles die under their holders when a clip reload/unload runs
-      ///  stop_voices_on — cleanse before treating the source as bound
+      ///  stop_voices_on - cleanse before treating the source as bound
       if (source.voice != 0 && !env->voice_alive(source.voice)) {
         state.bound.erase(handle.id);
         source.voice = 0;
@@ -103,8 +104,7 @@ namespace other {
 
       /// hot reload / clip swap detection: identity is the asset id + registry revision
       const bool identity_changed =
-        bound && (source.bound_clip_id != source.clip_asset_id ||
-                  source.bound_clip_revision != env->clip_revision(hash_of_asset(source.bound_clip_id)));
+        bound && (source.bound_clip_id != source.clip_asset_id || source.bound_clip_revision != env->clip_revision(hash_of_asset(source.bound_clip_id)));
 
       if (bound && (!desired || identity_changed)) {
         env->stop_voice(source.voice);
@@ -141,7 +141,7 @@ namespace other {
       if (source.voice != 0) {
         if (env->voice_finished(source.voice)) {
           /// non-looping voice ran out: free the slot and flip the desired state
-          ///  back — this writeback is the pollable completion signal for scripts
+          ///  back - this writeback is the pollable completion signal for scripts
           env->stop_voice(source.voice);
           state.bound.erase(handle.id);
           source.voice = 0;
@@ -196,10 +196,14 @@ namespace other {
       active_scene = sibling<scene_system>(*kernel).get_active_scene();
     }
 
-    asset_hash_fn hash_of_asset = [](natural_t) -> natural_t { return 0; };
+    asset_hash_fn hash_of_asset = [](natural_t) -> natural_t {
+      return 0;
+    };
     if (has_sibling<asset_system>(*kernel)) {
       asset_system& assets = sibling<asset_system>(*kernel);
-      hash_of_asset = [&assets](natural_t asset_id) { return assets.get_asset_hash(asset_id); };
+      hash_of_asset = [&assets](natural_t asset_id) {
+        return assets.get_asset_hash(asset_id);
+      };
     }
 
     reconcile_scene_audio(active_scene, env, hash_of_asset, dt, reconcile_state);

@@ -29,7 +29,6 @@
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
 
-
 namespace other {
 
   void editor_driver::on_early_initialize() {
@@ -377,7 +376,7 @@ namespace other {
     }
 
     for (const auto& obj_id : context.current_selection.objects) {
-      /// selection ids can be stale for a frame around a snapshot restore — skip
+      /// selection ids can be stale for a frame around a snapshot restore - skip
       ///  entries that no longer resolve
       scene_object* selected = scene->find_object(obj_id);
       if (selected == nullptr) {
@@ -390,7 +389,7 @@ namespace other {
         aabb = bounding_box(glm::vec3(-0.5f), glm::vec3(0.5f));
       }
 
-      /// obj_model.source stays null until the model asset finishes its async load —
+      /// obj_model.source stays null until the model asset finishes its async load -
       ///  draw the model outline only once it is ready
       if (render != nullptr && render->obj_model.source != nullptr) {
         const glm::mat4 world = scene->get_world_transform(obj_id);

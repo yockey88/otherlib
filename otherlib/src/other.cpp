@@ -5,10 +5,10 @@
 
 #include <iostream>
 
-#include <Windows.h>
-
 #include <spdlog/common.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#include <Windows.h>
 
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
@@ -75,7 +75,8 @@ namespace other {
     return res;
   }
 
-  /// hardware faults die stackless — print one like asserts do
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+  /// hardware faults die stackless - print one like asserts do
   ///  (stderr direct: faults can land after logger shutdown)
   static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
     const uint32_t code = info != nullptr && info->ExceptionRecord != nullptr ? info->ExceptionRecord->ExceptionCode : 0;
@@ -83,12 +84,17 @@ namespace other {
               << OTHER_STACKTRACE << std::endl;
     return EXCEPTION_CONTINUE_SEARCH;
   }
+#else
+#endif
 
   exit_code other_environment_program_entry_point(const command_line& cmd, const config_table& cfg, const std::string_view prof) {
     /// the exe image hosts the one tracy client; plugins reach it through the handshake
     profiling::initialize_host_backend();
     profiling::initialize_host_gpu_backend();
+#ifdef OTHER_ENVIRONMENT_WINDOWS
     SetUnhandledExceptionFilter(&report_unhandled_seh);
+#else
+#endif
     exit_code res = invoke_other_main(cmd, cfg, prof);
     CORE_LOG_INFO("Other Environment exit with code: {}", res);
     return res;
@@ -97,7 +103,7 @@ namespace other {
   int entry() {
     command_line empty_cmd;
     config_table default_config;
-    std::string default_profile = get_default_profile();
+    const std::string default_profile = get_default_profile();
     return other_environment_program_entry_point(empty_cmd, default_config, default_profile);
   }
 
@@ -113,7 +119,7 @@ namespace other {
       }
     }
 
-    std::string profile = get_subsystem_profile(&config);
+    const std::string profile = get_subsystem_profile(&config);
     return other_environment_program_entry_point(cmd, config, profile);
   }
 

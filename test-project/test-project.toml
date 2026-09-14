@@ -5,7 +5,7 @@ metadata = [
   { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]
-plugins = []
+# plugins = []
 
 [filesystem]
 working-directory = "test-project"

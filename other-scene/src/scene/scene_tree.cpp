@@ -351,7 +351,7 @@ namespace other {
       destroy_object(n->children.back());
     }
 
-    /// the parent link must be read before the reset — resetting first left the parent's
+    /// the parent link must be read before the reset - resetting first left the parent's
     ///  children list holding a dangling node* that went live again on node reuse
     node* parent_node = n->parent;
     const bool had_object = n->object != nullptr;

@@ -17,8 +17,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 1, 1, 1, 1 ]
 [objects.components.physics]
@@ -40,8 +40,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 0.6, 0.62, 0.66, 1 ]
 [objects.components.physics]
@@ -63,8 +63,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 0.6, 0.62, 0.66, 1 ]
 [objects.components.physics]
@@ -86,8 +86,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 0.6, 0.62, 0.66, 1 ]
 [objects.components.physics]
@@ -109,8 +109,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 0.6, 0.62, 0.66, 1 ]
 [objects.components.physics]
@@ -132,8 +132,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.46738, 0.783023, 0.803842, 1 ]
 [objects.components.physics]
@@ -155,8 +155,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.403157, 0.555955, 0.511165, 1 ]
 [objects.components.physics]
@@ -178,8 +178,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.973446, 0.647652, 0.539298, 1 ]
 [objects.components.physics]
@@ -201,8 +201,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.75217, 0.996664, 0.922385, 1 ]
 [objects.components.physics]
@@ -224,8 +224,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.585377, 0.857071, 0.769723, 1 ]
 [objects.components.physics]
@@ -247,8 +247,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.950156, 0.562098, 0.526636, 1 ]
 [objects.components.physics]
@@ -270,8 +270,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.916173, 0.981619, 0.848775, 1 ]
 [objects.components.physics]
@@ -293,8 +293,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.999842, 0.943727, 0.757698, 1 ]
 [objects.components.physics]
@@ -316,8 +316,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.782802, 0.853988, 0.780727, 1 ]
 [objects.components.physics]
@@ -339,8 +339,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.757698, 0.490182, 0.579404, 1 ]
 [objects.components.physics]
@@ -362,8 +362,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.758534, 0.464575, 0.599245, 1 ]
 [objects.components.physics]
@@ -385,8 +385,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.575284, 0.548385, 0.60897, 1 ]
 [objects.components.physics]
@@ -408,8 +408,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.903813, 0.465364, 0.714873, 1 ]
 [objects.components.physics]
@@ -431,8 +431,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.564673, 0.95994, 0.687935, 1 ]
 [objects.components.physics]
@@ -454,8 +454,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.747948, 0.838999, 0.990576, 1 ]
 [objects.components.physics]
@@ -477,8 +477,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.576599, 0.504161, 0.656875, 1 ]
 [objects.components.physics]
@@ -500,8 +500,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.977918, 0.833959, 0.633602, 1 ]
 [objects.components.physics]
@@ -523,8 +523,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.997, 0.608869, 0.89948, 1 ]
 [objects.components.physics]
@@ -546,8 +546,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.676332, 0.925882, 0.434049, 1 ]
 [objects.components.physics]
@@ -569,8 +569,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.890354, 0.62624, 0.853893, 1 ]
 [objects.components.physics]
@@ -592,8 +592,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.570954, 0.441445, 0.837682, 1 ]
 [objects.components.physics]
@@ -615,8 +615,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.443935, 0.452648, 0.698568, 1 ]
 [objects.components.physics]
@@ -638,8 +638,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.942455, 0.51273, 0.469057, 1 ]
 [objects.components.physics]
@@ -661,8 +661,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.561454, 0.540609, 0.479608, 1 ]
 [objects.components.physics]
@@ -684,8 +684,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.846031, 0.562073, 0.411157, 1 ]
 [objects.components.physics]
@@ -707,8 +707,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.576346, 0.72627, 0.982831, 1 ]
 [objects.components.physics]
@@ -730,8 +730,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.621918, 0.508096, 0.57995, 1 ]
 [objects.components.physics]
@@ -753,8 +753,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.647087, 0.613313, 0.60315, 1 ]
 [objects.components.physics]
@@ -776,8 +776,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.612862, 0.764857, 0.903699, 1 ]
 [objects.components.physics]
@@ -799,8 +799,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.871826, 0.764424, 0.859655, 1 ]
 [objects.components.physics]
@@ -822,8 +822,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.583893, 0.464293, 0.857698, 1 ]
 [objects.components.physics]
@@ -845,8 +845,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.986007, 0.752033, 0.827767, 1 ]
 [objects.components.physics]
@@ -868,8 +868,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.693282, 0.967291, 0.419878, 1 ]
 [objects.components.physics]
@@ -891,8 +891,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.760723, 0.671173, 0.558454, 1 ]
 [objects.components.physics]
@@ -914,8 +914,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.633826, 0.501481, 0.885325, 1 ]
 [objects.components.physics]
@@ -937,8 +937,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.808334, 0.788544, 0.611505, 1 ]
 [objects.components.physics]
@@ -960,8 +960,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.689147, 0.871427, 0.570118, 1 ]
 [objects.components.physics]
@@ -983,8 +983,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.935649, 0.682735, 0.452303, 1 ]
 [objects.components.physics]
@@ -1006,8 +1006,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.591521, 0.587568, 0.501318, 1 ]
 [objects.components.physics]
@@ -1029,8 +1029,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.968788, 0.567063, 0.876909, 1 ]
 [objects.components.physics]
@@ -1052,8 +1052,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.824285, 0.600949, 0.578475, 1 ]
 [objects.components.physics]
@@ -1075,8 +1075,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.776292, 0.994765, 0.913126, 1 ]
 [objects.components.physics]
@@ -1098,8 +1098,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.528167, 0.434334, 0.598429, 1 ]
 [objects.components.physics]
@@ -1121,8 +1121,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.878466, 0.683233, 0.964995, 1 ]
 [objects.components.physics]
@@ -1144,8 +1144,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.766986, 0.722314, 0.897249, 1 ]
 [objects.components.physics]
@@ -1167,8 +1167,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.760692, 0.767228, 0.561759, 1 ]
 [objects.components.physics]
@@ -1190,8 +1190,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.402991, 0.859694, 0.542608, 1 ]
 [objects.components.physics]
@@ -1213,8 +1213,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.6688, 0.738178, 0.48724, 1 ]
 [objects.components.physics]
@@ -1236,8 +1236,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.963284, 0.779383, 0.848337, 1 ]
 [objects.components.physics]
@@ -1259,8 +1259,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.746326, 0.895322, 0.426762, 1 ]
 [objects.components.physics]
@@ -1282,8 +1282,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.813977, 0.468446, 0.530102, 1 ]
 [objects.components.physics]
@@ -1305,8 +1305,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.857928, 0.811204, 0.88527, 1 ]
 [objects.components.physics]
@@ -1328,8 +1328,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.73669, 0.573817, 0.519085, 1 ]
 [objects.components.physics]
@@ -1351,8 +1351,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.835208, 0.633241, 0.817514, 1 ]
 [objects.components.physics]
@@ -1374,8 +1374,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.551017, 0.722806, 0.584146, 1 ]
 [objects.components.physics]
@@ -1397,8 +1397,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.605166, 0.547282, 0.543052, 1 ]
 [objects.components.physics]
@@ -1420,8 +1420,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.520068, 0.523353, 0.601691, 1 ]
 [objects.components.physics]
@@ -1443,8 +1443,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.567646, 0.711892, 0.465367, 1 ]
 [objects.components.physics]
@@ -1466,8 +1466,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.985338, 0.888206, 0.596965, 1 ]
 [objects.components.physics]
@@ -1489,8 +1489,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.400746, 0.676278, 0.612499, 1 ]
 [objects.components.physics]
@@ -1512,8 +1512,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.711396, 0.88119, 0.424487, 1 ]
 [objects.components.physics]
@@ -1535,8 +1535,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.956366, 0.409494, 0.839186, 1 ]
 [objects.components.physics]
@@ -1558,8 +1558,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.621104, 0.886621, 0.588012, 1 ]
 [objects.components.physics]
@@ -1581,8 +1581,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.889652, 0.843508, 0.989905, 1 ]
 [objects.components.physics]
@@ -1604,8 +1604,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.879322, 0.529469, 0.421509, 1 ]
 [objects.components.physics]
@@ -1627,8 +1627,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.920059, 0.488179, 0.863513, 1 ]
 [objects.components.physics]
@@ -1650,8 +1650,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.739426, 0.498392, 0.70074, 1 ]
 [objects.components.physics]
@@ -1673,8 +1673,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.840471, 0.469548, 0.680078, 1 ]
 [objects.components.physics]
@@ -1696,8 +1696,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.442654, 0.906123, 0.790294, 1 ]
 [objects.components.physics]
@@ -1719,8 +1719,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.480253, 0.777888, 0.62986, 1 ]
 [objects.components.physics]
@@ -1742,8 +1742,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.502905, 0.798938, 0.896887, 1 ]
 [objects.components.physics]
@@ -1765,8 +1765,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.971706, 0.958948, 0.917075, 1 ]
 [objects.components.physics]
@@ -1788,8 +1788,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.813894, 0.685071, 0.758533, 1 ]
 [objects.components.physics]
@@ -1811,8 +1811,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.627503, 0.412441, 0.918726, 1 ]
 [objects.components.physics]
@@ -1834,8 +1834,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.556805, 0.947502, 0.643724, 1 ]
 [objects.components.physics]
@@ -1857,8 +1857,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.880229, 0.617931, 0.920488, 1 ]
 [objects.components.physics]
@@ -1880,8 +1880,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.894369, 0.900044, 0.776445, 1 ]
 [objects.components.physics]
@@ -1903,8 +1903,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.456666, 0.821246, 0.968893, 1 ]
 [objects.components.physics]
@@ -1926,8 +1926,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.934714, 0.738696, 0.446366, 1 ]
 [objects.components.physics]
@@ -1949,8 +1949,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.926988, 0.99153, 0.681324, 1 ]
 [objects.components.physics]
@@ -1972,8 +1972,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.514205, 0.543574, 0.559884, 1 ]
 [objects.components.physics]
@@ -1995,8 +1995,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.647072, 0.406739, 0.962055, 1 ]
 [objects.components.physics]
@@ -2018,8 +2018,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.911601, 0.764246, 0.501442, 1 ]
 [objects.components.physics]
@@ -2041,8 +2041,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.458461, 0.437856, 0.660657, 1 ]
 [objects.components.physics]
@@ -2064,8 +2064,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.768627, 0.869985, 0.545792, 1 ]
 [objects.components.physics]
@@ -2087,8 +2087,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.731024, 0.757535, 0.852257, 1 ]
 [objects.components.physics]
@@ -2110,8 +2110,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.949836, 0.538082, 0.681452, 1 ]
 [objects.components.physics]
@@ -2133,8 +2133,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.508769, 0.804051, 0.824324, 1 ]
 [objects.components.physics]
@@ -2156,8 +2156,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.563445, 0.633048, 0.509645, 1 ]
 [objects.components.physics]
@@ -2179,8 +2179,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.701236, 0.552178, 0.9467, 1 ]
 [objects.components.physics]
@@ -2202,8 +2202,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.600424, 0.955182, 0.878786, 1 ]
 [objects.components.physics]
@@ -2225,8 +2225,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.588826, 0.967917, 0.662164, 1 ]
 [objects.components.physics]
@@ -2248,8 +2248,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.587309, 0.760899, 0.511756, 1 ]
 [objects.components.physics]
@@ -2271,8 +2271,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.434649, 0.752151, 0.444866, 1 ]
 [objects.components.physics]
@@ -2294,8 +2294,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.401184, 0.960135, 0.963545, 1 ]
 [objects.components.physics]
@@ -2317,8 +2317,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.799498, 0.541672, 0.513653, 1 ]
 [objects.components.physics]
@@ -2340,8 +2340,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.476567, 0.647656, 0.580848, 1 ]
 [objects.components.physics]
@@ -2363,8 +2363,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.767852, 0.838147, 0.737886, 1 ]
 [objects.components.physics]
@@ -2386,8 +2386,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.450768, 0.516804, 0.850096, 1 ]
 [objects.components.physics]
@@ -2409,8 +2409,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.793364, 0.6863, 0.665909, 1 ]
 [objects.components.physics]
@@ -2432,8 +2432,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.967132, 0.511393, 0.680404, 1 ]
 [objects.components.physics]
@@ -2455,8 +2455,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.914926, 0.683458, 0.757705, 1 ]
 [objects.components.physics]
@@ -2478,8 +2478,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.840644, 0.796951, 0.620832, 1 ]
 [objects.components.physics]
@@ -2501,8 +2501,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.969245, 0.618911, 0.627701, 1 ]
 [objects.components.physics]
@@ -2524,8 +2524,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.517932, 0.414996, 0.447157, 1 ]
 [objects.components.physics]
@@ -2547,8 +2547,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.611831, 0.734971, 0.637494, 1 ]
 [objects.components.physics]
@@ -2570,8 +2570,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.556157, 0.568727, 0.717949, 1 ]
 [objects.components.physics]
@@ -2593,8 +2593,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.585684, 0.506948, 0.922875, 1 ]
 [objects.components.physics]
@@ -2616,8 +2616,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.831415, 0.426604, 0.85879, 1 ]
 [objects.components.physics]
@@ -2639,8 +2639,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.523117, 0.806696, 0.493481, 1 ]
 [objects.components.physics]
@@ -2662,8 +2662,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.845488, 0.633658, 0.759957, 1 ]
 [objects.components.physics]
@@ -2685,8 +2685,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.8114, 0.666899, 0.770688, 1 ]
 [objects.components.physics]
@@ -2708,8 +2708,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.660905, 0.980392, 0.762213, 1 ]
 [objects.components.physics]
@@ -2731,8 +2731,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.701914, 0.564668, 0.822134, 1 ]
 [objects.components.physics]
@@ -2754,8 +2754,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.932609, 0.42706, 0.535968, 1 ]
 [objects.components.physics]
@@ -2777,8 +2777,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.817261, 0.663262, 0.918548, 1 ]
 [objects.components.physics]
@@ -2800,8 +2800,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.619117, 0.737546, 0.975635, 1 ]
 [objects.components.physics]
@@ -2823,8 +2823,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.537894, 0.510692, 0.923877, 1 ]
 [objects.components.physics]
@@ -2846,8 +2846,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.440467, 0.896621, 0.674924, 1 ]
 [objects.components.physics]
@@ -2869,8 +2869,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.432241, 0.531835, 0.776435, 1 ]
 [objects.components.physics]
@@ -2892,8 +2892,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.962611, 0.721347, 0.468231, 1 ]
 [objects.components.physics]
@@ -2915,8 +2915,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.926882, 0.557066, 0.449963, 1 ]
 [objects.components.physics]
@@ -2938,8 +2938,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.84937, 0.590238, 0.519271, 1 ]
 [objects.components.physics]
@@ -2961,8 +2961,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.4144, 0.461834, 0.618943, 1 ]
 [objects.components.physics]
@@ -2984,8 +2984,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.95732, 0.823248, 0.673548, 1 ]
 [objects.components.physics]
@@ -3007,8 +3007,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.709907, 0.49971, 0.580858, 1 ]
 [objects.components.physics]
@@ -3030,8 +3030,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.739736, 0.53052, 0.783922, 1 ]
 [objects.components.physics]
@@ -3053,8 +3053,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.53664, 0.756995, 0.503535, 1 ]
 [objects.components.physics]
@@ -3076,8 +3076,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.874951, 0.834503, 0.61724, 1 ]
 [objects.components.physics]
@@ -3099,8 +3099,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.517822, 0.697669, 0.85232, 1 ]
 [objects.components.physics]
@@ -3122,8 +3122,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.403181, 0.498157, 0.780595, 1 ]
 [objects.components.physics]
@@ -3145,8 +3145,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.518477, 0.49035, 0.921975, 1 ]
 [objects.components.physics]
@@ -3168,8 +3168,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.97934, 0.872962, 0.640836, 1 ]
 [objects.components.physics]
@@ -3191,8 +3191,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.48304, 0.548321, 0.999542, 1 ]
 [objects.components.physics]
@@ -3214,8 +3214,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.45206, 0.669143, 0.401211, 1 ]
 [objects.components.physics]
@@ -3237,8 +3237,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.539977, 0.747907, 0.445838, 1 ]
 [objects.components.physics]
@@ -3260,8 +3260,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.96605, 0.717419, 0.748479, 1 ]
 [objects.components.physics]
@@ -3283,8 +3283,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.687631, 0.76484, 0.754724, 1 ]
 [objects.components.physics]
@@ -3306,8 +3306,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.59607, 0.76825, 0.980081, 1 ]
 [objects.components.physics]
@@ -3329,8 +3329,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.979697, 0.767297, 0.752615, 1 ]
 [objects.components.physics]
@@ -3352,8 +3352,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.679796, 0.789372, 0.697353, 1 ]
 [objects.components.physics]
@@ -3375,8 +3375,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.606495, 0.944794, 0.630839, 1 ]
 [objects.components.physics]
@@ -3398,8 +3398,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.663088, 0.442544, 0.84775, 1 ]
 [objects.components.physics]
@@ -3421,8 +3421,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.855835, 0.975679, 0.970004, 1 ]
 [objects.components.physics]
@@ -3444,8 +3444,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.931932, 0.957731, 0.826878, 1 ]
 [objects.components.physics]
@@ -3467,8 +3467,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.927469, 0.762377, 0.568378, 1 ]
 [objects.components.physics]
@@ -3490,8 +3490,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.637912, 0.534951, 0.656617, 1 ]
 [objects.components.physics]
@@ -3513,8 +3513,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.889958, 0.433216, 0.470735, 1 ]
 [objects.components.physics]
@@ -3536,8 +3536,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.684516, 0.532989, 0.865611, 1 ]
 [objects.components.physics]
@@ -3559,8 +3559,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.653075, 0.429702, 0.574134, 1 ]
 [objects.components.physics]
@@ -3582,8 +3582,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.803681, 0.468432, 0.523405, 1 ]
 [objects.components.physics]
@@ -3605,8 +3605,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.625049, 0.723427, 0.99, 1 ]
 [objects.components.physics]
@@ -3628,8 +3628,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.747225, 0.913826, 0.942105, 1 ]
 [objects.components.physics]
@@ -3651,8 +3651,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.942237, 0.793559, 0.720662, 1 ]
 [objects.components.physics]
@@ -3674,8 +3674,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.560012, 0.409479, 0.651927, 1 ]
 [objects.components.physics]
@@ -3697,8 +3697,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.85338, 0.591308, 0.773465, 1 ]
 [objects.components.physics]
@@ -3720,8 +3720,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.599907, 0.592417, 0.701184, 1 ]
 [objects.components.physics]
@@ -3743,8 +3743,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.416697, 0.727755, 0.965163, 1 ]
 [objects.components.physics]
@@ -3766,8 +3766,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.748996, 0.591363, 0.839804, 1 ]
 [objects.components.physics]
@@ -3789,8 +3789,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.484586, 0.890514, 0.432007, 1 ]
 [objects.components.physics]
@@ -3812,8 +3812,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.886918, 0.522601, 0.779573, 1 ]
 [objects.components.physics]
@@ -3835,8 +3835,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.910667, 0.926699, 0.694968, 1 ]
 [objects.components.physics]
@@ -3858,8 +3858,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.495901, 0.755528, 0.440999, 1 ]
 [objects.components.physics]
@@ -3881,8 +3881,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.628914, 0.498227, 0.404717, 1 ]
 [objects.components.physics]
@@ -3904,8 +3904,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.638718, 0.604211, 0.637596, 1 ]
 [objects.components.physics]
@@ -3927,8 +3927,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.499312, 0.884161, 0.695223, 1 ]
 [objects.components.physics]
@@ -3950,8 +3950,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.913327, 0.550689, 0.943138, 1 ]
 [objects.components.physics]
@@ -3973,8 +3973,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.701219, 0.563612, 0.478923, 1 ]
 [objects.components.physics]
@@ -3996,8 +3996,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.975126, 0.657111, 0.90028, 1 ]
 [objects.components.physics]
@@ -4019,8 +4019,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.545418, 0.423319, 0.808191, 1 ]
 [objects.components.physics]
@@ -4042,8 +4042,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.794487, 0.48742, 0.859119, 1 ]
 [objects.components.physics]
@@ -4065,8 +4065,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.601777, 0.680676, 0.518798, 1 ]
 [objects.components.physics]
@@ -4088,8 +4088,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.432346, 0.962732, 0.418271, 1 ]
 [objects.components.physics]
@@ -4111,8 +4111,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.785889, 0.482179, 0.965647, 1 ]
 [objects.components.physics]
@@ -4134,8 +4134,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.906902, 0.814328, 0.914199, 1 ]
 [objects.components.physics]
@@ -4157,8 +4157,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.509489, 0.574348, 0.734217, 1 ]
 [objects.components.physics]
@@ -4180,8 +4180,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.771626, 0.896944, 0.605071, 1 ]
 [objects.components.physics]
@@ -4203,8 +4203,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.832344, 0.876714, 0.99999, 1 ]
 [objects.components.physics]
@@ -4226,8 +4226,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.949629, 0.441759, 0.608881, 1 ]
 [objects.components.physics]
@@ -4249,8 +4249,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.691978, 0.95295, 0.886202, 1 ]
 [objects.components.physics]
@@ -4272,8 +4272,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.649208, 0.466139, 0.593761, 1 ]
 [objects.components.physics]
@@ -4295,8 +4295,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.545207, 0.575966, 0.659898, 1 ]
 [objects.components.physics]
@@ -4318,8 +4318,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.450444, 0.485076, 0.596981, 1 ]
 [objects.components.physics]
@@ -4341,8 +4341,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.693072, 0.689441, 0.507044, 1 ]
 [objects.components.physics]
@@ -4364,8 +4364,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.832746, 0.846976, 0.966924, 1 ]
 [objects.components.physics]
@@ -4387,8 +4387,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.409042, 0.504243, 0.641859, 1 ]
 [objects.components.physics]
@@ -4410,8 +4410,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.951628, 0.812048, 0.958485, 1 ]
 [objects.components.physics]
@@ -4433,8 +4433,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.458409, 0.499, 0.656006, 1 ]
 [objects.components.physics]
@@ -4456,8 +4456,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.78596, 0.83368, 0.969427, 1 ]
 [objects.components.physics]
@@ -4479,8 +4479,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.661871, 0.682087, 0.647268, 1 ]
 [objects.components.physics]
@@ -4502,8 +4502,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.970105, 0.824163, 0.719092, 1 ]
 [objects.components.physics]
@@ -4525,8 +4525,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.495303, 0.409824, 0.636603, 1 ]
 [objects.components.physics]
@@ -4548,8 +4548,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.647086, 0.426447, 0.765837, 1 ]
 [objects.components.physics]
@@ -4571,8 +4571,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.59599, 0.518015, 0.874231, 1 ]
 [objects.components.physics]
@@ -4594,8 +4594,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.687372, 0.689333, 0.92053, 1 ]
 [objects.components.physics]
@@ -4617,8 +4617,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.873194, 0.660495, 0.755631, 1 ]
 [objects.components.physics]
@@ -4640,8 +4640,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.554793, 0.948586, 0.939207, 1 ]
 [objects.components.physics]
@@ -4663,8 +4663,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.875394, 0.882321, 0.939826, 1 ]
 [objects.components.physics]
@@ -4686,8 +4686,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.684587, 0.760837, 0.650901, 1 ]
 [objects.components.physics]
@@ -4709,8 +4709,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.582098, 0.682471, 0.95772, 1 ]
 [objects.components.physics]
@@ -4732,8 +4732,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.861483, 0.602301, 0.453422, 1 ]
 [objects.components.physics]
@@ -4755,8 +4755,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.932145, 0.495796, 0.48502, 1 ]
 [objects.components.physics]
@@ -4778,8 +4778,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.627596, 0.798772, 0.633013, 1 ]
 [objects.components.physics]
@@ -4801,8 +4801,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.476648, 0.615085, 0.831058, 1 ]
 [objects.components.physics]
@@ -4824,8 +4824,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.996246, 0.652725, 0.87163, 1 ]
 [objects.components.physics]
@@ -4847,8 +4847,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.694565, 0.59493, 0.484923, 1 ]
 [objects.components.physics]
@@ -4870,8 +4870,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.757467, 0.851329, 0.658079, 1 ]
 [objects.components.physics]
@@ -4893,8 +4893,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.477398, 0.498702, 0.826625, 1 ]
 [objects.components.physics]
@@ -4916,8 +4916,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.458465, 0.612295, 0.433715, 1 ]
 [objects.components.physics]
@@ -4939,8 +4939,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.881332, 0.659301, 0.915859, 1 ]
 [objects.components.physics]
@@ -4962,8 +4962,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.732072, 0.408211, 0.551729, 1 ]
 [objects.components.physics]
@@ -4985,8 +4985,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.830206, 0.438074, 0.753057, 1 ]
 [objects.components.physics]
@@ -5008,8 +5008,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.675518, 0.898281, 0.700586, 1 ]
 [objects.components.physics]
@@ -5031,8 +5031,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.847613, 0.895901, 0.972347, 1 ]
 [objects.components.physics]
@@ -5054,8 +5054,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.493346, 0.846843, 0.697827, 1 ]
 [objects.components.physics]
@@ -5077,8 +5077,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.864196, 0.624646, 0.743132, 1 ]
 [objects.components.physics]
@@ -5100,8 +5100,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.580439, 0.499573, 0.93627, 1 ]
 [objects.components.physics]
@@ -5123,8 +5123,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.551905, 0.925281, 0.779172, 1 ]
 [objects.components.physics]
@@ -5146,8 +5146,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.746657, 0.657069, 0.493792, 1 ]
 [objects.components.physics]
@@ -5169,8 +5169,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.809331, 0.517369, 0.947068, 1 ]
 [objects.components.physics]
@@ -5192,8 +5192,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.980767, 0.510785, 0.956195, 1 ]
 [objects.components.physics]
@@ -5215,8 +5215,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.583492, 0.713676, 0.848949, 1 ]
 [objects.components.physics]
@@ -5238,8 +5238,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.995555, 0.877569, 0.988542, 1 ]
 [objects.components.physics]
@@ -5261,8 +5261,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.450274, 0.770199, 0.510203, 1 ]
 [objects.components.physics]
@@ -5284,8 +5284,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.94344, 0.981166, 0.627279, 1 ]
 [objects.components.physics]
@@ -5307,8 +5307,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.927346, 0.55294, 0.521748, 1 ]
 [objects.components.physics]
@@ -5330,8 +5330,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.958228, 0.801834, 0.505163, 1 ]
 [objects.components.physics]
@@ -5353,8 +5353,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.911985, 0.44189, 0.971358, 1 ]
 [objects.components.physics]
@@ -5376,8 +5376,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.51721, 0.923098, 0.788394, 1 ]
 [objects.components.physics]
@@ -5399,8 +5399,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.90549, 0.641323, 0.848094, 1 ]
 [objects.components.physics]
@@ -5422,8 +5422,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.483815, 0.404261, 0.468921, 1 ]
 [objects.components.physics]
@@ -5445,8 +5445,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.495345, 0.856601, 0.567458, 1 ]
 [objects.components.physics]
@@ -5468,8 +5468,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.954034, 0.434849, 0.659714, 1 ]
 [objects.components.physics]
@@ -5491,8 +5491,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.962922, 0.612457, 0.982816, 1 ]
 [objects.components.physics]
@@ -5514,8 +5514,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.938376, 0.502568, 0.724739, 1 ]
 [objects.components.physics]
@@ -5537,8 +5537,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.685249, 0.436453, 0.833093, 1 ]
 [objects.components.physics]
@@ -5560,8 +5560,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.777079, 0.950688, 0.439586, 1 ]
 [objects.components.physics]
@@ -5583,8 +5583,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.685262, 0.746738, 0.723505, 1 ]
 [objects.components.physics]
@@ -5606,8 +5606,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.996667, 0.900422, 0.514933, 1 ]
 [objects.components.physics]
@@ -5629,8 +5629,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.82699, 0.602268, 0.581239, 1 ]
 [objects.components.physics]
@@ -5652,8 +5652,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.604136, 0.86499, 0.8604, 1 ]
 [objects.components.physics]
@@ -5675,8 +5675,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.942512, 0.923699, 0.730643, 1 ]
 [objects.components.physics]
@@ -5698,8 +5698,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.530689, 0.914188, 0.871874, 1 ]
 [objects.components.physics]
@@ -5721,8 +5721,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.437373, 0.912237, 0.913411, 1 ]
 [objects.components.physics]
@@ -5744,8 +5744,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.496579, 0.56694, 0.87827, 1 ]
 [objects.components.physics]
@@ -5767,8 +5767,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.569935, 0.405526, 0.631617, 1 ]
 [objects.components.physics]
@@ -5790,8 +5790,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.708867, 0.41359, 0.757735, 1 ]
 [objects.components.physics]
@@ -5813,8 +5813,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.5379, 0.790385, 0.704536, 1 ]
 [objects.components.physics]
@@ -5836,8 +5836,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.404865, 0.876833, 0.422818, 1 ]
 [objects.components.physics]
@@ -5859,8 +5859,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.799459, 0.420985, 0.445384, 1 ]
 [objects.components.physics]
@@ -5882,8 +5882,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.586859, 0.435172, 0.804994, 1 ]
 [objects.components.physics]
@@ -5905,8 +5905,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.622464, 0.67556, 0.921761, 1 ]
 [objects.components.physics]
@@ -5928,8 +5928,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.936447, 0.804177, 0.940107, 1 ]
 [objects.components.physics]
@@ -5951,8 +5951,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.447562, 0.965182, 0.65259, 1 ]
 [objects.components.physics]
@@ -5974,8 +5974,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.825523, 0.492484, 0.592851, 1 ]
 [objects.components.physics]
@@ -5997,8 +5997,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.874418, 0.55847, 0.54821, 1 ]
 [objects.components.physics]
@@ -6020,8 +6020,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.597434, 0.88091, 0.930456, 1 ]
 [objects.components.physics]
@@ -6043,8 +6043,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.790902, 0.618971, 0.637606, 1 ]
 [objects.components.physics]
@@ -6066,8 +6066,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.420942, 0.930949, 0.621346, 1 ]
 [objects.components.physics]
@@ -6089,8 +6089,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.662969, 0.56217, 0.440597, 1 ]
 [objects.components.physics]
@@ -6112,8 +6112,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.647401, 0.991117, 0.770791, 1 ]
 [objects.components.physics]
@@ -6135,8 +6135,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.473407, 0.475123, 0.819962, 1 ]
 [objects.components.physics]
@@ -6158,8 +6158,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.637223, 0.939768, 0.893373, 1 ]
 [objects.components.physics]
@@ -6181,8 +6181,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.989307, 0.615684, 0.511102, 1 ]
 [objects.components.physics]
@@ -6204,8 +6204,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.735787, 0.689228, 0.867914, 1 ]
 [objects.components.physics]
@@ -6227,8 +6227,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.74607, 0.666585, 0.484026, 1 ]
 [objects.components.physics]
@@ -6250,8 +6250,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.891679, 0.530954, 0.510679, 1 ]
 [objects.components.physics]
@@ -6273,8 +6273,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.937139, 0.863148, 0.630467, 1 ]
 [objects.components.physics]
@@ -6296,8 +6296,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.511383, 0.919981, 0.417544, 1 ]
 [objects.components.physics]
@@ -6319,8 +6319,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.659867, 0.805331, 0.428975, 1 ]
 [objects.components.physics]
@@ -6342,8 +6342,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.905223, 0.551498, 0.835921, 1 ]
 [objects.components.physics]
@@ -6365,8 +6365,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.736162, 0.889053, 0.559194, 1 ]
 [objects.components.physics]
@@ -6388,8 +6388,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.427749, 0.88979, 0.573362, 1 ]
 [objects.components.physics]
@@ -6411,8 +6411,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.873155, 0.477376, 0.5621, 1 ]
 [objects.components.physics]
@@ -6434,8 +6434,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.739813, 0.826896, 0.756189, 1 ]
 [objects.components.physics]
@@ -6457,8 +6457,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.968772, 0.501019, 0.622763, 1 ]
 [objects.components.physics]
@@ -6480,8 +6480,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.770959, 0.537383, 0.665453, 1 ]
 [objects.components.physics]
@@ -6503,8 +6503,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.55966, 0.670859, 0.586968, 1 ]
 [objects.components.physics]
@@ -6526,8 +6526,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.527378, 0.693228, 0.84237, 1 ]
 [objects.components.physics]
@@ -6549,8 +6549,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.998221, 0.599865, 0.569906, 1 ]
 [objects.components.physics]
@@ -6572,8 +6572,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.693274, 0.550316, 0.67709, 1 ]
 [objects.components.physics]
@@ -6595,8 +6595,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.506201, 0.59584, 0.486361, 1 ]
 [objects.components.physics]
@@ -6618,8 +6618,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.957365, 0.568809, 0.748601, 1 ]
 [objects.components.physics]
@@ -6641,8 +6641,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.555365, 0.475775, 0.939962, 1 ]
 [objects.components.physics]
@@ -6664,8 +6664,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.845235, 0.996232, 0.635885, 1 ]
 [objects.components.physics]
@@ -6687,8 +6687,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.766817, 0.704393, 0.972413, 1 ]
 [objects.components.physics]
@@ -6710,8 +6710,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 0.420331, 0.616732, 0.459187, 1 ]
 [objects.components.physics]
@@ -6733,8 +6733,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 0.729011, 0.689124, 0.621069, 1 ]
 [objects.components.physics]
@@ -7076,7 +7076,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.2
@@ -7099,7 +7099,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.3
@@ -7122,7 +7122,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.4
@@ -7145,7 +7145,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.2
@@ -7168,7 +7168,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.3
@@ -7191,7 +7191,7 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.audio-source]
-clip_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/audio/141695__copyc4t__levelup.wav"
+clip_asset_id = "test-project/assets/audio/141695__copyc4t__levelup.wav"
 playing = true
 looping = true
 volume = 0.4

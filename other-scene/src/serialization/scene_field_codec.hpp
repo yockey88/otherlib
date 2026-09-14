@@ -10,7 +10,7 @@
  *   vector :  tag = USER_TYPE             bytes = [count u32] then per element [tag][size][bytes]
  *
  * every field is skippable from [tag][size] alone (schema-safe: unknown ids skip, missing fields
- * default); decode never asserts on data — malformed input reports via bool/warning, not OTHER_ASSERT
+ * default); decode never asserts on data - malformed input reports via bool/warning, not OTHER_ASSERT
  */
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_FIELD_CODEC_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_FIELD_CODEC_HPP

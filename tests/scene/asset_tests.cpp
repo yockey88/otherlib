@@ -7,19 +7,17 @@
 #include <fstream>
 
 #include <asio/asio.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "file/filesystem.hpp"
+#include "serialization/animation_serializer.hpp"
 
 #include "gpu_resource/material.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderer_backend.hpp"
-
-#include "serialization/animation_serializer.hpp"
 
 #include "object/animation_component.hpp"
 #include "object/render_component.hpp"
@@ -27,12 +25,12 @@
 
 #include "driver/driver_mounts.hpp"
 
-#include "audio/audio_environment.hpp"
-
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+#include "audio/audio_environment.hpp"
 #include "audio/audio_test_fixtures.hpp"
 #include "mock_rendering_api.hpp"
+
 
 namespace other {
 
@@ -560,7 +558,7 @@ worker_count = {}
     audio_cfg.force_pump_mode = true;
     ASSERT_TRUE(env->initialize(audio_cfg));
     /// full destroy, not just shutdown(): minimal profile never owns audio, and clip_revisions
-    ///  is high-water — only a fresh instance keeps revision assertions valid under --gtest_repeat
+    ///  is high-water - only a fresh instance keeps revision assertions valid under --gtest_repeat
     struct env_guard {
       ~env_guard() { subsystem<audio_environment>::shutdown(); }
     } ___env_guard;
@@ -771,7 +769,7 @@ worker_count = {}
     EXPECT_EQ(rig_a_render->obj_model.bone_matrices.size(), 2u);
 
     /// a live palette drives the object's AABB: union of each joint's bind-space bounds through
-    ///  its palette matrix, then the world transform — follows the animation, not the bind pose
+    ///  its palette matrix, then the world transform - follows the animation, not the bind pose
     {
       const model_data& src = rig_a_render->obj_model.source->source_data();
       bounding_box expected = bounding_box::empty;

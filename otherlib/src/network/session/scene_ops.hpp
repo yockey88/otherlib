@@ -19,7 +19,7 @@ namespace other {
     uint64_t tick = 0;      // host tick at application
     uint16_t actor = 0;     // requesting peer (0 = host)
     natural_t subject = 0;  // primary net_id target, 0 if n/a
-    /// op name as utf8 bytes ("construct.place-part") — named C# callbacks need the
+    /// op name as utf8 bytes ("construct.place-part") - named C# callbacks need the
     ///  string back, hashes don't reverse; FNV it when an id is wanted
     ostd::vector<uint8_t> name;
     ostd::vector<uint8_t> payload;  // opaque to the engine; gameplay defines meaning

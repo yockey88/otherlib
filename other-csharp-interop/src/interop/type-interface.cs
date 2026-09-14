@@ -61,7 +61,7 @@ namespace OtherCsBindings
     internal readonly static Set<Attribute> cached_attributes = new();
 
     /// cached reflection objects root their declaring assembly, keeping an unloaded ALC alive
-    ///  forever — evict everything belonging to it before the context unloads
+    ///  forever - evict everything belonging to it before the context unloads
     internal static void EvictAssemblyFromCaches(Assembly asm)
     {
       cached_types.RemoveWhere(t => t.Assembly == asm);

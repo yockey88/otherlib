@@ -14,7 +14,7 @@
 
 #include "message/message_fields.hpp"
 
-/// the bus/wire codec is defined little-endian, never converted — this engine is
+/// the bus/wire codec is defined little-endian, never converted - this engine is
 ///  Windows-x64-only and any future big-endian target must add conversion here first
 static_assert(std::endian::native == std::endian::little, "message codec requires a little-endian target");
 
@@ -75,7 +75,7 @@ namespace other {
           append_named_field_to_raw_buffer(name + "_buff_len", buff_size, data);
           data.append_range(buffer);
         }
-        /// nested reflected values have no formatter — they announce themselves in
+        /// nested reflected values have no formatter - they announce themselves in
         ///  the recursive call's own trace
         else if constexpr (reflected_type<member_t>) {
           CORE_LOG_TRACE("{}[FIELD: {}] [NESTED] (offset: {})", std::string((level + 1) * 2, ' '), name, data.size());

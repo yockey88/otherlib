@@ -45,7 +45,7 @@ namespace other {
   }  // namespace
 
   void material_layout::finalize() {
-    OTHER_ASSERT(!params.empty(), "material layout declares no params — a material binding without a block is meaningless");
+    OTHER_ASSERT(!params.empty(), "material layout declares no params - a material binding without a block is meaningless");
     OTHER_ASSERT(instance_capacity > 0, "material layout instance capacity must be > 0");
     PROFILE_SECTION("material_layout::finalize");
 

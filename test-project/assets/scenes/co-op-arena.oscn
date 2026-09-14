@@ -1,5 +1,5 @@
 # other environment scene document
-# the Mode 1 anchor: a fully authored co-op scene — host on play, one pawn cloned
+# the Mode 1 anchor: a fully authored co-op scene - host on play, one pawn cloned
 # per joining peer, a shared crate that replicates. no code anywhere.
 [scene]
 schema-version = 1
@@ -26,8 +26,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
+model_asset_id = "resources/models/floor.fbx"
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]
@@ -49,8 +49,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/donut.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]
@@ -75,8 +75,8 @@ i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+model_asset_id = "resources/models/spinning-torus.fbx"
+material_asset_id = "test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
 [objects.components.physics]

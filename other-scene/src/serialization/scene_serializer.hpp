@@ -8,9 +8,9 @@
 #define OTHER_SCENE_SERIALIZATION_SCENE_SERIALIZER_HPP
 
 #include "core/defines.hpp"
-
 #include "serialization/component_codec.hpp"
 #include "serialization/scene_document.hpp"
+
 
 namespace other {
 
@@ -29,7 +29,7 @@ namespace other {
     /// -- live scene <-> document -------------------------------------------
 
     /// walks the scene tree depth-first (parents before children); the root object is
-    /// not captured — scenes construct their own root
+    /// not captured - scenes construct their own root
     scene_document capture_scene(scene& s, const codec_services& services);
 
     /// instantiates the document's objects into @p s via normal creation APIs (entt construct signals
@@ -63,7 +63,7 @@ namespace other {
     bool save_scene_document(const scene_document& doc, const filepath& path);
 
     /// every asset reference the document's component payloads carry, as stored (hook script is
-    /// separate: scene_document::script); engine-free — this is what manifest parsing rides
+    /// separate: scene_document::script); engine-free - this is what manifest parsing rides
     ostd::vector<component_asset_ref> collect_scene_asset_refs(const scene_document& doc);
 
   }  // namespace serialization

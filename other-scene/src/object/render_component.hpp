@@ -25,7 +25,7 @@ namespace other {
     natural_t last_material_asset_id = 0;
     natural_t material_asset_id = 0;
 
-    /// per-instance multiplier folded into the packed base_color at bind time — the
+    /// per-instance multiplier folded into the packed base_color at bind time - the
     ///  per-object-color use case without a material asset
     glm::vec4 tint = glm::vec4(1.f);
   };

@@ -36,7 +36,7 @@
   #define PROFILE_SCOPE() OTHER_PROFILE_ZONE(nullptr)
   #define PROFILE_SECTION(name) OTHER_PROFILE_ZONE(name)
 
-  /// sub-microsecond hot-path zones (millions per capture) — opt in via OTHER_PROFILE_VERBOSE
+  /// sub-microsecond hot-path zones (millions per capture) - opt in via OTHER_PROFILE_VERBOSE
   #ifdef OTHER_PROFILE_VERBOSE
     #define PROFILE_SECTION_VERBOSE(name) OTHER_PROFILE_ZONE(name)
   #else

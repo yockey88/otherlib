@@ -245,7 +245,7 @@ namespace other {
 
   void opengl_api::bind_set(uint32_t set_index, std::span<const binding_record> records) {
     PROFILE_SECTION("opengl_api::bind_set");
-    // OpenGL has no concept of descriptor sets — set_index is ignored.
+    // OpenGL has no concept of descriptor sets - set_index is ignored.
     // each record maps to glBindBufferRange / glBindTextureUnit / glBindImageTexture per binding_type.
     for (const binding_record& r : records) {
       switch (r.type) {

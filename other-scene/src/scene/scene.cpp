@@ -308,7 +308,7 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Restoring scene '{}' to its pre-play state ({} snapshot bytes).", name, play_snapshot.size());
-    /// restore consumes the snapshot — the next play() captures a fresh one
+    /// restore consumes the snapshot - the next play() captures a fresh one
     ostd::vector<uint8_t> snapshot = std::move(play_snapshot);
     play_snapshot.clear();
     restore_snapshot(snapshot);
@@ -334,7 +334,7 @@ namespace other {
     serialization::instantiate_scene(*this, *parsed.document, serialization::default_codec_services());
 
     /// whatever the rebuild did not reclaim was created during play and is not part of
-    ///  the restored state — destroying it now is a genuine removal (Remove fires)
+    ///  the restored state - destroying it now is a genuine removal (Remove fires)
     if (!preserved_script_objects.empty()) {
       auto* script_env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
@@ -350,7 +350,7 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::destroy_all_non_root_objects");
     const natural_t root_id = root_object().id;
-    /// copy the child list — destroy mutates it
+    /// copy the child list - destroy mutates it
     const ostd::vector<uint64_t> children = get_children_ids(root_id);
     for (const natural_t child_id : children) {
       destroy_object(child_id);
@@ -392,7 +392,7 @@ namespace other {
       storage->physics->step_simulation(delta_time);  /// exactly one fixed step
       step_contacts.clear();
       storage->physics->drain_contacts(step_contacts);
-      dispatch_contact_events(step_contacts);         /// scripts hear contacts before their FixedUpdate
+      dispatch_contact_events(step_contacts);  /// scripts hear contacts before their FixedUpdate
       check_joint_breaks(delta_time);
     }
 
@@ -496,7 +496,7 @@ namespace other {
   physics_body::settings scene::effective_body_settings(natural_t object_id, const physics_component& phys_comp) const {
     physics_body::settings settings = phys_comp.settings;
     /// replica mode: net-registered dynamic bodies build kinematic so interpolated
-    ///  poses drive them — authored settings untouched, role is runtime state
+    ///  poses drive them - authored settings untouched, role is runtime state
     if (storage->network.role == replication_role::REPLICA &&
         storage->network.net_of(object_id).has_value() && settings.body_type == physics_body::DYNAMIC) {
       settings.body_type = physics_body::KINEMATIC;
@@ -575,7 +575,7 @@ namespace other {
       physics_body* a = storage->physics->body_by_id(ev.body_a);
       physics_body* b = storage->physics->body_by_id(ev.body_b);
       if (a == nullptr || b == nullptr) {
-        continue;  /// a side was destroyed the same tick — dropped by contract
+        continue;  /// a side was destroyed the same tick - dropped by contract
       }
 
       const char* method = nullptr;
@@ -1076,7 +1076,7 @@ namespace other {
     scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     /// a reset node means the id outlived its object (snapshot restores reassign runtime
-    ///  ids) — callers that can hold stale ids must resolve through find_object instead
+    ///  ids) - callers that can hold stale ids must resolve through find_object instead
     OTHER_ASSERT(node->object != nullptr, "Scene object with ID {} no longer exists.", id);
     return *node->object;
   }

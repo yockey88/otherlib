@@ -54,7 +54,7 @@ namespace other {
       }
 
       /// script_component's persistent state (attached behavior type names) lives in the scripting
-      /// environment's script_object, not the component struct — hence a custom codec, same payload discipline
+      /// environment's script_object, not the component struct - hence a custom codec, same payload discipline
       component_codec make_script_codec() {
         component_codec codec = {
           .key = "script",

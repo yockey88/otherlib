@@ -63,7 +63,7 @@ namespace OtherCsBindings
     /// each assembly gets its own collectible AssemblyLoadContext: .NET can only unload whole
     ///  contexts, never single assemblies, so hot reload needs per-assembly contexts
     private static readonly Dictionary<Int32, AssemblyLoadContext> assembly_alcs = new();
-    /// GCHandles are tracked as IntPtr so entries can be removed when native frees a handle —
+    /// GCHandles are tracked as IntPtr so entries can be removed when native frees a handle -
     ///  struct copies go stale after Free and must never be double-freed
     private static readonly Dictionary<Int32, HashSet<IntPtr>> handles = new();
     private static readonly Dictionary<IntPtr, Int32> handle_owners = new();
@@ -377,7 +377,7 @@ namespace OtherCsBindings
     }
 
     /// releases GCHandles and cached reflection objects (both would otherwise root the assembly
-    ///  forever), then unloads its context — the unload half of script hot reload
+    ///  forever), then unloads its context - the unload half of script hot reload
     private static void UnloadAssemblyById(Int32 asm_id)
     {
       if (!assemblies.Remove(asm_id, out var asm))

@@ -13,7 +13,12 @@ namespace other {
   /// layout-agnostic bag of typed params + texture-slot paths; packing against a
   ///  pipeline-declared material_layout happens late, at bind time (render_pipeline)
   struct material_value {
-    enum class kind : uint8_t { F32, VEC2, VEC3, VEC4, I32, B32 };
+    enum class kind : uint8_t { F32,
+                                VEC2,
+                                VEC3,
+                                VEC4,
+                                I32,
+                                B32 };
     kind value_kind = kind::F32;
     glm::vec4 data = glm::vec4(0.f);  //< scalars in .x, ints/bools bit-cast into .x
 
@@ -48,7 +53,7 @@ namespace other {
   };
 
   /// scene_parse_result discipline: files are data, so malformed input is an error result with
-  ///  a message plus non-fatal warnings — never an assert
+  ///  a message plus non-fatal warnings - never an assert
   struct material_parse_result {
     opt<material> mat;
     std::string error;
@@ -57,7 +62,7 @@ namespace other {
     bool success() const { return mat.has_value(); }
   };
 
-  /// pure toml parse, engine-free (no subsystems); texture slot paths come back verbatim —
+  /// pure toml parse, engine-free (no subsystems); texture slot paths come back verbatim -
   ///  resolving them against the file's directory is the loader's job
   material_parse_result parse_material_toml(const filepath& path);
 

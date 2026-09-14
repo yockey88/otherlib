@@ -12,12 +12,14 @@
 #include <toml++/toml.h>
 
 #include "core/fnv.hpp"
-#include "serialization/toml_writer.hpp"
-
-#include "asset/asset.hpp"
-#include "scene/scene.hpp"
 #include "serialization/scene_document.hpp"
 #include "serialization/scene_field_codec.hpp"
+#include "serialization/toml_writer.hpp"
+
+#include "scene/scene.hpp"
+
+#include "asset/asset.hpp"
+
 
 namespace other {
   namespace serialization {
@@ -29,7 +31,7 @@ namespace other {
       std::function<natural_t(const std::string& path)> resolve_asset = nullptr;
     };
 
-    /// a portable asset reference decoded out of a component payload, as stored —
+    /// a portable asset reference decoded out of a component payload, as stored -
     /// resolution against the working directory / mounts is the caller's concern
     struct component_asset_ref {
       std::string path = "";

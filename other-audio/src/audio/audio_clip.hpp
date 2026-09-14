@@ -21,7 +21,7 @@ namespace other {
     uint64_t frames = 0;
     float seconds = 0.f;
 
-    /// sidecar-supplied, applied at voice start — never baked into samples
+    /// sidecar-supplied, applied at voice start - never baked into samples
     float default_gain = 1.f;
     bool default_loop = false;
     loop_region loop;

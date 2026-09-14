@@ -110,7 +110,7 @@ namespace other {
     ostd::map<message_header, message_handler> message_handlers;
     ostd::map<message_header, microseconds> message_handler_timeouts;
 
-    /// bounded wait until the pump epoch proves no reader holds an unregistered pointer —
+    /// bounded wait until the pump epoch proves no reader holds an unregistered pointer -
     ///  providers/sinks can live in plugins that unload the moment unregister returns
     void wait_for_pump_quiescence(uint64_t recorded_epoch);
 

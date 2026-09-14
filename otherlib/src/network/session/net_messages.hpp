@@ -9,9 +9,11 @@
 
 #include "core/defines.hpp"
 
-#include "message/message_serialization.hpp"
 #include "network/mesh_messages.hpp"
 #include "network/node_id.hpp"
+
+#include "message/message_serialization.hpp"
+
 
 namespace other {
 
@@ -47,7 +49,7 @@ namespace other {
     VALIDATOR,
   };
 
-  /// magic/version/app_hash were already validated at LINK_HELLO — a join can only
+  /// magic/version/app_hash were already validated at LINK_HELLO - a join can only
   ///  fail on policy. name rides as utf8 bytes (the codec's blob type)
   struct net_join_request {
     uint32_t client_flags = 0;
@@ -60,7 +62,7 @@ namespace other {
     ostd::vector<uint8_t> name;
   };
 
-  /// roster = roster_count reflected net_roster_entry records back to back — the
+  /// roster = roster_count reflected net_roster_entry records back to back - the
   ///  codec has no vector-of-struct field, so the count carries the shape
   struct net_welcome {
     uint16_t peer_id = 0;
@@ -101,7 +103,7 @@ namespace other {
     uint16_t owner_peer = 0;
   };
 
-  /// scene_bytes = write_scene_binary(capture_scene(...)) — the same bytes
+  /// scene_bytes = write_scene_binary(capture_scene(...)) - the same bytes
   ///  play/stop restore uses; the table maps document objects to net identities
   struct net_join_snapshot {
     uint64_t host_tick = 0;

@@ -58,7 +58,7 @@ namespace other {
 
     for (const tinyxml2::XMLElement& group : xml::children(*project, "PropertyGroup")) {
       if (xml::attribute(group, "Condition").has_value() && group.FirstChildElement(prop.data()) != nullptr) {
-        OTHER_ASSERT(false, "property <{}> exists only in a conditional PropertyGroup — unsupported", property_name);
+        OTHER_ASSERT(false, "property <{}> exists only in a conditional PropertyGroup - unsupported", property_name);
       }
     }
 

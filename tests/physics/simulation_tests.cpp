@@ -3,13 +3,14 @@
  *  doc-01 simulation core: fixed-step cadence, pose seeding, parent-aware write-back,
  *  kinematics, per-world isolation, lifecycle, physics-off tolerance
  **/
-#include "other_test.hpp"
-
 #include "physics/physics_environment.hpp"
 #include "physics_world/physics_body.hpp"
 
 #include "object/physics_component.hpp"
 #include "scene/scene.hpp"
+
+#include "other_test.hpp"
+
 
 namespace other {
 
@@ -98,7 +99,7 @@ namespace other {
     }
 
     EXPECT_LT(body_y(pc_a), 9.f);
-    /// step counts may differ by the sub-step residue at the cut — allow one step of drift
+    /// step counts may differ by the sub-step residue at the cut - allow one step of drift
     float one_step_fall = 9.81f * static_cast<float>(fixed_step()) * static_cast<float>(fixed_step()) * 60.f;
     EXPECT_NEAR(body_y(pc_a), body_y(pc_b), one_step_fall);
 
@@ -120,7 +121,7 @@ namespace other {
     spike.play();
     control.play();
 
-    tick(spike, 0.5);              /// one monster frame -> kMaxCatchUpSteps steps + dropped debt
+    tick(spike, 0.5);                /// one monster frame -> kMaxCatchUpSteps steps + dropped debt
     tick(control, fixed_step(), 5);  /// kMaxCatchUpSteps plain steps
 
     EXPECT_FLOAT_EQ(body_y(pc_a), body_y(pc_b));

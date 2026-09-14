@@ -27,7 +27,7 @@ namespace other {
     ostd::vector<std::string> warnings;
   };
 
-  /// absent sidecar => silent defaults; malformed => defaults + warning —
+  /// absent sidecar => silent defaults; malformed => defaults + warning -
   ///  the runtime never bricks an asset over a sidecar typo
   sidecar_parse_result parse_audio_sidecar(const filepath& audio_absolute);
 

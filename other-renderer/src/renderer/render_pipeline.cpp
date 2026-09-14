@@ -48,7 +48,7 @@ namespace other {
     renderer_ptr = renderer;
     graph = arena_allocator<render_graph>{}.allocate(renderer_ptr);
 
-    /// stale packs must not survive a reload — the layout itself may have changed
+    /// stale packs must not survive a reload - the layout itself may have changed
     material_pack_cache.clear();
     default_material_pack.clear();
 
@@ -104,7 +104,7 @@ namespace other {
 
   bool render_pipeline::reload(pipeline_definition&& new_def) {
     if (renderer_ptr == nullptr) {
-      CORE_LOG_ERROR("Cannot reload pipeline — not initialized.");
+      CORE_LOG_ERROR("Cannot reload pipeline - not initialized.");
       return false;
     }
 
@@ -195,7 +195,7 @@ namespace other {
                    runtime.def->name, bd.name, draw_index, ring.head, ring.element_size, ring.capacity);
       // clang-format on
 
-      /// material slices pack against this pipeline's declared layout — the pipeline owns the
+      /// material slices pack against this pipeline's declared layout - the pipeline owns the
       ///  shader ABI, so the fill can't come from a pipeline-blind registry producer
       if (bd.tag.value() == resource_tag::kMaterialTag && definition.materials.has_value()) {
         std::span<uint8_t> slice{ ring.cpu_staging + ring.head, ring.element_size };
@@ -290,7 +290,7 @@ namespace other {
       resource_handle handle = texture_hash != 0 ? backend->get_texture(texture_hash) : resource_handle{};
       if (handle.id == 0) {
         /// always bind something: an untextured slot samples a 1x1 stand-in and the shader
-        ///  math degenerates to the params — zero shader variants
+        ///  math degenerates to the params - zero shader variants
         const bool normal_slot = slot.name == "normal";
         handle = backend->get_fallback_texture(normal_slot ? renderer_backend::fallback_texture::FLAT_NORMAL : renderer_backend::fallback_texture::WHITE);
       }
@@ -367,7 +367,7 @@ namespace other {
       OTHER_ASSERT(pass != nullptr, "Node {} has null pass", id);
 
       auto runtime_itr = pass_runtimes.find(pass->id);
-      OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built — was build_pass_runtimes() called?", pass->id);
+      OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built - was build_pass_runtimes() called?", pass->id);
       pass_runtime& runtime = runtime_itr->second;
 
       auto exec_itr = execs.find(pass->id);
@@ -471,7 +471,7 @@ namespace other {
     }
 
     if (!renderer_ptr->resource_exists(handle)) {
-      CORE_LOG_ERROR("Cannot register buffer resource '{}' with handle {} — resource does not exist.", name, handle);
+      CORE_LOG_ERROR("Cannot register buffer resource '{}' with handle {} - resource does not exist.", name, handle);
       return;
     }
 
@@ -493,7 +493,7 @@ namespace other {
     }
 
     if (!renderer_ptr->resource_exists(handle)) {
-      CORE_LOG_ERROR("Cannot register shader resource '{}' with handle {} — resource does not exist.", name, handle);
+      CORE_LOG_ERROR("Cannot register shader resource '{}' with handle {} - resource does not exist.", name, handle);
       return;
     }
 
@@ -563,7 +563,7 @@ namespace other {
   void render_pipeline::upload_buffer(resource_handle handle, const void* data, size_t size) {
     PROFILE_SECTION("render_pipeline::upload_buffer");
     if (!get_renderer()->resource_exists(handle)) {
-      CORE_LOG_ERROR("Cannot upload to buffer [{}] — resource does not exist.", handle);
+      CORE_LOG_ERROR("Cannot upload to buffer [{}] - resource does not exist.", handle);
       return;
     }
     get_renderer()->get_resource<gpu_buffer>(handle).set_data(data, size).finalize_buffer();
@@ -666,7 +666,7 @@ namespace other {
 
   std::string render_pipeline::get_pipeline_name(const std::string_view n) const {
     return
-      /// \todo buffers break here — the *resource* name and shader buffer name are coupled; fix
+      /// \todo buffers break here - the *resource* name and shader buffer name are coupled; fix
       // definition.name + ":" +
       std::string{ n };
   }

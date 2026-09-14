@@ -195,7 +195,7 @@ namespace other {
       return joint_idx;
     }
 
-    /// joints land parents-first (a node emits before recursing) — build_palette depends
+    /// joints land parents-first (a node emits before recursing) - build_palette depends
     ///  on this to complete every chain in one forward pass
     void traverse_bone(const aiNode* node, int16_t parent_idx, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       const int16_t joint_idx = emit_joint(node, parent_idx, bctx, skel, ctx);

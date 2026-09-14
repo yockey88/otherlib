@@ -167,7 +167,7 @@ namespace other {
     std::ofstream file(kLogFailureFile.data(), std::ios::app);
     file << "[" << time_stream.str() << "] DROPPED LOG (logger subsystem inactive): " << msg << std::endl;
 
-    /// assert failure paths log at critical then abort — that report must still reach the console
+    /// assert failure paths log at critical then abort - that report must still reach the console
     if (level == spdlog::level::critical) {
       const std::string err = std::format("DROPPED CRITICAL LOG (logger subsystem inactive): {}\n", msg);
       std::fputs(err.c_str(), stderr);

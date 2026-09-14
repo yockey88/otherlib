@@ -1,4 +1,4 @@
-# POC metallic material: metalness rides the gbuffer normal alpha into the shading pass —
+# POC metallic material: metalness rides the gbuffer normal alpha into the shading pass -
 # the lambert body fades out with metalness, specular tints by albedo, and the body becomes
 # mirrored procedural sky + a 30% irradiance floor (see docs/material-poc-transparent-metallic.md).
 # roughness carries the old specular_reflectivity value (the shading pass reads albedo.a as a

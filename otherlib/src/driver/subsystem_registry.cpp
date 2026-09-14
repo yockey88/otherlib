@@ -10,13 +10,15 @@
 #include "input/input_system.hpp"
 #include "memory/arena.hpp"
 
-#include "audio/audio_environment.hpp"
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver_mounts.hpp"
 #include "scripting/bindings.hpp"
+
+#include "audio/audio_environment.hpp"
+
 
 namespace other {
   namespace detail {
@@ -324,7 +326,7 @@ namespace other {
 
   namespace detail {
 
-    /** @note exceptions ok here — pre-entry code, outside the "no exceptions" rule; just log and exit
+    /** @note exceptions ok here - pre-entry code, outside the "no exceptions" rule; just log and exit
      **/
 
     spdlog::sink_ptr stdout_sink_fn(const config_table& config) {

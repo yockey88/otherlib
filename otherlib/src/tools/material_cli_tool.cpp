@@ -210,7 +210,7 @@ namespace other {
 
         auto params = table.at_path("materials.layout.params");
         if (!params) {
-          return result;  /// declared stays false — the pipeline draws without materials
+          return result;  /// declared stays false - the pipeline draws without materials
         }
         result.declared = true;
         if (!params.is_array_of_tables()) {
@@ -305,7 +305,7 @@ namespace other {
         }
 
         /// every finalize() precondition is now guaranteed, so this runs the engine's own
-        ///  std430 offset/element_size/base_color math — not a reimplementation
+        ///  std430 offset/element_size/base_color math - not a reimplementation
         layout.finalize();
         result.layout = std::move(layout);
         return result;
@@ -328,7 +328,7 @@ namespace other {
           return tool_result::error(layout_read.error);
         }
         if (!layout_read.declared) {
-          return tool_result::ok(std::format("'{}' declares no [materials.layout] — it draws without materials, so '{}' would be ignored",
+          return tool_result::ok(std::format("'{}' declares no [materials.layout] - it draws without materials, so '{}' would be ignored",
                                              pipeline_path.filename().string(), mat.name));
         }
         const material_layout& layout = *layout_read.layout;
@@ -395,7 +395,7 @@ namespace other {
         if (warning_count == 0) {
           return tool_result::ok(std::format("ok: '{}' packs cleanly against '{}'", mat.name, pipeline_path.filename().string()));
         }
-        return tool_result::ok(std::format("{} warning(s) — the material still renders; mismatched params fall back to layout defaults", warning_count));
+        return tool_result::ok(std::format("{} warning(s) - the material still renders; mismatched params fall back to layout defaults", warning_count));
       }
 
     }  // namespace

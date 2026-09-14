@@ -1,7 +1,7 @@
 # Other Environment
 
 A C++ game development framework with C# scripting. Everything is driven through
-`oecli` — `oecli help` lists the tools, `oecli help <tool>` documents each one.
+`oecli` - `oecli help` lists the tools, `oecli help <tool>` documents each one.
 Releases follow [VERSIONING.md](VERSIONING.md); the root `VERSION` file is the source of truth.
 
 ## Other Environment Architecture

@@ -20,14 +20,14 @@ namespace other {
   };
 
   struct joint_track {
-    natural_t joint_name_hash = 0;  /// binds to a joint by FNV(name), not index — survives retarget-lite
+    natural_t joint_name_hash = 0;  /// binds to a joint by FNV(name), not index - survives retarget-lite
     std::string joint_name;         /// tooling/debug only; runtime binds by the hash
     ostd::vector<keyframe<glm::vec3>> position_keyframes;
     ostd::vector<keyframe<glm::quat>> rotation_keyframes;
     ostd::vector<keyframe<glm::vec3>> scale_keyframes;
   };
 
-  /// IMMUTABLE after load — no playback state, const everywhere. playback time,
+  /// IMMUTABLE after load - no playback state, const everywhere. playback time,
   ///  looping, and speed live with the player
   struct animation_clip {
     std::string name;

@@ -3,14 +3,15 @@
  *  doc-04: the debug-render pull path headless, the roadmap bullet-6 lifecycle sentence,
  *  world teardown through scene destruction, pool exhaustion by contract
  **/
-#include "other_test.hpp"
-
 #include "physics/physics_environment.hpp"
 #include "physics_world/physics_body.hpp"
 #include "physics_world/physics_shape.hpp"
 
 #include "object/physics_component.hpp"
 #include "scene/scene.hpp"
+
+#include "other_test.hpp"
+
 
 namespace other {
 
@@ -79,7 +80,7 @@ namespace other {
       s.stop();
     }  /// teardown: scene dtor drains bodies, destroy_world shuts the backend world down
 
-    scene reborn("Bullet6");  /// same name, same world id — must come back fresh
+    scene reborn("Bullet6");  /// same name, same world id - must come back fresh
     scene_object& obj = reborn.create_object("crate", glm::vec3(0.f, 3.f, 0.f));
     physics_component& pc = add_body(reborn, obj, physics_body::DYNAMIC);
     reborn.play();
@@ -134,13 +135,13 @@ namespace other {
       bodies.push_back(body);
     }
 
-    EXPECT_LT(bodies.size(), 3000u);                                             /// it did run out
-    EXPECT_EQ(world->create_physics_body(settings, glm::mat4(1.f)), nullptr);    /// and stays out
+    EXPECT_LT(bodies.size(), 3000u);                                           /// it did run out
+    EXPECT_EQ(world->create_physics_body(settings, glm::mat4(1.f)), nullptr);  /// and stays out
 
     for (physics_body* body : bodies) {
       world->destroy_physics_body(body);
     }
-    EXPECT_NE(world->create_physics_body(settings, glm::mat4(1.f)), nullptr);    /// slots recycle
+    EXPECT_NE(world->create_physics_body(settings, glm::mat4(1.f)), nullptr);  /// slots recycle
   }
 
 }  // namespace other

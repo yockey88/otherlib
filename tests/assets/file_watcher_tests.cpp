@@ -129,7 +129,7 @@ namespace other {
     EXPECT_EQ(received.size(), 2u);
   }
 
-  /// S0 regression: directory watches must also surface content changes — sidecar and
+  /// S0 regression: directory watches must also surface content changes - sidecar and
   ///  live-editor reload watch directories, not individual files
   TEST_F(file_watcher_tests, subtree_diff_emits_modified) {
     std::filesystem::create_directories(temp_root / "scripts");
@@ -169,7 +169,7 @@ namespace other {
     watcher->poll();
     ASSERT_TRUE(received.empty());
 
-    /// a build writing into bin/ must never surface — the rebuild-loop tripwire
+    /// a build writing into bin/ must never surface - the rebuild-loop tripwire
     write_file(temp_root / "bin" / "Debug" / "Fake.dll", "binary");
     write_file(temp_root / "bin" / "Debug" / "generated.cs", "class G {}");
     watcher->poll();
