@@ -181,8 +181,13 @@ namespace {
     std::ifstream file(csproj, std::ios::binary);
     const std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     EXPECT_NE(contents.find("OtherCs.dll"), std::string::npos);
-    EXPECT_NE(contents.find(ctx.env.othercs_assembly("Debug").string()), std::string::npos);
-    EXPECT_NE(contents.find(ctx.env.othercs_assembly("Release").string()), std::string::npos);
+    /// the fake environment sits beside the project, so the reference is written relative
+    ///  to the project directory; the absolute path of the creating machine never lands
+    for (const std::string_view config : { "Debug", "Release" }) {
+      const filepath assembly = ctx.env.othercs_assembly(config);
+      EXPECT_NE(contents.find(assembly.lexically_normal().lexically_relative(project_dir).string()), std::string::npos) << config;
+      EXPECT_EQ(contents.find(assembly.string()), std::string::npos) << config;
+    }
   }
 
   TEST_F(cli_tool_tests, create_rejects_existing_directory_and_bad_names) {

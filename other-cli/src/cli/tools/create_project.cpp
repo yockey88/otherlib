@@ -139,6 +139,15 @@ return {
         return result;
       }
 
+      /// the OtherCs reference is written relative to the project directory so a project
+      ///  that travels with its environment (a clone of the source tree, a project inside
+      ///  an installed sdk) builds on any machine; a different drive has no relative form
+      ///  and keeps the absolute path
+      std::string othercs_hint_path(const filepath& project_dir, const filepath& assembly) {
+        const filepath relative = assembly.lexically_normal().lexically_relative(project_dir);
+        return relative.empty() ? assembly.string() : relative.string();
+      }
+
       std::string escape_toml_string(std::string_view text) {
         std::string escaped = "";
         for (const char c : text) {
@@ -251,8 +260,8 @@ return {
         { "project-description", escape_toml_string(description) },
         { "project-author", escape_toml_string(author) },
         { "csproj-name", csproj_name },
-        { "othercs-debug", ctx.env.othercs_assembly("Debug").string() },
-        { "othercs-release", ctx.env.othercs_assembly("Release").string() },
+        { "othercs-debug", othercs_hint_path(project_dir, ctx.env.othercs_assembly("Debug")) },
+        { "othercs-release", othercs_hint_path(project_dir, ctx.env.othercs_assembly("Release")) },
       };
 
       struct generated_file {

@@ -7,12 +7,12 @@
   </PropertyGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <Reference Include="OtherCs">
-      <HintPath>C:\Yock\code\Other2\OtherEnv\build\other-csharp\Debug\OtherCs.dll</HintPath>
+      <HintPath>..\build\other-csharp\Debug\OtherCs.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <Reference Include="OtherCs">
-      <HintPath>C:\Yock\code\Other2\OtherEnv\build\other-csharp\Release\OtherCs.dll</HintPath>
+      <HintPath>..\build\other-csharp\Release\OtherCs.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
