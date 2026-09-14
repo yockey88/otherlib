@@ -6,8 +6,6 @@
 #include "core/profiler.hpp"
 #include "thread/thread_safety.hpp"
 
-#include "audio/audio_environment.hpp"
-
 #include "object/animation_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "object/camera_component.hpp"
@@ -19,6 +17,9 @@
 #include "driver/driver.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
+
+#include "audio/audio_environment.hpp"
+
 
 namespace other {
   namespace detail {
@@ -634,7 +635,7 @@ namespace other {
       params.bus = static_cast<audio_bus>(std::min<uint32_t>(bus, static_cast<uint32_t>(audio_bus::NUM_BUSES) - 1));
       params.spatial = true;
       params.position = { x, y, z };
-      /// if the clip is still mid-load the environment warns and refuses — one-shots
+      /// if the clip is still mid-load the environment warns and refuses - one-shots
       ///  are best-effort by design, the next call after load lands will sound
       env->play_one_shot(params);
     }

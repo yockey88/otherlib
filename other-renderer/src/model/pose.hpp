@@ -2,7 +2,7 @@
  * \file model/pose.hpp
  *
  * pure animation runtime primitives: poses, sampling, blending, palettes.
- * plain data in/out — nothing here knows scenes, assets, or graphs.
+ * plain data in/out - nothing here knows scenes, assets, or graphs.
  **/
 #ifndef OTHER_RENDERER_MODEL_POSE_HPP
 #define OTHER_RENDERER_MODEL_POSE_HPP
@@ -39,7 +39,7 @@ namespace other {
   ///  must be the same size, @p out is resized (aliasing a or b is fine)
   void blend_poses(const pose& a, const pose& b, float alpha, pose& out);
 
-  /// model-space walk (single forward pass — parents precede children), each palette
+  /// model-space walk (single forward pass - parents precede children), each palette
   ///  entry = root_transform * model_space * inverse_bind
   void build_palette(const skeleton& skel, const pose& p, std::span<glm::mat4> out_palette);
 

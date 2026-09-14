@@ -13,13 +13,12 @@ namespace other {
   class driver;
   class driver_kernel;
 
-  /** \note also defines core-system boot/update order — keep consistent
+  /** \note also defines core-system boot/update order - keep consistent
    **/
   enum driver_system_type : uint32_t {
     /// group 0
     NETWORK_DRIVER_SYSTEM = 0,
     JOB_DRIVER_SYSTEM,
-    PEER_MESH_DRIVER_SYSTEM,
     /// group 1
     EVENT_DRIVER_SYSTEM,
     /// group 2 - might need to use events

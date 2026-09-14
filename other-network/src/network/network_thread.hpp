@@ -10,66 +10,33 @@
 #include "thread/thread.hpp"
 
 #include "network/acknowledgement_list.hpp"
-#include "network/connection_route.hpp"
 #include "network/io.hpp"
-#include "network/listener_route.hpp"
 
 #include "message/message_bus.hpp"
 #include "message/message_fields.hpp"
 
 namespace other {
 
-  class socket_transport_provider;
-  class packet_sink;
-
   class OTHER_CLASS network_thread : public thread {
    public:
-    constexpr static size_t kMaxTransportProviders = 8;
-    /// bus messages drained per pump; non-blocking, so a quiet bus costs nothing and a
-    ///  flood cannot starve io polling
-    constexpr static size_t kMaxBusMessagesPerPump = 64;
-
+    struct target {
+      natural_t id = 0;
+      // packet_sink* sink = nullptr;
+    };
     network_thread(message_bus& bus)
-        : thread("Other-Network-Thread"),
+        : thread("OtherServer-Network-Thread"),
           bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
-    inline natural_t generate_connection_id() {
-      natural_t new_id = connection_id_counter.fetch_add(1, std::memory_order_relaxed);
-      CORE_LOG_TRACE("[NEW CONN ID: {}]", new_id);
-      return new_id;
-    }
-
-    /// registration runs on the main thread only; the pump reads the registry wait-free.
-    ///  unregister only tombstones — destruction waits for reclamation_epoch() to advance past it
-    void register_provider(socket_transport_provider* provider);
-    void unregister_provider(socket_transport_provider* provider);
-    void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
-
-    /// monotonic pump-iteration counter; reads within one iteration never span into the next,
-    ///  so epoch > e + 1 proves every read concurrent with a tombstone sampled at e is done
     inline uint64_t reclamation_epoch() const {
       return pump_epoch.load(std::memory_order_seq_cst);
     }
-
-    void register_connection_route(natural_t connection_id, socket_transport_provider* provider, void* opaque_handle);
-    void register_listener_route(natural_t listener_id, socket_transport_provider* provider, void* opaque_handle);
-    /// routes die the moment a connection does; the object teardown behind them is
-    ///  deferred one pump so aborted asio handlers drain first
-    void retire_connection_route(natural_t connection_id);
-
-    /// driver-facing lifecycle notifications, network thread
-    void notify_connection_opened(natural_t connection_id, const binding_point& remote, natural_t listener_id, bool outbound);
-    void notify_connection_closed(natural_t connection_id, uint16_t reason);
 
     void send_to_driver(message&& msg);
 
     inline bool is_shutdown_pending() const { return current_state.shutdown_pending; }
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
-
-    /// route-table probe for tests; exact only between pumps
-    inline size_t active_route_count() const { return route_count.load(std::memory_order_relaxed); }
 
    private:
     struct state {
@@ -88,12 +55,8 @@ namespace other {
     std::atomic<natural_t> connection_id_counter = 1;
     std::atomic<uint64_t> pump_epoch = 0;
     std::atomic<size_t> route_count = 0;
-
-    ostd::map<natural_t, connection_route> active_connections;
-    ostd::map<natural_t, listener_route> active_listeners;
-    std::deque<natural_t> retired_connections;
-
-    slot_registry<socket_transport_provider, kMaxTransportProviders> providers;
+    // ostd::vector<transport_provider*> providers;
+    ostd::vector<target> packet_sinks;
 
     acknowledgement_list ack_list;
 
@@ -103,8 +66,6 @@ namespace other {
 
     void pump_thread() override;
     void process_message(opt<message>&& msg);
-    void drain_retired_connections();
-    void publish_route_count();
 
     void handle_command_shutdown_request(message&& msg);
     void handle_command_listen_connection(message&& msg);
@@ -114,6 +75,9 @@ namespace other {
 
     bool immediately_acknowledge_message(const message_header& header);
     void handle_request_ack_process_msg(message&& msg);
+
+    static inline natural_t max_connections = 1024;
+    natural_t current_connections = 0;
 
     microseconds get_message_timeout() override {
       return microseconds(10);

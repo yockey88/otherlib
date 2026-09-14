@@ -211,7 +211,7 @@ namespace other {
 
   ImTextureID renderer::get_texture_id(const resource_handle& handle) {
     if (!resource_exists(handle)) {
-      CORE_LOG_ERROR("Cannot get texture ID for handle {} — resource does not exist.", handle);
+      CORE_LOG_ERROR("Cannot get texture ID for handle {} - resource does not exist.", handle);
       return 0;
     }
     return get_resource<texture>(handle).get_imgui_texture_id();
@@ -344,7 +344,7 @@ namespace other {
 
   void renderer::destroy_texture(const resource_handle& handle) {
     if (!resource_exists(handle)) {
-      CORE_LOG_ERROR("Cannot destroy texture with handle {} — resource does not exist.", handle);
+      CORE_LOG_ERROR("Cannot destroy texture with handle {} - resource does not exist.", handle);
       return;
     }
     rendering()->api()->destroy_resource(handle);
@@ -353,7 +353,7 @@ namespace other {
   void renderer::resize_viewport_texture(const resource_handle& texture_handle, const glm::ivec2& new_size) {
     PROFILE_SECTION("renderer::resize_viewport_texture");
     if (!resource_exists(texture_handle)) {
-      CORE_LOG_ERROR("Cannot resize viewport texture with handle {} — resource does not exist.", texture_handle);
+      CORE_LOG_ERROR("Cannot resize viewport texture with handle {} - resource does not exist.", texture_handle);
       return;
     }
     auto& tex = get_resource<texture>(texture_handle);
@@ -530,7 +530,7 @@ namespace other {
   namespace {
 
     /// a draw is transparent when its material's base_color alpha < 1 or any live instance tint
-    ///  alpha < 1 — both fold into the packed base_color, surfacing as fragment alpha in the forward pass
+    ///  alpha < 1 - both fold into the packed base_color, surfacing as fragment alpha in the forward pass
     bool draw_call_is_transparent(const render_data& data, natural_t index) {
       const material* mat = index < data.draw_materials.size() ? data.draw_materials[index] : nullptr;
       if (mat != nullptr) {
@@ -582,7 +582,7 @@ namespace other {
     if (set == draw_set::kTransparent && scene_data->primary_camera != nullptr) {
       PROFILE_SECTION("renderer::execute_draw_calls--sort_transparent");
       /// painter's order against the viewport camera: farthest first, keyed by the first live
-      ///  instance's translation — ordering instances within one batch is instancing-rework territory
+      ///  instance's translation - ordering instances within one batch is instancing-rework territory
       const glm::vec3 cam_pos = scene_data->primary_camera->position;
       std::sort(scene_data->transparent_draws.begin(), scene_data->transparent_draws.end(), [&](natural_t a, natural_t b) {
         const glm::vec3 pa = glm::vec3(scene_data->model_buffers[a].model_matrices[0][3]);

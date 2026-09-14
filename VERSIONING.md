@@ -2,23 +2,23 @@
 
 Other Environment ships under one semantic version, `MAJOR.MINOR.PATCH`. The root
 `VERSION` file is the single source of truth; everything else derives from it.
-Current: **0.1.1** — the first enforced release (the full networking stack).
+Current: **0.1.1** - the first enforced release (the full networking stack).
 
 ## Bump rules
 
-- **PATCH** — bugfixes only; no change to any behavior surface, wire protocol, or file format.
-- **MINOR** — network comms changes, scene changes, binary format changes, or new features,
+- **PATCH** - bugfixes only; no change to any behavior surface, wire protocol, or file format.
+- **MINOR** - network comms changes, scene changes, binary format changes, or new features,
   **when** compatibility logic can (and does) bridge the two versions: an old editor and a
   new editor remain fully interoperable.
-- **MAJOR** — the same kinds of change when no compatibility logic can bridge them; builds
+- **MAJOR** - the same kinds of change when no compatibility logic can bridge them; builds
   that cannot interoperate differ in MAJOR.
 
 ## Where the version lives
 
-- `VERSION` — the source of truth, read by cmake and the tag pipeline.
-- `project(other VERSION ...)` — populated from `VERSION`; flows into the SDK package
+- `VERSION` - the source of truth, read by cmake and the tag pipeline.
+- `project(other VERSION ...)` - populated from `VERSION`; flows into the SDK package
   (`oecli package`), the installer name, and the cmake package config.
-- `other-core/src/core/version.hpp` — regenerated at configure time; exposes
+- `other-core/src/core/version.hpp` - regenerated at configure time; exposes
   `OTHER_ENVIRONMENT_VERSION_{MAJOR,MINOR,PATCH,STRING}` to code (oecli, driver boot log).
 - Plugins declare their own `x.x.x` in `OTHER_PLUGIN(...)`; in-tree plugins track the
   release version.

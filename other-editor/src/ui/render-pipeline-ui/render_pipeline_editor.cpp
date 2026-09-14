@@ -4,11 +4,13 @@
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 
 #include "core/profiler.hpp"
+
 #include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/unicode.hpp"
 
 #include "editor_driver.hpp"
+
 
 namespace other {
   namespace ui {
@@ -483,7 +485,7 @@ namespace other {
 
     // void render_pipeline_viewer::save_current() {
     //   OTHER_ASSERT(has_doc, "save with no document");
-    //   OTHER_ASSERT(last_validation.valid, "save reached with invalid def — button should be disabled");
+    //   OTHER_ASSERT(last_validation.valid, "save reached with invalid def - button should be disabled");
 
     //   const list_entry* e = (selected >= 0) ? &entries[selected] : nullptr;
     //   const filepath dst = (e && e->on_disk) ? e->path : default_pipeline_dir() / (working_def.name + ".toml");

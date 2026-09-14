@@ -125,8 +125,8 @@ namespace other {
 
    private:
     std::mutex mutex;
-    std::vector<contact_event> events;  /// std:: — appended from jolt worker threads, the arena-backed
-  };                                    ///   ostd containers are main-thread machinery
+    std::vector<contact_event> events;  /// std:: - appended from jolt worker threads, the arena-backed
+  };  ///   ostd containers are main-thread machinery
 
   /// per-world backend state; owns the jolt system, its listener, and this world's body/shape/joint maps
   struct jolt_world {
@@ -511,7 +511,7 @@ namespace other {
     }
 
     if (!result.IsValid()) {
-      /// authored data failed to build (degenerate hull, ...) — data error, never an assert
+      /// authored data failed to build (degenerate hull, ...) - data error, never an assert
       CORE_LOG_ERROR("Shape build failed for body {}: {}", body->id, result.GetError().c_str());
       return false;
     }
@@ -522,7 +522,7 @@ namespace other {
 
     JPH::BodyID jolt_id(static_cast<uint32_t>(body->backend_id));
     jw.system->GetBodyInterface().SetShape(jolt_id, container.jolt_shape,
-                                           /*inUpdateMassProperties=*/ body->body_type == physics_body::DYNAMIC,
+                                           /*inUpdateMassProperties=*/body->body_type == physics_body::DYNAMIC,
                                            body->body_type == physics_body::STATIC ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
 
     if (body->body_type == physics_body::DYNAMIC && body->mass > 0.f) {
@@ -591,7 +591,7 @@ namespace other {
         ev.body_a = resolve(ev.body_a);
         ev.body_b = resolve(ev.body_b);
         if (ev.body_a < 0 || ev.body_b < 0) {
-          continue;  /// a side died the same step — dropped by contract
+          continue;  /// a side died the same step - dropped by contract
         }
       }
       out.push_back(ev);
@@ -600,7 +600,7 @@ namespace other {
 
   namespace {
 
-    /// sensors are triggers, not surfaces — rays pass through them
+    /// sensors are triggers, not surfaces - rays pass through them
     class ignore_sensors_filter final : public JPH::BodyFilter {
      public:
       bool ShouldCollideLocked(const JPH::Body& body) const override {
@@ -699,7 +699,7 @@ namespace other {
       return;
     }
     world_state(world_id).system->GetBodyInterface().SetLinearVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
-                                                                      JPH::Vec3(velocity.x, velocity.y, velocity.z));
+                                                                       JPH::Vec3(velocity.x, velocity.y, velocity.z));
   }
 
   glm::vec3 jolt_api::get_linear_velocity(natural_t world_id, physics_world* world, physics_body* body) {
@@ -718,7 +718,7 @@ namespace other {
       return;
     }
     world_state(world_id).system->GetBodyInterface().SetAngularVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
-                                                                       JPH::Vec3(velocity.x, velocity.y, velocity.z));
+                                                                        JPH::Vec3(velocity.x, velocity.y, velocity.z));
   }
 
   glm::vec3 jolt_api::get_angular_velocity(natural_t world_id, physics_world* world, physics_body* body) {

@@ -203,7 +203,7 @@ namespace other {
   }
 
   /// regression: request_region used to lock arena_mutex and then call allocate(),
-  ///  which locks it again — this test would hang instead of passing
+  ///  which locks it again - this test would hang instead of passing
   TEST_F(arena_test, request_region_returns_usable_memory) {
     arena* a = subsystem<arena>::get();
     ASSERT_NE(a, nullptr);

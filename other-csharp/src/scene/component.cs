@@ -23,7 +23,7 @@ namespace Other
     private Core.OtherObject owner = null;    // set by SceneObject.GetComponent
     protected readonly ulong component_id;
 
-    /// owner-bound wrappers follow the owner's current native id — a play/stop restore
+    /// owner-bound wrappers follow the owner's current native id - a play/stop restore
     /// mints new runtime ids, so a cached raw id goes stale the moment the scene rebuilds
     public UInt64 ObjectId => owner != null ? owner.ObjectID : bound_object_id;
 

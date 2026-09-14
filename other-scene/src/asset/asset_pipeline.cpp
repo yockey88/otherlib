@@ -9,6 +9,7 @@
 #include "core/profiler.hpp"
 #include "file/filesystem.hpp"
 #include "file/path_helpers.hpp"
+#include "serialization/animation_serializer.hpp"
 #include "serialization/scene_serializer.hpp"
 
 #include "gpu_resource/material.hpp"
@@ -20,11 +21,6 @@
 #include "scene/scene.hpp"
 
 #include "tools/project_tool.hpp"
-
-#include "serialization/animation_serializer.hpp"
-
-#include "audio/audio_environment.hpp"
-#include "audio/audio_import.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
@@ -41,6 +37,9 @@
 #include "asset/pipelines/script_source_pipeline.hpp"
 #include "asset/pipelines/stub_pipeline.hpp"
 #include "asset/pipelines/texture_pipeline.hpp"
+#include "audio/audio_environment.hpp"
+#include "audio/audio_import.hpp"
+
 
 namespace other {
 
@@ -384,7 +383,7 @@ namespace other {
         {
           .name = std::format("Decode Audio Asset {}", asset_ptr->id),
           .priority = job::priority::LOW,
-          /// standalone decoder instance, never the engine — safe off the main thread
+          /// standalone decoder instance, never the engine - safe off the main thread
           .thread_affinity = job::affinity::WORKER_THREAD,
         },
         [&imported, source_path]() {
@@ -737,7 +736,7 @@ namespace other {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
       /// live scenes enter via add_scene_asset (path_hash == 0, scene attached); resolver-dispatched
-      /// docs (path_hash != 0, no scene) only parse to validate/track — instantiation re-parses via the scene graph
+      /// docs (path_hash != 0, no scene) only parse to validate/track - instantiation re-parses via the scene graph
       if (asset_ptr->path_hash != 0) {
         const std::string standalone_extension = asset_ptr->load_path.extension().string();
         if (!serialization::is_scene_file_extension(standalone_extension)) {
@@ -900,7 +899,7 @@ namespace other {
 
           material mat = std::move(*p->mat);
           /// slot paths are relative to the .omat; the texture hash is decided by the asset handler at
-          //  load time — never predict it, load (idempotent) and read it back; this is the lazy kick-off for legacy/standalone materials
+          //  load time - never predict it, load (idempotent) and read it back; this is the lazy kick-off for legacy/standalone materials
           for (const auto& [slot, rel] : mat.texture_paths) {
             if (rel.empty()) {
               continue;
@@ -972,7 +971,7 @@ namespace other {
         auto* env = subsystem<audio_environment>::get();
         OTHER_ASSERT(env != nullptr, "Audio environment subsystem is not available in unload_audio");
         /// voices reading this clip's PCM die on the main thread before the buffer
-        ///  is freed — the remove_clip no-live-voices contract, satisfied by order
+        ///  is freed - the remove_clip no-live-voices contract, satisfied by order
         env->stop_voices_on(asset_ptr->path_hash);
         env->remove_clip(asset_ptr->path_hash);
       }

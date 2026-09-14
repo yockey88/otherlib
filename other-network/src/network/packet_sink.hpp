@@ -11,9 +11,6 @@
 
 namespace other {
 
-  /// a byte endpoint on a transport: the link (link_sink) or a boundary observer (taps,
-  ///  tooling). called on the owning provider's home thread — implementations marshal
-  ///  themselves if they need another one
   class OTHER_CLASS packet_sink {
     OTHER_ENVIRONMENT_INTERFACE("Network", "PacketSink");
 

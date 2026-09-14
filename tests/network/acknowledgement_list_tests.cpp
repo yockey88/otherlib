@@ -92,7 +92,7 @@ namespace other {
     EXPECT_NE(second, third);
 
     /// erasing from the middle used to move the later entries' timers, cancelling their
-    ///  pending waits — both survivors must still reach their timeout handlers
+    ///  pending waits - both survivors must still reach their timeout handlers
     acks.handle_ack(second, header, {});
     EXPECT_EQ(acks.pending_count(), 2u);
 

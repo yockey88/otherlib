@@ -2,11 +2,9 @@
  * \file plugin/plugin_enter.cpp
  *
  * the plugin-side half of the handshake: these objects link into every plugin image, so
- *  nothing here may reference the tracy-touching host backend TU — the profiler arrives
+ *  nothing here may reference the tracy-touching host backend TU - the profiler arrives
  *  as a table pointer through the argv, exactly like the subsystems do
  **/
-#include "plugin/plugin.hpp"
-
 #include "core/logger.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
@@ -17,6 +15,9 @@
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
+
+#include "plugin/plugin.hpp"
+
 
 namespace other {
 

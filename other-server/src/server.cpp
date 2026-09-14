@@ -99,7 +99,7 @@ namespace other {
     binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_port };
 
     invoke_driver_method("InitializeServer", config_port);
-    core_system<network_system>().listen_at_endpoint(endpoint, "tcp");
+    core_system<network_system>().listen({ .binding = endpoint }, "tcp");
   }
 
   void server::on_shutdown() {

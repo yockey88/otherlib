@@ -14,9 +14,9 @@
 #include "file/filesystem.hpp"
 #include "serialization/scene_serializer.hpp"
 
+#include "dotnet/csproj_helpers.hpp"
 #include "gpu_resource/material.hpp"
 
-#include "dotnet/csproj_helpers.hpp"
 
 namespace other {
   namespace detail {
@@ -559,7 +559,7 @@ namespace other {
         } else if (is_environment_owned(hint)) {
           CORE_LOG_DEBUG("csproj '{}': environment-owned reference '{}' (not an asset edge)", csproj.string(), hint.string());
         } else {
-          CORE_LOG_WARN("csproj '{}': machine-local reference '{}' — unportable, skipped", csproj.string(), hint.string());
+          CORE_LOG_WARN("csproj '{}': machine-local reference '{}' - unportable, skipped", csproj.string(), hint.string());
         }
       });
 
@@ -587,7 +587,7 @@ namespace other {
       std::string_view json_text = bytes;
       if (extension == ".glb") {
         /// glb layout: [magic][version][length] then chunk0 [chunkLength][chunkType 'JSON'] + json bytes;
-        //  only the json chunk is read — binary chunks never carry dependencies
+        //  only the json chunk is read - binary chunks never carry dependencies
         constexpr size_t kGlbHeaderSize = 20;
         constexpr uint32_t kGlbMagic = 0x46546C67;       // 'glTF'
         constexpr uint32_t kJsonChunkType = 0x4E4F534A;  // 'JSON'
@@ -619,7 +619,7 @@ namespace other {
       ostd::vector<dependency_declaration> out;
 
       /// buffer sidecars (.bin) are deliberately not declared: load_asset rejects unknown extensions,
-      //  and baked .omdl — not fake asset nodes — is what makes binary payloads first-class
+      //  and baked .omdl - not fake asset nodes - is what makes binary payloads first-class
       if (!doc.contains("images") || !doc["images"].is_array()) {
         return out;
       }
@@ -694,7 +694,7 @@ namespace other {
       if (!parsed.document->script.empty()) {
         declare(resolve_relative(std::filesystem::absolute(scene_path), parsed.document->script), asset::SCRIPT_FILE);
       }
-      /// component payload refs are load paths, resolved against the working directory —
+      /// component payload refs are load paths, resolved against the working directory -
       //  the same convention codec_services::resolve_asset applies at instantiation
       for (const serialization::component_asset_ref& ref : serialization::collect_scene_asset_refs(*parsed.document)) {
         declare(std::filesystem::absolute(filepath{ ref.path }).lexically_normal(), ref.type);

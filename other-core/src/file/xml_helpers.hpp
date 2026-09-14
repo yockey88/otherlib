@@ -50,7 +50,7 @@ namespace other {
 
     template <typename T>
     T parse_property(std::string_view text, std::string_view property_name) {
-      static_assert(always_false_v<T>, "no csproj property parser for this type — add a specialization");
+      static_assert(always_false_v<T>, "no csproj property parser for this type - add a specialization");
     }
 
     template <>

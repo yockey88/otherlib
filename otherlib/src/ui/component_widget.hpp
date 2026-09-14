@@ -160,7 +160,7 @@ namespace other {
             changed = true;
           }
         } else {
-          /// unknown type — display type name as read-only
+          /// unknown type - display type name as read-only
           inspector::property_display(field_name, "<unsupported type>", colors::kTextDisabled);
         }
 
@@ -193,7 +193,7 @@ namespace other {
       bool draw_field(std::string_view label, FT& value, const field_context& ctx) {
         const type_key key = type_key_of<FT>();
 
-        /// asset-id members must not fall through to the raw uint64 editor — they get
+        /// asset-id members must not fall through to the raw uint64 editor - they get
         ///  the slot + picker (attr::asset_identifier_field carries the type)
         if constexpr (std::same_as<FT, natural_t>) {
           if (ctx.flags.asset_type != asset::EMPTY) {

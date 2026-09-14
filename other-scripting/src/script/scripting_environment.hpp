@@ -14,7 +14,6 @@
 #include "lua/lua_host.hpp"
 #include "script/script_object.hpp"
 
-
 namespace other {
 
   class scripting_environment : public subsystem<scripting_environment> {
@@ -33,7 +32,7 @@ namespace other {
     void dotnet_register_native_object(integer_t id, const std::string_view type_name);
     void dotnet_unregister_native_object(integer_t id);
 
-    /// play-stop restore: managed instances survive the native scene rebuild — only their
+    /// play-stop restore: managed instances survive the native scene rebuild - only their
     ///  native binding resets and re-establishes; no Awake/Remove fires
     void reset_dotnet_object_binding(integer_t id);
     void rebind_dotnet_object(integer_t id, void* native_handle);

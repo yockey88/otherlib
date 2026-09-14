@@ -11,12 +11,14 @@
 
 #include "core/defines.hpp"
 #include "math/bounding_box.hpp"
+
 #include "model/animation_limits.hpp"
+
 
 namespace other {
 
   struct joint {
-    natural_t name_hash = 0;  // FNV(name) — clip tracks bind by this
+    natural_t name_hash = 0;  // FNV(name) - clip tracks bind by this
     std::string name;
     int16_t parent = -1;             // index into joints; -1 = root. parents ALWAYS precede children
     glm::mat4 inverse_bind{ 1.f };   // aiBone::mOffsetMatrix

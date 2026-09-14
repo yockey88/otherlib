@@ -32,7 +32,7 @@ namespace other {
 
   struct audio_config {
     uint32_t sample_rate = 48000;
-    bool force_pump_mode = false;  /// config key audio.force-pump — headless/CI/tests
+    bool force_pump_mode = false;  /// config key audio.force-pump - headless/CI/tests
   };
 
   struct voice_params {
@@ -62,14 +62,14 @@ namespace other {
     virtual ~audio_environment();
 
     /// device open; any failure (or force/invalid config) falls back to pump mode
-    ///  and warns once — the environment is always usable after this returns true
+    ///  and warns once - the environment is always usable after this returns true
     bool initialize(const audio_config& config);
     void shutdown();
 
     bool is_initialized() const { return initialized; }
     bool pump_mode() const { return pump_active; }
     /// pump mode only: advance the engine by dt worth of frames into a discard
-    ///  buffer — deterministic time for CI/tests; called by audio_system per tick
+    ///  buffer - deterministic time for CI/tests; called by audio_system per tick
     void pump(double dt);
 
     /// clip registry keyed by path_hash; add asserts duplicate keys, remove asserts no live
@@ -86,7 +86,7 @@ namespace other {
     void update_voice(voice_id id, const voice_dynamics& dynamics);
     bool voice_finished(voice_id id) const;
     /// non-asserting: false for handles invalidated under their holder
-    ///  (stop_voices_on during a clip reload/unload) — probe before stop/query
+    ///  (stop_voices_on during a clip reload/unload) - probe before stop/query
     bool voice_alive(voice_id id) const;
     void stop_voices_on(natural_t clip_hash);
     void stop_all_voices();

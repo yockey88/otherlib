@@ -76,7 +76,7 @@ namespace other {
     OTHER_ASSERT(fs != nullptr, "file_system subsystem unavailable in virtualize");
 
     const resolved_path rp = fs->deep_search_for_mount(abs);
-    OTHER_ASSERT(rp.is_valid(), "'{}' is not under any mount — cannot be a dependency", abs.string());
+    OTHER_ASSERT(rp.is_valid(), "'{}' is not under any mount - cannot be a dependency", abs.string());
 
     std::string vp{ rp.mount_name };
     for (const std::string& piece : rp.relative_path_components) {

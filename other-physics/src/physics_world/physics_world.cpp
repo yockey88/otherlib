@@ -243,7 +243,7 @@ namespace other {
     }
     if (build_desc.fit_render_bounds) {
       if (fit_bounds == nullptr) {
-        return shape;  /// model bounds not available yet — revalidation retries
+        return shape;  /// model bounds not available yet - revalidation retries
       }
       /// symmetric fit around the model origin; exact off-center boxes need compound shapes
       build_desc.half_extents = glm::max(glm::abs(fit_bounds->min), glm::abs(fit_bounds->max));

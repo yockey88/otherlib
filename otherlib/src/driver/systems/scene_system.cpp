@@ -5,20 +5,22 @@
 
 #include <sol/types.hpp>
 
-#include "lua/lua_sandbox.hpp"
 #include "serialization/scene_serializer.hpp"
 
+#include "lua/lua_sandbox.hpp"
+
 #include "object/audio_listener_component.hpp"
-#include "object/network_component.hpp"
-#include "object/network_settings_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
+#include "object/network_component.hpp"
+#include "object/network_settings_component.hpp"
 #include "object/physics_joint_component.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
+
 
 namespace other {
 
@@ -102,7 +104,7 @@ namespace other {
 
     if (!serialization::is_scene_file_extension(scene_path.extension().string())) {
       CORE_LOG_ERROR("Scene file '{}' is not a scene document ({}/{} expected).", scene_path.string(), serialization::kSceneTomlExtension, serialization::kSceneBinaryExtension);
-      CORE_LOG_ERROR("Lua scene files are no longer loadable — migrate the scene to a .oscn document and reference the lua as its behavior-hook `script`.");
+      CORE_LOG_ERROR("Lua scene files are no longer loadable - migrate the scene to a .oscn document and reference the lua as its behavior-hook `script`.");
       return 0;
     }
 
@@ -187,7 +189,7 @@ namespace other {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
     }
 
-    /// declarative content first, then the behavior-hook script — both only happen the
+    /// declarative content first, then the behavior-hook script - both only happen the
     ///  first time the scene activates
     {
       PROFILE_SECTION("scene_system::set_scene_to_active--instantiate-scene");
@@ -440,7 +442,7 @@ namespace other {
     });
     if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
       /// scene documents (snapshot nodes) unload on refresh/teardown with no graph
-      //  scene attached — same contract split as handle_scene_asset_loaded_event
+      //  scene attached - same contract split as handle_scene_asset_loaded_event
       auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
       const asset* scene_asset = assets.get_asset(scene_asset_id);
       if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {

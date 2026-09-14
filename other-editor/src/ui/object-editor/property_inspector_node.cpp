@@ -171,7 +171,7 @@ namespace other {
         OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr");
         natural_t obj_id = context.current_selection.objects.front();
         /// selection ids die when a snapshot restore (play/stop, undo) reassigns runtime
-        ///  ids — a stale entry is dropped, never dereferenced
+        ///  ids - a stale entry is dropped, never dereferenced
         scene_object* selected = active_scene->find_object(obj_id);
         if (selected == nullptr) {
           context.current_selection.objects.clear();
@@ -212,7 +212,7 @@ namespace other {
         /// components
         draw_component_section<transform>("Transform", colors::scene_object::kComponentTransform, active_scene, &obj);
         draw_component_section<script_component>("Scripts", colors::scene_object::kComponentScript, active_scene, &obj);
-        /// model/material id edits need no callback — prepare_render_data validates and
+        /// model/material id edits need no callback - prepare_render_data validates and
         ///  rebuilds obj_model once the async load lands
         draw_component_section<render_component>("Graphics Object", colors::scene_object::kComponentRenderer, active_scene, &obj);
         draw_component_section<physics_component>("Physics Object", colors::scene_object::kComponentPhysics, active_scene, &obj);

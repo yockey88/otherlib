@@ -16,7 +16,6 @@
 #include "driver/systems/input_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
-#include "driver/systems/peer_mesh_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -30,7 +29,6 @@ namespace other {
     /// network system always initializes; other subsystems depend on it and it no-ops when disabled
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
     add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
-    add_system<peer_mesh_system>(driver_system_type::PEER_MESH_DRIVER_SYSTEM);
 
     /// always load events/input/assets
     add_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM);

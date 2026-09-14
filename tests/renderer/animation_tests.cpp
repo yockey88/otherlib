@@ -9,18 +9,17 @@
 #include <format>
 #include <iostream>
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <gtest/gtest.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "core/fnv.hpp"
+#include "serialization/animation_serializer.hpp"
 
 #include "model/model_importer.hpp"
 #include "model/pose.hpp"
 
-#include "serialization/animation_serializer.hpp"
-
 #include "other_test.hpp"
+
 
 namespace other {
 
@@ -176,7 +175,7 @@ namespace other {
 
     for (size_t i = 0; i < skel.joints.size(); ++i) {
       const joint& j = skel.joints[i];
-      /// parents ALWAYS precede children — build_palette is a single forward pass
+      /// parents ALWAYS precede children - build_palette is a single forward pass
       EXPECT_LT(j.parent, static_cast<int16_t>(i));
       EXPECT_GE(j.parent, int16_t{ -1 });
       EXPECT_EQ(j.name_hash, FNV(j.name));
@@ -227,7 +226,7 @@ namespace other {
     ASSERT_EQ(data.clips.size(), 4u);
     for (const animation_clip& clip : data.clips) {
       EXPECT_FALSE(clip.name.empty());
-      /// 40 ticks at 24 tps — seconds normalization is what distinguishes this from raw assimp data
+      /// 40 ticks at 24 tps - seconds normalization is what distinguishes this from raw assimp data
       EXPECT_NEAR(clip.duration, 1.667f, 0.01f);
       ASSERT_FALSE(clip.joint_tracks.empty());
 
@@ -316,7 +315,7 @@ namespace other {
     clip_binding binding;
     binding.build(clip, skel);
 
-    /// the math clamps past the end — no implicit wrapping
+    /// the math clamps past the end - no implicit wrapping
     pose out;
     out.reset_to_bind(skel);
     sample_clip(clip, binding, 3.f, out);
@@ -331,7 +330,7 @@ namespace other {
   TEST_F(animation_tests, binding_partial) {
     const skeleton skel = make_chain_skeleton();
 
-    /// tracks for A and C, plus a D this skeleton does not have — the retarget-lite anchor
+    /// tracks for A and C, plus a D this skeleton does not have - the retarget-lite anchor
     animation_clip clip;
     clip.name = "partial";
     clip.duration = 1.f;
@@ -471,7 +470,7 @@ namespace other {
     glm::mat4 palette[3] = { glm::mat4(0.f), glm::mat4(0.f), glm::mat4(0.f) };
     build_palette(skel, bind_pose, palette);
 
-    /// bind pose ⇒ model-space chain × inverse_bind cancels for every joint — the
+    /// bind pose ⇒ model-space chain × inverse_bind cancels for every joint - the
     ///  correctness anchor for ordering, parenting, and the palette convention
     for (size_t i = 0; i < skel.joints.size(); ++i) {
       expect_mat4_near(palette[i], glm::mat4(1.f));

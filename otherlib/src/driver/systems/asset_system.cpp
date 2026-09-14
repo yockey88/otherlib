@@ -4,14 +4,15 @@
 #include "driver/systems/asset_system.hpp"
 
 #include "file/filesystem.hpp"
+#include "serialization/component_codec.hpp"
 
 #include "scene/scene.hpp"
-#include "serialization/component_codec.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/driver_mounts.hpp"
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
+
 
 namespace other {
 
@@ -172,7 +173,7 @@ namespace other {
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available while pushing watch filters.");
 
     /// domain glob_sets are replace-registered on every re-parse, so the pointers must be
-    //  re-pushed after every resolve/re_resolve — stale filters would let bin/ churn through
+    //  re-pushed after every resolve/re_resolve - stale filters would let bin/ churn through
     for (const manifest_domain& d : asset_mgr->manifest_domains()) {
       fs->apply_watch_filter(d.root_abs, &d.set);
     }

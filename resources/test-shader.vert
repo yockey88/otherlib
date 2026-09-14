@@ -3,7 +3,7 @@ layout (location = 1) in vec3 OE_normal;
 layout (location = 2) in vec3 OE_tangent;
 layout (location = 3) in vec3 OE_bitanget;
 layout (location = 4) in vec2 OE_tex_coords;
-/// all-float vertex stream (see basic-geometry.glsl) — bone ids arrive as floats
+/// all-float vertex stream (see basic-geometry.glsl) - bone ids arrive as floats
 layout (location = 5) in vec4 OE_bone_ids;
 layout (location = 6) in vec4 OE_bone_weights;
 

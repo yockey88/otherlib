@@ -140,7 +140,7 @@ namespace other {
       OTHER_ASSERT(env != nullptr, "Scripting environment is not available");
       PROFILE_SECTION("draw_behavior_field");
 
-      /// field access goes through the behavior's own script object, by name — snapshots
+      /// field access goes through the behavior's own script object, by name - snapshots
       ///  are per-frame so the id is never stale across an assembly refresh
       auto* script_obj = env->get_object(behavior.script_object_id);
       if (script_obj == nullptr || script_obj->dotnet_object == nullptr) {
@@ -267,7 +267,7 @@ namespace other {
 
           bool field_changed = false;
           if (is_color) {
-            /// treat as single channel — unusual but handle it
+            /// treat as single channel - unusual but handle it
             inspector::begin_property_row(label);
             std::string id = std::format("##{}", label);
             field_changed = ImGui::ColorEdit3(id.c_str(), &val, ImGuiColorEditFlags_Float);

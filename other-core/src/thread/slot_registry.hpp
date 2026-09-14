@@ -11,7 +11,7 @@
 namespace other {
 
   /// fixed-capacity registry: one writer thread, N wait-free lock-free readers. erase only
-  ///  tombstones — destroy the pointee only once readers have moved past (reclamation_epoch)
+  ///  tombstones, destroy the pointee only once readers have moved past
   template <typename T, size_t Capacity>
   class slot_registry {
    public:
@@ -32,6 +32,7 @@ namespace other {
       if (n >= Capacity) {
         return false;
       }
+
       /// slot before count: a reader scanning [0, published) never sees an unwritten slot
       slots[n].store(entry, std::memory_order_relaxed);
       published.store(n + 1, std::memory_order_release);

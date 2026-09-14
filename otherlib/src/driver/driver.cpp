@@ -12,10 +12,6 @@
 #include "core/logger_sinks.hpp"
 #include "thread/thread_safety.hpp"
 
-#include "network/memory/memory_transport_provider.hpp"
-#include "network/tcp/tcp_transport_provider.hpp"
-#include "network/udp/udp_transport_provider.hpp"
-
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -24,7 +20,6 @@
 #include "scripting/interfaces/rendering_interfaces.hpp"
 #include "tools/environment_console_sink.hpp"
 #include "tools/scene_cli_tool.hpp"
-
 
 namespace other {
 
@@ -308,9 +303,6 @@ namespace other {
     if (network_enabled()) {
       OTHER_ASSERT(driver_kernel_ptr->has_core_system<network_system>(), "Network system is not initialized in driver kernel.");
       auto& net_system = driver_kernel_ptr->get_core_system<network_system>();
-      net_system.register_transport_provider(make_scope<tcp_transport_provider>());
-      net_system.register_transport_provider(make_scope<udp_transport_provider>());
-      net_system.register_transport_provider(make_scope<memory_transport_provider>());
     }
 
     {

@@ -12,7 +12,7 @@ namespace other {
   struct box3d_world;
 
   /// backend over Box3D (Erin Catto, C API). event-POLLING model: contacts arrive as arrays
-  ///   after each step — no listener threads, no locks anywhere in this backend
+  ///   after each step - no listener threads, no locks anywhere in this backend
   class box3d_api : public physics_api {
    public:
     box3d_api() = default;

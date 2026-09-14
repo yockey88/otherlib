@@ -7,12 +7,12 @@
 #include <fstream>
 
 #include "core/profiler.hpp"
+#include "serialization/animation_serializer.hpp"
 
 #include "model/model_importer.hpp"
 
-#include "serialization/animation_serializer.hpp"
-
 #include "tools/scene_cli_tool.hpp"
+
 
 namespace other {
   namespace cli {
@@ -94,7 +94,7 @@ namespace other {
         for (size_t i = 0; i < data.skel.joints.size(); ++i) {
           const joint& j = data.skel.joints[i];
           if (j.parent == -1) {
-            /// full bind TRS for roots — the fastest place to spot convention problems
+            /// full bind TRS for roots - the fastest place to spot convention problems
             ctx.print("    [{}] '{}' (parent {}) | bind pos ({:.3f}, {:.3f}, {:.3f}) rot wxyz ({:.4f}, {:.4f}, {:.4f}, {:.4f}) scale ({:.3f}, {:.3f}, {:.3f})",
                       i, j.name, j.parent,
                       j.bind_position.x, j.bind_position.y, j.bind_position.z,

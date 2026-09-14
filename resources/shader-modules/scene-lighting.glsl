@@ -1,6 +1,6 @@
 /// canonical scene lighting for material-driven passes: the deferred shading resolve and the
 /// forward transparent pass compile this against the same light/environment data, so surfaces
-/// shade identically on both paths. flat include convention (stb_include has no guards) — the
+/// shade identically on both paths. flat include convention (stb_include has no guards) - the
 /// includer pulls in camera.glsl, simulation-environment.glsl, and basic-lighting.glsl first.
 
 uniform sampler3D OE_env_cubemap;
@@ -16,7 +16,7 @@ uniform sampler3D OE_voxel_tex;
 
 /// metal environment response tuning: the sky mirror takes reduced diffuse-AO occlusion (full
 /// env.a double-darkens polished metal) and metals keep a slice of the irradiance volume as a
-/// floor — real metal reflects its diffuse surroundings, and the default sky alone is dim gray
+/// floor - real metal reflects its diffuse surroundings, and the default sky alone is dim gray
 #ifndef OE_METAL_AO_BLEND
 #define OE_METAL_AO_BLEND 0.5
 #endif
@@ -93,8 +93,8 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
       // vis *
       ((diff * atten) + (specular * atten));
     } else if (lights[i].type == 2.f) {
-      /// directional (gpu::light::kDirection): vector.xyz points TOWARD the light — the same
-      /// TO-sun convention sim env uses — with no attenuation; shadowing rides the sun-shadow
+      /// directional (gpu::light::kDirection): vector.xyz points TOWARD the light - the same
+      /// TO-sun convention sim env uses - with no attenuation; shadowing rides the sun-shadow
       /// factor applied to the whole accumulated term below
       vec3 light_dir = normalize(lights[i].vector.xyz);
       vec3 diff = max(dot(world_normal, light_dir), 0.0) * kd * lights[i].color.rgb;

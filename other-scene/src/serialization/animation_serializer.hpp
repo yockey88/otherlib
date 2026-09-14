@@ -1,7 +1,7 @@
 /**
  * \file serialization/animation_serializer.hpp
  *
- * .oanim — standalone binary animation clip:
+ * .oanim - standalone binary animation clip:
  *
  *   [magic 'OANM' 4B] [format u16 = 1] [flags u16 = 0]
  *   [name str] [duration f32] [track_count u32]
@@ -12,7 +12,7 @@
  *     [scale_count u32] scale_count × [t f32][vec3 12B]
  *
  * strings are [size u32][chars]; everything rides field_codec's raw little-endian
- * primitives. clips are homogeneous dense data, so there is no section table —
+ * primitives. clips are homogeneous dense data, so there is no section table -
  * format bumps cover evolution. parsing never asserts on bytes: malformed input
  * is an error result.
  **/

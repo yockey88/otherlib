@@ -1,10 +1,8 @@
 /**
  * \file tests/physics/contact_tests.cpp
  *  contacts/queries/joints: begin/end transitions, triggers, raycasts, breakable welds, body
- *  verbs — asserted at the native drain (C# dispatch is exercised live by the editor anchors)
+ *  verbs - asserted at the native drain (C# dispatch is exercised live by the editor anchors)
  **/
-#include "other_test.hpp"
-
 #include "physics/physics_environment.hpp"
 #include "physics_world/physics_body.hpp"
 #include "physics_world/physics_shape.hpp"
@@ -12,6 +10,9 @@
 #include "object/physics_component.hpp"
 #include "object/physics_joint_component.hpp"
 #include "scene/scene.hpp"
+
+#include "other_test.hpp"
+
 
 namespace other {
 
@@ -96,7 +97,7 @@ namespace other {
     physics_shape_desc gate_shape;
     gate_shape.half_extents = { 2.f, 0.5f, 2.f };
     scene_object& gate_obj = s.create_object("gate", glm::vec3(0.f, 2.f, 0.f));
-    physics_component& gate = add_body(s, gate_obj, physics_body::STATIC, gate_shape, /*is_trigger=*/ true);
+    physics_component& gate = add_body(s, gate_obj, physics_body::STATIC, gate_shape, /*is_trigger=*/true);
 
     scene_object& obj = s.create_object("crate", glm::vec3(0.f, 5.f, 0.f));
     physics_component& crate = add_body(s, obj, physics_body::DYNAMIC);
@@ -109,9 +110,9 @@ namespace other {
     }
 
     EXPECT_TRUE(probe.trigger_begin_seen);
-    EXPECT_TRUE(probe.trigger_end_seen);                    /// it passed through and left
-    EXPECT_FALSE(probe.begin_seen);                          /// never a solid contact
-    EXPECT_LT(crate.body->get_current_position().y, 1.f);    /// the sensor did not catch it
+    EXPECT_TRUE(probe.trigger_end_seen);                   /// it passed through and left
+    EXPECT_FALSE(probe.begin_seen);                        /// never a solid contact
+    EXPECT_LT(crate.body->get_current_position().y, 1.f);  /// the sensor did not catch it
     s.stop();
   }
 
@@ -123,7 +124,7 @@ namespace other {
     raycast_hit hit = s.get_storage().physics->cast_ray({ 0.f, 5.f, 0.f }, { 0.f, -1.f, 0.f }, 10.f);
     ASSERT_TRUE(hit.hit);
     EXPECT_EQ(hit.owner_object_id, obj.id);
-    EXPECT_NEAR(hit.point.y, 0.5f, 1e-3f);   /// top face of the unit box
+    EXPECT_NEAR(hit.point.y, 0.5f, 1e-3f);  /// top face of the unit box
     EXPECT_NEAR(hit.normal.y, 1.f, 1e-3f);
     EXPECT_NEAR(hit.distance, 4.5f, 1e-3f);
 
@@ -137,7 +138,7 @@ namespace other {
     add_body(s, solid, physics_body::STATIC);
 
     scene_object& sensor = s.create_object("sensor", glm::vec3(0.f, 2.f, 0.f));
-    add_body(s, sensor, physics_body::STATIC, {}, /*is_trigger=*/ true);
+    add_body(s, sensor, physics_body::STATIC, {}, /*is_trigger=*/true);
 
     /// the sensor sits between the origin and the solid box; the ray must pass through it
     raycast_hit hit = s.get_storage().physics->cast_ray({ 0.f, 5.f, 0.f }, { 0.f, -1.f, 0.f }, 10.f);

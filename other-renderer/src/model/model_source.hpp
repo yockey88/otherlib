@@ -8,8 +8,10 @@
 #include "core/ref_counted.hpp"
 
 #include "gpu_resource/material.hpp"
-#include "model.hpp"
 #include "model/model_data.hpp"
+
+#include "model.hpp"
+
 
 namespace other {
 
@@ -32,7 +34,7 @@ namespace other {
     model produce_model(const std::string& name = "", std::span<const uint32_t> submesh_idxs = {});
 
     /// value-set materials promoted from model_data::materials at load, index-aligned with
-    ///  submesh.material_index — owned by the model, not assets or files
+    ///  submesh.material_index - owned by the model, not assets or files
     const ostd::vector<material>& imported_materials() const { return imported; }
     ostd::vector<material>& imported_materials() { return imported; }
     void set_imported_materials(ostd::vector<material> materials) { imported = std::move(materials); }

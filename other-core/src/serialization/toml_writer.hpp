@@ -7,13 +7,14 @@
 #define OTHER_CORE_SERIALIZATION_TOML_WRITER_HPP
 
 #include <set>
-#include "data-structures/std_container.hpp"
 #include <sstream>
 #include <string>
 
 #include <toml++/toml.h>
 
 #include "core/defines.hpp"
+#include "data-structures/std_container.hpp"
+
 
 namespace other {
 
@@ -29,9 +30,9 @@ namespace other {
     /// -- document structure, in call order ---------------------------------
     toml_writer& comment(std::string_view text);
     toml_writer& blank();
-    /// "[a.b]" — duplicate header for the same dotted path is fatal
+    /// "[a.b]" - duplicate header for the same dotted path is fatal
     toml_writer& table(std::string_view dotted_path);
-    /// "[[a.b]]" — repeatable
+    /// "[[a.b]]" - repeatable
     toml_writer& table_array(std::string_view dotted_path);
 
     /// -- keys --------------------------------------------------------------
@@ -194,8 +195,8 @@ namespace other {
     bool pending_blank = false;
     bool any_content = false;
 
-    std::string current_table_path = "";      /// "" = document root
-    std::set<std::string> declared_tables;    /// explicit [x] headers, dup detection
+    std::string current_table_path = "";    /// "" = document root
+    std::set<std::string> declared_tables;  /// explicit [x] headers, dup detection
     std::set<std::string> current_table_keys;
 
     toml::table mirror;

@@ -57,7 +57,7 @@ target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} othe
 
 ## gpu timestamp zones (gl_profiler.hpp) talk to the host image's tracy client directly;
 ##  renderer objects must never be pulled into an unloadable plugin image (the client's
-##  DLL-unload deadlock — see core/profiler_backend.hpp). flags mirror other_core's.
+##  DLL-unload deadlock - see core/profiler_backend.hpp). flags mirror other_core's.
 target_include_directories(other_renderer PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy>)
 target_compile_definitions(other_renderer PRIVATE
   "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ENABLE>"

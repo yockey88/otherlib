@@ -12,7 +12,7 @@ namespace other {
 
   struct net_object_entry {
     natural_t net_id = 0;
-    /// runtime scene id — remints on snapshot restore, entries are rebuilt then
+    /// runtime scene id - remints on snapshot restore, entries are rebuilt then
     natural_t object_id = 0;
     uint16_t owner_peer = 0;  // 0 = host
     bool replicate_transform = true;
@@ -28,7 +28,7 @@ namespace other {
     REPLICA,
   };
 
-  /// the scene's net-identity registry — pure state, zero networking includes; a scene member,
+  /// the scene's net-identity registry - pure state, zero networking includes; a scene member,
   ///  not a component (nothing here is per-object-authored/serialized; authored intent lives on network_component)
   class scene_network_context {
    public:

@@ -103,7 +103,7 @@ namespace other {
     ASSERT_EQ(mat.texture_paths.size(), 2u);
     EXPECT_EQ(mat.texture_paths.at(FNV("base_color")), "../textures/hull_albedo.png");
     EXPECT_EQ(mat.texture_paths.at(FNV("normal")), "../textures/hull_n.png");
-    /// slot hashes resolve at asset load, not parse — the parser is engine-free
+    /// slot hashes resolve at asset load, not parse - the parser is engine-free
     EXPECT_TRUE(mat.texture_hashes.empty());
   }
 
@@ -163,10 +163,10 @@ namespace other {
     ostd::vector<uint8_t> blob(layout.element_size);
 
     layout.pack(nullptr, blob);
-    EXPECT_FLOAT_EQ(float_at(blob, 0), 1.f);    // base_color.r default
-    EXPECT_FLOAT_EQ(float_at(blob, 16), 0.f);   // emissive.r default
-    EXPECT_FLOAT_EQ(float_at(blob, 28), 1.f);   // roughness default
-    EXPECT_FLOAT_EQ(float_at(blob, 32), 0.f);   // metalness default
+    EXPECT_FLOAT_EQ(float_at(blob, 0), 1.f);   // base_color.r default
+    EXPECT_FLOAT_EQ(float_at(blob, 16), 0.f);  // emissive.r default
+    EXPECT_FLOAT_EQ(float_at(blob, 28), 1.f);  // roughness default
+    EXPECT_FLOAT_EQ(float_at(blob, 32), 0.f);  // metalness default
 
     material mat;
     mat.params[FNV("base_color")] = material_value::from(glm::vec4(0.25f, 0.5f, 0.75f, 1.f));

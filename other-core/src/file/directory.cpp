@@ -19,7 +19,7 @@ namespace other {
       abs_path = name;
       return;
     }
-    /// subtree watching is reserved for project mounts — it is the only add/remove
+    /// subtree watching is reserved for project mounts - it is the only add/remove
     //  signal for SDK-style csproj globs; engine mounts (cwd = the whole repo) must not scan
     if (watch_subtree) {
       watcher = file_watcher::make_directory_watcher(events, abs_path, file_watcher::watch_mode::RECURSIVE);

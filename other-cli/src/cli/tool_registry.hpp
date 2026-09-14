@@ -45,7 +45,7 @@ namespace other {
     tool_registry& default_tool_registry();
 
     /// registers the dev/source-tree tools (run, build, test, install, package); idempotent so
-    ///  both the dev cli and driver boot can call it — the SDK user cli never does
+    ///  both the dev cli and driver boot can call it - the SDK user cli never does
     void register_dev_tools(tool_registry& registry);
 
     /// splits a raw command line into whitespace-separated arguments; segments wrapped in

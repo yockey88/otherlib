@@ -31,26 +31,26 @@ namespace other {
     std::string_view name() const override { return display; }
     const std::string& managed_type() const { return type_name; }
 
-    void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override {
-      if (hooks.frame) {
-        hooks.frame(via, src, net_id, payload);
-      }
-    }
-    void on_link_up(const link_record& link) override {
-      if (hooks.link_up) {
-        hooks.link_up(link);
-      }
-    }
-    void on_link_down(const link_record& link, link_close_reason reason) override {
-      if (hooks.link_down) {
-        hooks.link_down(link, reason);
-      }
-    }
-    void tick(microseconds now, double dt) override {
-      if (hooks.ticked) {
-        hooks.ticked(now, dt);
-      }
-    }
+    // void on_frame(const link_record& via, node_id src, uint16_t net_id, std::span<const uint8_t> payload) override {
+    //   if (hooks.frame) {
+    //     hooks.frame(via, src, net_id, payload);
+    //   }
+    // }
+    // void on_link_up(const link_record& link) override {
+    //   if (hooks.link_up) {
+    //     hooks.link_up(link);
+    //   }
+    // }
+    // void on_link_down(const link_record& link, link_close_reason reason) override {
+    //   if (hooks.link_down) {
+    //     hooks.link_down(link, reason);
+    //   }
+    // }
+    // void tick(microseconds now, double dt) override {
+    //   if (hooks.ticked) {
+    //     hooks.ticked(now, dt);
+    //   }
+    // }
 
    private:
     std::string display;

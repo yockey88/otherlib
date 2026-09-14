@@ -1,6 +1,6 @@
 uniform sampler2D OE_edges;    // slot 0
-uniform sampler2D OE_area;     // slot 1 — AreaTex   (160x560 RG8)
-uniform sampler2D OE_search;   // slot 2 — SearchTex (64x16  R8)
+uniform sampler2D OE_area;     // slot 1 - AreaTex   (160x560 RG8)
+uniform sampler2D OE_search;   // slot 2 - SearchTex (64x16  R8)
 
 #define SMAA_RT_METRICS vec4(1.0 / vec2(textureSize(OE_edges, 0)), vec2(textureSize(OE_edges, 0)))
 #define SMAA_GLSL_4

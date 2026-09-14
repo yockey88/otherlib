@@ -79,7 +79,7 @@ namespace OtherCsBindings
           {
             /// discovery re-runs over already-known assemblies; seeing the same field
             ///  again is idempotent. a DIFFERENT field on the same name is a real
-            ///  collision — only the first declaration binds, the second would stay a
+            ///  collision - only the first declaration binds, the second would stay a
             ///  null pointer forever, so make that case loud
             var same_field = existing.managed_name == field.Name &&
                              existing.field.DeclaringType?.FullName == type.FullName;

@@ -2,7 +2,7 @@
  * \file serialization/scene_document.hpp
  *
  * plain-data intermediate every scene persistence path converts through (live scenes, .oscn, .oscnb,
- * snapshots, cli); component state rides field-tagged binary payloads (scene_field_codec.hpp) — one canonical encoding
+ * snapshots, cli); component state rides field-tagged binary payloads (scene_field_codec.hpp) - one canonical encoding
  */
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_DOCUMENT_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_DOCUMENT_HPP
@@ -44,7 +44,7 @@ namespace other {
       ostd::vector<object_record> objects = {};
     };
 
-    /// parse results never assert on malformed input — scene files and snapshots are data,
+    /// parse results never assert on malformed input - scene files and snapshots are data,
     ///  not programmer contracts; hosts (loader, cli, editor) decide how to surface errors
     struct scene_parse_result {
       opt<scene_document> document = std::nullopt;

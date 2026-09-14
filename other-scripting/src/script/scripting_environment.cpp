@@ -255,7 +255,7 @@ namespace other {
     OTHER_ASSERT(parent->dotnet_object != nullptr, "Script object with ID {} does not have a .NET object attached.", parent_id);
 
     /// re-applying a scene document to a surviving object (play-stop restore) re-adds
-    ///  behaviors that never detached — attach is idempotent per type
+    ///  behaviors that never detached - attach is idempotent per type
     auto existing = std::find_if(parent->behavior_handles.begin(), parent->behavior_handles.end(), [&behavior_name](const script_object::behavior_handle& handle) {
       return handle.type_name == behavior_name;
     });

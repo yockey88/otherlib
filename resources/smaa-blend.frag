@@ -1,5 +1,5 @@
-uniform sampler2D OE_color;     // slot 0 — tonemapped LDR image
-uniform sampler2D OE_weights;   // slot 1 — blend weights from smaa-weights
+uniform sampler2D OE_color;     // slot 0 - tonemapped LDR image
+uniform sampler2D OE_weights;   // slot 1 - blend weights from smaa-weights
 
 #define SMAA_RT_METRICS vec4(1.0 / vec2(textureSize(OE_color, 0)), vec2(textureSize(OE_color, 0)))
 #define SMAA_GLSL_4

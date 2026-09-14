@@ -65,7 +65,7 @@ namespace other {
     std::string display_name;
     int32_t behavior_index = -1;
 
-    /// the behavior's own script object — field reads/writes go through it by name
+    /// the behavior's own script object - field reads/writes go through it by name
     integer_t script_object_id = -1;
 
     ostd::vector<behavior_field_descriptor> fields;

@@ -24,7 +24,7 @@ namespace other {
     };
 
     /// the complete AUTHORED body; pure data with a meaningful operator== so revalidation can
-    ///  compare it against the built body. spawn pose is NOT here — passed to create_physics_body separately
+    ///  compare it against the built body. spawn pose is NOT here - passed to create_physics_body separately
     struct settings {
       uint32_t body_type = physics_body::STATIC;
       float mass = 1.0f;
@@ -44,8 +44,8 @@ namespace other {
     };
 
     integer_t id = 0;
-    uint64_t backend_id = 0;         /// the backend's own id for this body (jolt: BodyID bits)
-    natural_t owner_object_id = 0;   /// scene-tree id of the owning scene object
+    uint64_t backend_id = 0;        /// the backend's own id for this body (jolt: BodyID bits)
+    natural_t owner_object_id = 0;  /// scene-tree id of the owning scene object
 
     integer_t shape_id = -1;
 

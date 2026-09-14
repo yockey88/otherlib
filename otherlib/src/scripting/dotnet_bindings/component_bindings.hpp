@@ -51,7 +51,7 @@ namespace other {
     uint32_t native_physics_raycast(float ox, float oy, float oz, float dx, float dy, float dz, float max_distance,
                                     natural_t* out_object, float* out_point, float* out_normal, float* out_distance);
 
-    /// camera pose verbs write the camera struct directly — the primary camera renders
+    /// camera pose verbs write the camera struct directly - the primary camera renders
     ///  from camera.position/direction (the "main-camera" tag), not the object transform
     void native_camera_component_get_position(natural_t object_id, float* out_position);
     void native_camera_component_look_from(natural_t object_id, float x, float y, float z);

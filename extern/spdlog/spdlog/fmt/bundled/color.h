@@ -155,7 +155,7 @@ enum class color : uint32_t {
   white_smoke = 0xF5F5F5,              // rgb(245,245,245)
   yellow = 0xFFFF00,                   // rgb(255,255,0)
   yellow_green = 0x9ACD32              // rgb(154,205,50)
-};                                     // enum class color
+};  // enum class color
 
 enum class terminal_color : uint8_t {
   black = 30,
@@ -205,31 +205,31 @@ struct rgb {
 
 namespace detail {
 
-// A bit-packed variant of an RGB color, a terminal color, or unset color.
-// see text_style for the bit-packing scheme.
-struct color_type {
-  constexpr color_type() noexcept = default;
-  constexpr color_type(color rgb_color) noexcept
-      : value_(static_cast<uint32_t>(rgb_color) | (1 << 24)) {}
-  constexpr color_type(rgb rgb_color) noexcept
-      : color_type(static_cast<color>(
+  // A bit-packed variant of an RGB color, a terminal color, or unset color.
+  // see text_style for the bit-packing scheme.
+  struct color_type {
+    constexpr color_type() noexcept = default;
+    constexpr color_type(color rgb_color) noexcept
+        : value_(static_cast<uint32_t>(rgb_color) | (1 << 24)) {}
+    constexpr color_type(rgb rgb_color) noexcept
+        : color_type(static_cast<color>(
             (static_cast<uint32_t>(rgb_color.r) << 16) |
             (static_cast<uint32_t>(rgb_color.g) << 8) | rgb_color.b)) {}
-  constexpr color_type(terminal_color term_color) noexcept
-      : value_(static_cast<uint32_t>(term_color) | (3 << 24)) {}
+    constexpr color_type(terminal_color term_color) noexcept
+        : value_(static_cast<uint32_t>(term_color) | (3 << 24)) {}
 
-  constexpr auto is_terminal_color() const noexcept -> bool {
-    return (value_ & (1 << 25)) != 0;
-  }
+    constexpr auto is_terminal_color() const noexcept -> bool {
+      return (value_ & (1 << 25)) != 0;
+    }
 
-  constexpr auto value() const noexcept -> uint32_t {
-    return value_ & 0xFFFFFF;
-  }
+    constexpr auto value() const noexcept -> uint32_t {
+      return value_ & 0xFFFFFF;
+    }
 
-  constexpr color_type(uint32_t value) noexcept : value_(value) {}
+    constexpr color_type(uint32_t value) noexcept : value_(value) {}
 
-  uint32_t value_ = 0;
-};
+    uint32_t value_ = 0;
+  };
 }  // namespace detail
 
 /// A text style consisting of foreground and background colors and emphasis.
@@ -275,8 +275,8 @@ class text_style {
   //    01 + 01 = 010
   //    11 + 01 = 100 (!!)
   //    11 + 11 = 110 (!!)
-  // In the last two cases, the ones we want to catch, the third bit——the
-  // overflow bit——is set. Bingo.
+  // In the last two cases, the ones we want to catch, the third bit--the
+  // overflow bit--is set. Bingo.
   //
   // We must take into account the possible carry bit from the bits
   // before the discriminator. The only potentially problematic case is
@@ -298,7 +298,7 @@ class text_style {
   }
 
   friend FMT_CONSTEXPR auto operator|(text_style lhs, text_style rhs)
-      -> text_style {
+    -> text_style {
     return lhs |= rhs;
   }
 
@@ -336,162 +336,165 @@ class text_style {
   FMT_CONSTEXPR text_style(uint64_t style) noexcept : style_(style) {}
 
   friend FMT_CONSTEXPR auto fg(detail::color_type foreground) noexcept
-      -> text_style;
+    -> text_style;
 
   friend FMT_CONSTEXPR auto bg(detail::color_type background) noexcept
-      -> text_style;
+    -> text_style;
 
   uint64_t style_ = 0;
 };
 
 /// Creates a text style from the foreground (text) color.
 FMT_CONSTEXPR inline auto fg(detail::color_type foreground) noexcept
-    -> text_style {
+  -> text_style {
   return foreground.value_;
 }
 
 /// Creates a text style from the background color.
 FMT_CONSTEXPR inline auto bg(detail::color_type background) noexcept
-    -> text_style {
+  -> text_style {
   return static_cast<uint64_t>(background.value_) << 27;
 }
 
 FMT_CONSTEXPR inline auto operator|(emphasis lhs, emphasis rhs) noexcept
-    -> text_style {
+  -> text_style {
   return text_style(lhs) | rhs;
 }
 
 namespace detail {
 
-template <typename Char> struct ansi_color_escape {
-  FMT_CONSTEXPR ansi_color_escape(color_type text_color,
-                                  const char* esc) noexcept {
-    // If we have a terminal color, we need to output another escape code
-    // sequence.
-    if (text_color.is_terminal_color()) {
-      bool is_background = esc == string_view("\x1b[48;2;");
-      uint32_t value = text_color.value();
-      // Background ASCII codes are the same as the foreground ones but with
-      // 10 more.
-      if (is_background) value += 10u;
+  template <typename Char>
+  struct ansi_color_escape {
+    FMT_CONSTEXPR ansi_color_escape(color_type text_color,
+                                    const char* esc) noexcept {
+      // If we have a terminal color, we need to output another escape code
+      // sequence.
+      if (text_color.is_terminal_color()) {
+        bool is_background = esc == string_view("\x1b[48;2;");
+        uint32_t value = text_color.value();
+        // Background ASCII codes are the same as the foreground ones but with
+        // 10 more.
+        if (is_background) value += 10u;
+
+        size_t index = 0;
+        buffer[index++] = static_cast<Char>('\x1b');
+        buffer[index++] = static_cast<Char>('[');
+
+        if (value >= 100u) {
+          buffer[index++] = static_cast<Char>('1');
+          value %= 100u;
+        }
+        buffer[index++] = static_cast<Char>('0' + value / 10u);
+        buffer[index++] = static_cast<Char>('0' + value % 10u);
+
+        buffer[index++] = static_cast<Char>('m');
+        buffer[index++] = static_cast<Char>('\0');
+        return;
+      }
+
+      for (int i = 0; i < 7; i++) {
+        buffer[i] = static_cast<Char>(esc[i]);
+      }
+      rgb color(text_color.value());
+      to_esc(color.r, buffer + 7, ';');
+      to_esc(color.g, buffer + 11, ';');
+      to_esc(color.b, buffer + 15, 'm');
+      buffer[19] = static_cast<Char>(0);
+    }
+    FMT_CONSTEXPR ansi_color_escape(emphasis em) noexcept {
+      uint8_t em_codes[num_emphases] = {};
+      if (has_emphasis(em, emphasis::bold)) em_codes[0] = 1;
+      if (has_emphasis(em, emphasis::faint)) em_codes[1] = 2;
+      if (has_emphasis(em, emphasis::italic)) em_codes[2] = 3;
+      if (has_emphasis(em, emphasis::underline)) em_codes[3] = 4;
+      if (has_emphasis(em, emphasis::blink)) em_codes[4] = 5;
+      if (has_emphasis(em, emphasis::reverse)) em_codes[5] = 7;
+      if (has_emphasis(em, emphasis::conceal)) em_codes[6] = 8;
+      if (has_emphasis(em, emphasis::strikethrough)) em_codes[7] = 9;
 
       size_t index = 0;
-      buffer[index++] = static_cast<Char>('\x1b');
-      buffer[index++] = static_cast<Char>('[');
-
-      if (value >= 100u) {
-        buffer[index++] = static_cast<Char>('1');
-        value %= 100u;
+      for (size_t i = 0; i < num_emphases; ++i) {
+        if (!em_codes[i]) continue;
+        buffer[index++] = static_cast<Char>('\x1b');
+        buffer[index++] = static_cast<Char>('[');
+        buffer[index++] = static_cast<Char>('0' + em_codes[i]);
+        buffer[index++] = static_cast<Char>('m');
       }
-      buffer[index++] = static_cast<Char>('0' + value / 10u);
-      buffer[index++] = static_cast<Char>('0' + value % 10u);
+      buffer[index++] = static_cast<Char>(0);
+    }
+    FMT_CONSTEXPR operator const Char*() const noexcept { return buffer; }
 
-      buffer[index++] = static_cast<Char>('m');
-      buffer[index++] = static_cast<Char>('\0');
-      return;
+    FMT_CONSTEXPR auto begin() const noexcept -> const Char* { return buffer; }
+    FMT_CONSTEXPR20 auto end() const noexcept -> const Char* {
+      return buffer + basic_string_view<Char>(buffer).size();
     }
 
-    for (int i = 0; i < 7; i++) {
-      buffer[i] = static_cast<Char>(esc[i]);
+   private:
+    static constexpr size_t num_emphases = 8;
+    Char buffer[7u + 3u * num_emphases + 1u];
+
+    static FMT_CONSTEXPR void to_esc(uint8_t c, Char* out,
+                                     char delimiter) noexcept {
+      out[0] = static_cast<Char>('0' + c / 100);
+      out[1] = static_cast<Char>('0' + c / 10 % 10);
+      out[2] = static_cast<Char>('0' + c % 10);
+      out[3] = static_cast<Char>(delimiter);
     }
-    rgb color(text_color.value());
-    to_esc(color.r, buffer + 7, ';');
-    to_esc(color.g, buffer + 11, ';');
-    to_esc(color.b, buffer + 15, 'm');
-    buffer[19] = static_cast<Char>(0);
-  }
-  FMT_CONSTEXPR ansi_color_escape(emphasis em) noexcept {
-    uint8_t em_codes[num_emphases] = {};
-    if (has_emphasis(em, emphasis::bold)) em_codes[0] = 1;
-    if (has_emphasis(em, emphasis::faint)) em_codes[1] = 2;
-    if (has_emphasis(em, emphasis::italic)) em_codes[2] = 3;
-    if (has_emphasis(em, emphasis::underline)) em_codes[3] = 4;
-    if (has_emphasis(em, emphasis::blink)) em_codes[4] = 5;
-    if (has_emphasis(em, emphasis::reverse)) em_codes[5] = 7;
-    if (has_emphasis(em, emphasis::conceal)) em_codes[6] = 8;
-    if (has_emphasis(em, emphasis::strikethrough)) em_codes[7] = 9;
-
-    size_t index = 0;
-    for (size_t i = 0; i < num_emphases; ++i) {
-      if (!em_codes[i]) continue;
-      buffer[index++] = static_cast<Char>('\x1b');
-      buffer[index++] = static_cast<Char>('[');
-      buffer[index++] = static_cast<Char>('0' + em_codes[i]);
-      buffer[index++] = static_cast<Char>('m');
-    }
-    buffer[index++] = static_cast<Char>(0);
-  }
-  FMT_CONSTEXPR operator const Char*() const noexcept { return buffer; }
-
-  FMT_CONSTEXPR auto begin() const noexcept -> const Char* { return buffer; }
-  FMT_CONSTEXPR20 auto end() const noexcept -> const Char* {
-    return buffer + basic_string_view<Char>(buffer).size();
-  }
-
- private:
-  static constexpr size_t num_emphases = 8;
-  Char buffer[7u + 3u * num_emphases + 1u];
-
-  static FMT_CONSTEXPR void to_esc(uint8_t c, Char* out,
-                                   char delimiter) noexcept {
-    out[0] = static_cast<Char>('0' + c / 100);
-    out[1] = static_cast<Char>('0' + c / 10 % 10);
-    out[2] = static_cast<Char>('0' + c % 10);
-    out[3] = static_cast<Char>(delimiter);
-  }
-  static FMT_CONSTEXPR auto has_emphasis(emphasis em, emphasis mask) noexcept
+    static FMT_CONSTEXPR auto has_emphasis(emphasis em, emphasis mask) noexcept
       -> bool {
-    return static_cast<uint8_t>(em) & static_cast<uint8_t>(mask);
-  }
-};
+      return static_cast<uint8_t>(em) & static_cast<uint8_t>(mask);
+    }
+  };
 
-template <typename Char>
-FMT_CONSTEXPR auto make_foreground_color(color_type foreground) noexcept
+  template <typename Char>
+  FMT_CONSTEXPR auto make_foreground_color(color_type foreground) noexcept
     -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(foreground, "\x1b[38;2;");
-}
+    return ansi_color_escape<Char>(foreground, "\x1b[38;2;");
+  }
 
-template <typename Char>
-FMT_CONSTEXPR auto make_background_color(color_type background) noexcept
+  template <typename Char>
+  FMT_CONSTEXPR auto make_background_color(color_type background) noexcept
     -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(background, "\x1b[48;2;");
-}
+    return ansi_color_escape<Char>(background, "\x1b[48;2;");
+  }
 
-template <typename Char>
-FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
+  template <typename Char>
+  FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
     -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(em);
-}
-
-template <typename Char> inline void reset_color(buffer<Char>& buffer) {
-  auto reset_color = string_view("\x1b[0m");
-  buffer.append(reset_color.begin(), reset_color.end());
-}
-
-template <typename T> struct styled_arg : view {
-  const T& value;
-  text_style style;
-  styled_arg(const T& v, text_style s) : value(v), style(s) {}
-};
-
-template <typename Char>
-void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
-                basic_format_args<buffered_context<Char>> args) {
-  if (ts.has_emphasis()) {
-    auto emphasis = make_emphasis<Char>(ts.get_emphasis());
-    buf.append(emphasis.begin(), emphasis.end());
+    return ansi_color_escape<Char>(em);
   }
-  if (ts.has_foreground()) {
-    auto foreground = make_foreground_color<Char>(ts.get_foreground());
-    buf.append(foreground.begin(), foreground.end());
+
+  template <typename Char>
+  inline void reset_color(buffer<Char>& buffer) {
+    auto reset_color = string_view("\x1b[0m");
+    buffer.append(reset_color.begin(), reset_color.end());
   }
-  if (ts.has_background()) {
-    auto background = make_background_color<Char>(ts.get_background());
-    buf.append(background.begin(), background.end());
+
+  template <typename T>
+  struct styled_arg : view {
+    const T& value;
+    text_style style;
+    styled_arg(const T& v, text_style s) : value(v), style(s) {}
+  };
+
+  template <typename Char>
+  void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
+                  basic_format_args<buffered_context<Char>> args) {
+    if (ts.has_emphasis()) {
+      auto emphasis = make_emphasis<Char>(ts.get_emphasis());
+      buf.append(emphasis.begin(), emphasis.end());
+    }
+    if (ts.has_foreground()) {
+      auto foreground = make_foreground_color<Char>(ts.get_foreground());
+      buf.append(foreground.begin(), foreground.end());
+    }
+    if (ts.has_background()) {
+      auto background = make_background_color<Char>(ts.get_background());
+      buf.append(background.begin(), background.end());
+    }
+    vformat_to(buf, fmt, args);
+    if (ts != text_style()) reset_color<Char>(buf);
   }
-  vformat_to(buf, fmt, args);
-  if (ts != text_style()) reset_color<Char>(buf);
-}
 }  // namespace detail
 
 inline void vprint(FILE* f, text_style ts, string_view fmt, format_args args) {
@@ -511,7 +514,7 @@ inline void vprint(FILE* f, text_style ts, string_view fmt, format_args args) {
  */
 template <typename... T>
 void print(FILE* f, text_style ts, format_string<T...> fmt, T&&... args) {
-  vprint(f, ts, fmt.str, vargs<T...>{{args...}});
+  vprint(f, ts, fmt.str, vargs<T...>{ { args... } });
 }
 
 /**
@@ -529,7 +532,7 @@ void print(text_style ts, format_string<T...> fmt, T&&... args) {
 }
 
 inline auto vformat(text_style ts, string_view fmt, format_args args)
-    -> std::string {
+  -> std::string {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   return fmt::to_string(buf);
@@ -549,15 +552,15 @@ inline auto vformat(text_style ts, string_view fmt, format_args args)
  */
 template <typename... T>
 inline auto format(text_style ts, format_string<T...> fmt, T&&... args)
-    -> std::string {
-  return fmt::vformat(ts, fmt.str, vargs<T...>{{args...}});
+  -> std::string {
+  return fmt::vformat(ts, fmt.str, vargs<T...>{ { args... } });
 }
 
 /// Formats a string with the given text_style and writes the output to `out`.
 template <typename OutputIt,
           FMT_ENABLE_IF(detail::is_output_iterator<OutputIt, char>::value)>
 auto vformat_to(OutputIt out, text_style ts, string_view fmt, format_args args)
-    -> OutputIt {
+  -> OutputIt {
   auto&& buf = detail::get_buffer<char>(out);
   detail::vformat_to(buf, ts, fmt, args);
   return detail::get_iterator(buf, out);
@@ -577,14 +580,14 @@ template <typename OutputIt, typename... T,
           FMT_ENABLE_IF(detail::is_output_iterator<OutputIt, char>::value)>
 inline auto format_to(OutputIt out, text_style ts, format_string<T...> fmt,
                       T&&... args) -> OutputIt {
-  return vformat_to(out, ts, fmt.str, vargs<T...>{{args...}});
+  return vformat_to(out, ts, fmt.str, vargs<T...>{ { args... } });
 }
 
 template <typename T, typename Char>
 struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
   template <typename FormatContext>
   auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
-      -> decltype(ctx.out()) {
+    -> decltype(ctx.out()) {
     const auto& ts = arg.style;
     auto out = ctx.out();
 
@@ -597,13 +600,13 @@ struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
     if (ts.has_foreground()) {
       has_style = true;
       auto foreground =
-          detail::make_foreground_color<Char>(ts.get_foreground());
+        detail::make_foreground_color<Char>(ts.get_foreground());
       out = detail::copy<Char>(foreground.begin(), foreground.end(), out);
     }
     if (ts.has_background()) {
       has_style = true;
       auto background =
-          detail::make_background_color<Char>(ts.get_background());
+        detail::make_background_color<Char>(ts.get_background());
       out = detail::copy<Char>(background.begin(), background.end(), out);
     }
     out = formatter<T, Char>::format(arg.value, ctx);
@@ -627,8 +630,8 @@ struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
  */
 template <typename T>
 FMT_CONSTEXPR auto styled(const T& value, text_style ts)
-    -> detail::styled_arg<remove_cvref_t<T>> {
-  return detail::styled_arg<remove_cvref_t<T>>{value, ts};
+  -> detail::styled_arg<remove_cvref_t<T>> {
+  return detail::styled_arg<remove_cvref_t<T>>{ value, ts };
 }
 
 FMT_END_EXPORT

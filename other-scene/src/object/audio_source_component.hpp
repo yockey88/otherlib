@@ -14,7 +14,7 @@
 namespace other {
 
   /// describes what should be audible on this object; the audio system reconciles
-  ///  desired state against live voices every tick — components never own voices
+  ///  desired state against live voices every tick - components never own voices
   struct audio_source_component {
     natural_t clip_asset_id = 0;  /// AUDIO asset; portable path in .oscn via the codec
 
@@ -26,7 +26,7 @@ namespace other {
     uint32_t bus = 2;  /// audio_bus: MASTER=0 MUSIC=1 SFX=2 UI=3 (u32: the script
                        ///  field ABI has no u8 lane)
 
-    bool spatial = true;  /// false => 2D (ui/music) — no attenuation or positioning
+    bool spatial = true;  /// false => 2D (ui/music) - no attenuation or positioning
     float min_distance = 1.f;
     float max_distance = 500.f;
     float doppler_factor = 1.f;  /// 0 disables

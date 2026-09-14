@@ -85,7 +85,7 @@ namespace other {
                   continue;
                 }
               } else if (!current_group.empty() && !has_flag(field.flags, behavior_display_flags::IS_GROUP_START)) {
-                /// still inside a group — skip if group is collapsed
+                /// still inside a group - skip if group is collapsed
                 if (!group_open) {
                   continue;
                 }

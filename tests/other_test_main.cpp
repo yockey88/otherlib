@@ -1,18 +1,17 @@
 /**
  * \file tests/test_main.cpp
  **/
-#include <gtest/gtest.h>
-
 #include <iostream>
+
+#include <gtest/gtest.h>
 
 #include <Windows.h>
 
 #include "core/logger.hpp"
 #include "core/profiler_backend.hpp"
-
-#include "audio/audio_environment.hpp"
 #include "thread/thread_safety.hpp"
 
+#include "audio/audio_environment.hpp"
 #include "other_test.hpp"
 
 using other::command_line;
@@ -26,7 +25,7 @@ other::driver* otherlib_create_driver(const other::command_line* cmd, const othe
 void otherlib_destroy_driver(other::driver* instance) {}
 }
 
-/// gtest's SEH guard only covers faults raised on the test's own thread — a fault on a
+/// gtest's SEH guard only covers faults raised on the test's own thread - a fault on a
 ///  background thread (net pump, script finalizers) kills the process silently without this
 static LONG WINAPI report_unhandled_seh(EXCEPTION_POINTERS* info) {
   const uint32_t code = info != nullptr && info->ExceptionRecord != nullptr ? info->ExceptionRecord->ExceptionCode : 0;

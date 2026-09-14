@@ -27,7 +27,7 @@ namespace other {
     OTHER_ASSERT(node->pass != nullptr, "pass_context: node->pass is null");
   }
 
-  // Resource access by logical binding name — validated at compile time
+  // Resource access by logical binding name - validated at compile time
   resource_handle pass_context::binding(std::string_view logical_name) const {
     for (size_t i = 0; i < bindings.defs.size(); ++i) {
       if (bindings.defs[i].name == logical_name) {

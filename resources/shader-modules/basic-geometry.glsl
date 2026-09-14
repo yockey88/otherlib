@@ -5,7 +5,7 @@ layout (location = 1) in vec3 OE_normal;
 layout (location = 2) in vec3 OE_tangent;
 layout (location = 3) in vec3 OE_bitangent;
 layout (location = 4) in vec2 OE_tex_coords;
-/// the vertex stream is all floats and every attribute binds as GL_FLOAT — an ivec4
+/// the vertex stream is all floats and every attribute binds as GL_FLOAT - an ivec4
 ///  here would read reinterpreted float bits. declare what arrives; cast per use
 layout (location = 5) in vec4 OE_bone_ids;
 layout (location = 6) in vec4 OE_bone_weights;
@@ -27,7 +27,7 @@ flat out int OE_material_index;
 out vec2 OE_frag_uv;
 
 /// per-instance id for the material block plus the uv forward (vertex location 4 finally
-/// has a consumer — the material texture slots)
+/// has a consumer - the material texture slots)
 void set_instance_id() {
   OE_material_index = gl_InstanceID;
   OE_frag_uv = OE_tex_coords;

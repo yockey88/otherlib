@@ -2,18 +2,20 @@
  * \file tests/serialization/scene_document_tests.cpp
  *
  * document-level scene persistence: the field codec, component codecs (payload<->toml),
- * and the .oscn/.oscnb readers/writers — no live scene, no engine boot beyond minimal.
+ * and the .oscn/.oscnb readers/writers - no live scene, no engine boot beyond minimal.
  **/
 #include <gtest/gtest.h>
 
-#include "other_test.hpp"
-
-#include "object/grid_component.hpp"
-#include "object/transform.hpp"
 #include "serialization/component_codec.hpp"
 #include "serialization/scene_document.hpp"
 #include "serialization/scene_field_codec.hpp"
 #include "serialization/scene_serializer.hpp"
+
+#include "object/grid_component.hpp"
+#include "object/transform.hpp"
+
+#include "other_test.hpp"
+
 
 namespace other {
 

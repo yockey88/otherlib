@@ -1,7 +1,7 @@
 // ============================================================================
 //  smaa.glsl  ->  resources/shader-modules/smaa.glsl
 //
-//  Engine adapter for SMAA (Subpixel Morphological Anti-Aliasing) —
+//  Engine adapter for SMAA (Subpixel Morphological Anti-Aliasing) -
 //  https://github.com/iryoku/smaa (MIT License)
 //
 //  This adapter is included by the per-pass SMAA wrapper shaders, which define

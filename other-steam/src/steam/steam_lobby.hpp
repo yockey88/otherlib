@@ -6,9 +6,10 @@
 
 #include <functional>
 
+#include <steam/steam_api.h>
+
 #include "core/defines.hpp"
 
-#include <steam/steam_api.h>
 
 namespace other {
 
@@ -20,14 +21,14 @@ namespace other {
     IN_LOBBY,
   };
 
-  /// matchmaking + invite flow. steam replaces dial and discovery, never the protocol — the
+  /// matchmaking + invite flow. steam replaces dial and discovery, never the protocol - the
   ///  hooks below are the only output. on_* entries take parsed values so tests can fake the callback driver
   class steam_lobby {
    public:
     struct hooks {
-      /// a joined lobby resolved its owner — connect to this host
+      /// a joined lobby resolved its owner - connect to this host
       std::function<void(uint64_t host_id)> ready_to_connect;
-      /// overlay invite accepted / launch-by-invite — the glue decides auto-join
+      /// overlay invite accepted / launch-by-invite - the glue decides auto-join
       std::function<void(uint64_t lobby_id)> join_requested;
     };
 

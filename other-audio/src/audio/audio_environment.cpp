@@ -199,7 +199,7 @@ namespace other {
   void audio_environment::add_clip(natural_t path_hash, audio_clip&& clip) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(clips.find(path_hash) == clips.end(),
-                 "Duplicate audio clip registration for hash {:#x} — refresh must unload first", path_hash);
+                 "Duplicate audio clip registration for hash {:#x} - refresh must unload first", path_hash);
     clips.emplace(path_hash, std::move(clip));
     clip_revisions[path_hash]++;
   }
@@ -219,7 +219,7 @@ namespace other {
     if (initialized) {
       for (const impl::voice_slot& slot : state->slots) {
         OTHER_ASSERT(!slot.in_use || slot.clip_hash != path_hash,
-                     "remove_clip({:#x}) while a voice still reads it — stop_voices_on first", path_hash);
+                     "remove_clip({:#x}) while a voice still reads it - stop_voices_on first", path_hash);
       }
     }
 

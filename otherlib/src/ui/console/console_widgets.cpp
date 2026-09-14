@@ -541,7 +541,7 @@ namespace other {
 
           float text_y = y + (kAutocompleteRowHeight - ImGui::GetFontSize()) * 0.5f;
 
-          /// label — highlight matched portion
+          /// label - highlight matched portion
           float lx = popup_min.x + kAutocompletePaddingX;
           if (!item.match_highlight.empty()) {
             /// draw the matching prefix in accent color

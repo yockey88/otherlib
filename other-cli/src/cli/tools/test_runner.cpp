@@ -44,7 +44,7 @@ namespace other {
          --dry-run            print the launch instead of running it)";
 
       /// harness runs share one shape: launch the scenario driver, then read the verdict from its
-      ///  report; the driver exits 0 for any clean run — the verdict lives in the report (the contract)
+      ///  report; the driver exits 0 for any clean run - the verdict lives in the report (the contract)
       tool_result run_harness_scenario(tool_context& ctx, const dev_tool_options& options,
                                        std::string_view label, const filepath& scenario_config,
                                        std::string_view report_name) {

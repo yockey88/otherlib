@@ -96,7 +96,7 @@ namespace other {
           }
 
           if (is_last) {
-            /// current segment — not clickable
+            /// current segment - not clickable
             ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(kBreadcrumbCurrent));
             ImGui::TextUnformatted(seg.label.c_str());
             ImGui::PopStyleColor();
@@ -354,7 +354,7 @@ namespace other {
         /// separator line
         dl->AddLine({ card_min.x, thumb_max.y }, { card_max.x, thumb_max.y }, colors::to_im_col(kBorder), 0.5f);
 
-        /// info area — filename
+        /// info area - filename
         float text_x = card_min.x + 6.f;
         float text_y = thumb_max.y + 4.f;
         float max_text_w = card_width - 12.f;
@@ -364,7 +364,7 @@ namespace other {
         dl->AddText({ text_x, text_y }, colors::to_im_col(name_col), desc.name.c_str());
         dl->PopClipRect();
 
-        /// info area — meta line
+        /// info area - meta line
         if (!desc.meta.empty()) {
           float meta_y = text_y + ImGui::GetFontSize() + 1.f;
           dl->PushClipRect({ text_x, meta_y }, { text_x + max_text_w, meta_y + ImGui::GetFontSize() }, true);

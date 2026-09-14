@@ -54,9 +54,9 @@ namespace other {
   ///   the main thread inside step_simulation and handed out by drain_contacts
   struct box3d_world {
     b3WorldId world = {};
-    ostd::map<integer_t, uint64_t> bodies;      ///< physics_body::id -> b3StoreBodyId bits
-    ostd::map<integer_t, b3MeshData*> meshes;   ///< owned mesh data (mesh shapes REFERENCE it)
-    ostd::map<integer_t, uint64_t> joints;      ///< engine joint id -> b3StoreJointId bits
+    ostd::map<integer_t, uint64_t> bodies;     ///< physics_body::id -> b3StoreBodyId bits
+    ostd::map<integer_t, b3MeshData*> meshes;  ///< owned mesh data (mesh shapes REFERENCE it)
+    ostd::map<integer_t, uint64_t> joints;     ///< engine joint id -> b3StoreJointId bits
     integer_t next_joint_id = 0;
     ostd::vector<contact_event> pending;
   };
@@ -94,11 +94,16 @@ namespace other {
 
       void aabb_edges(const glm::vec3& mn, const glm::vec3& mx, const glm::vec4& color) {
         const glm::vec3 c[8] = {
-          { mn.x, mn.y, mn.z }, { mx.x, mn.y, mn.z }, { mx.x, mx.y, mn.z }, { mn.x, mx.y, mn.z },
-          { mn.x, mn.y, mx.z }, { mx.x, mn.y, mx.z }, { mx.x, mx.y, mx.z }, { mn.x, mx.y, mx.z },
+          { mn.x, mn.y, mn.z },
+          { mx.x, mn.y, mn.z },
+          { mx.x, mx.y, mn.z },
+          { mn.x, mx.y, mn.z },
+          { mn.x, mn.y, mx.z },
+          { mx.x, mn.y, mx.z },
+          { mx.x, mx.y, mx.z },
+          { mn.x, mx.y, mx.z },
         };
-        constexpr int e[12][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 4, 5 }, { 5, 6 },
-                                   { 6, 7 }, { 7, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
+        constexpr int e[12][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
         for (const auto& edge : e) {
           line(c[edge[0]], c[edge[1]], color);
         }
@@ -131,15 +136,20 @@ namespace other {
         glm::quat rot = from_b3(transform.q);
         glm::vec3 pos = from_b3(transform.p);
         const glm::vec3 corners[8] = {
-          { -he.x, -he.y, -he.z }, { he.x, -he.y, -he.z }, { he.x, he.y, -he.z }, { -he.x, he.y, -he.z },
-          { -he.x, -he.y, he.z }, { he.x, -he.y, he.z }, { he.x, he.y, he.z }, { -he.x, he.y, he.z },
+          { -he.x, -he.y, -he.z },
+          { he.x, -he.y, -he.z },
+          { he.x, he.y, -he.z },
+          { -he.x, he.y, -he.z },
+          { -he.x, -he.y, he.z },
+          { he.x, -he.y, he.z },
+          { he.x, he.y, he.z },
+          { -he.x, he.y, he.z },
         };
         glm::vec3 world[8];
         for (int i = 0; i < 8; ++i) {
           world[i] = pos + rot * corners[i];
         }
-        constexpr int e[12][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 4, 5 }, { 5, 6 },
-                                   { 6, 7 }, { 7, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
+        constexpr int e[12][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
         glm::vec4 c = to_color(color);
         for (const auto& edge : e) {
           self->line(world[edge[0]], world[edge[1]], c);
@@ -349,7 +359,7 @@ namespace other {
     b3ShapeId existing[8];
     int shape_count = b3Body_GetShapes(body_id, existing, 8);
     for (int i = 0; i < shape_count; ++i) {
-      b3DestroyShape(existing[i], /*updateBodyMass=*/ false);
+      b3DestroyShape(existing[i], /*updateBodyMass=*/false);
     }
     if (auto mitr = bw.meshes.find(body->id); mitr != bw.meshes.end()) {
       b3DestroyMesh(mitr->second);
@@ -490,7 +500,7 @@ namespace other {
       for (int i = 0; i < contacts.endCount; ++i) {
         const b3ContactEndTouchEvent& ev = contacts.endEvents[i];
         if (!b3Shape_IsValid(ev.shapeIdA) || !b3Shape_IsValid(ev.shapeIdB)) {
-          continue;  /// a side died this step — dropped by contract
+          continue;  /// a side died this step - dropped by contract
         }
         contact_event out;
         out.type = contact_event::kEnd;
@@ -561,7 +571,7 @@ namespace other {
     float raycast_filter_callback(b3ShapeId shapeId, b3Pos point, b3Vec3 normal, float fraction,
                                   uint64_t user_material_id, int triangle_index, int child_index, void* context) {
       if (b3Shape_IsSensor(shapeId)) {
-        return -1.f;  /// sensors are triggers, not surfaces — skip and keep casting
+        return -1.f;  /// sensors are triggers, not surfaces - skip and keep casting
       }
       auto* closest = static_cast<closest_nonsensor_hit*>(context);
       closest->shape = shapeId;
@@ -631,7 +641,7 @@ namespace other {
     def.base.bodyIdB = id_b;
     def.base.localFrameA = b3Transform{ .p = { 0.f, 0.f, 0.f }, .q = { .v = { 0.f, 0.f, 0.f }, .s = 1.f } };
     def.base.localFrameB = b3InvMulTransforms(xf_b, xf_a);
-    def.linearHertz = 0.f;   /// rigid
+    def.linearHertz = 0.f;  /// rigid
     def.angularHertz = 0.f;
 
     b3JointId joint = b3CreateWeldJoint(bw.world, &def);
@@ -650,7 +660,7 @@ namespace other {
     }
     b3JointId joint = b3LoadJointId(itr->second);
     if (b3Joint_IsValid(joint)) {
-      b3DestroyJoint(joint, /*wakeAttached=*/ true);
+      b3DestroyJoint(joint, /*wakeAttached=*/true);
     }
     bw.joints.erase(itr);
   }

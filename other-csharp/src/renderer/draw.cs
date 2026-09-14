@@ -87,7 +87,7 @@ namespace Other
       unsafe { NativeDrawAABB(min.X, min.Y, min.Z, max.X, max.Y, max.Z, color.X, color.Y, color.Z, color.W, target == DrawTarget.Scene); }
     }
 
-    /// draws a unit cube (±0.5) carried by the transform — bake center/extents/rotation into it
+    /// draws a unit cube (±0.5) carried by the transform - bake center/extents/rotation into it
     public static void OBB(Mat4 transform, Vec4 color, DrawTarget target = DrawTarget.Scene)
     {
       unsafe { NativeDrawOBB(transform.M11, transform.M12, transform.M13, transform.M14,
