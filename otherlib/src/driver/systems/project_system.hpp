@@ -29,6 +29,7 @@ namespace other {
     bool project_loading() const;
     bool project_loaded() const;
     bool project_unloading() const;
+    void abort_project_load();
 
     void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
