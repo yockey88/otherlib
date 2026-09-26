@@ -307,6 +307,13 @@ install(
   DIRECTORY "${OTHERLIB_RESOURCES}/"
   DESTINATION "${OTHER_INSTALL_RESOURCES}"
   PATTERN "models" EXCLUDE
+  PATTERN "editor-config.toml" EXCLUDE
+  PATTERN "editor-config.install.toml" EXCLUDE
+)
+install(
+  FILES "${OTHERLIB_RESOURCES}/editor-config.install.toml"
+  DESTINATION "${OTHER_INSTALL_RESOURCES}"
+  RENAME "editor-config.toml"
 )
 
 ## the engine's lua runtime (bridge, console, interfaces); the dotnet/lua hosts default

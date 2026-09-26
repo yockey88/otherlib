@@ -1,8 +1,5 @@
 /**
  * \file model/pose.hpp
- *
- * pure animation runtime primitives: poses, sampling, blending, palettes.
- * plain data in/out - nothing here knows scenes, assets, or graphs.
  **/
 #ifndef OTHER_RENDERER_MODEL_POSE_HPP
 #define OTHER_RENDERER_MODEL_POSE_HPP

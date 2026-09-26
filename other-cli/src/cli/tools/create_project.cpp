@@ -49,7 +49,7 @@ ${cs-project-line}
 [scene-graph]
 starting-scene = "main"
 scenes = [
-  { name = "main", path = "${project-name}/assets/scenes/main.lua" }
+  { name = "main", path = "${project-name}/assets/scenes/main.oscn" }
 ]
 graph = [
   { name = "main", incoming = [], outgoing = [] }
@@ -64,17 +64,37 @@ print("[${project-name}] project loaded")
 )__";
 
       constexpr std::string_view kStarterSceneTemplate =
-        R"__(--- default scene for ${project-name}
-local camera_pos = Vec3:new(0.0, 2.0, 6.0)
-local camera = Other:SceneObject():new("Camera", camera_pos)
-local cam = camera:AttachCamera()
-cam.sensitivity = 10.0
-cam:Look(camera_pos, Vec3:new(0.0, 0.0, 0.0))
-camera:AddTag("main-camera")
-
-return {
-  Objects = { camera }
-}
+        R"__(## default scene for ${project-name}
+[[objects]]
+id = 1
+name = "Camera"
+tags = [ "main-camera" ]
+[objects.components.transform]
+local_position = [ 0.0, 1.0, 4.5 ]
+local_scale = [ 1.0, 1.0, 1.0 ]
+local_rotation_quat = [ 0.0, 0.0, 0.0, 0.0 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.camera]
+[objects.components.camera.camera]
+position = [ 0.0, 1.0, 4.5 ]
+euler_angles = [ 0.0, 0.0, 0.0 ]
+world_up = [ 0.0, 1.0, 0.0 ]
+defocus_angle = 0.0
+focus_dist = 10.0
+image_width = 2.0
+aspect_ratio = 0.85179853
+samples_per_pixel = 100
+max_bounce_depth = 50
+fov = 90.0
+sensitivity = 10.0
+constrain_pitch = true
+[objects.components.camera.camera.basis]
+i = [ -1.0, 0.0, 0.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ 0.0, 0.0, -1.0 ]
 )__";
 
       constexpr std::string_view kCsprojTemplate =
@@ -271,7 +291,7 @@ return {
       std::vector<generated_file> files = {
         { project_dir / std::format("{}.toml", project_name), apply_template(kProjectFileTemplate, variables) },
         { project_dir / std::format("{}.lua", project_name), apply_template(kProjectRcTemplate, variables) },
-        { project_dir / "assets" / "scenes" / "main.lua", apply_template(kStarterSceneTemplate, variables) },
+        { project_dir / "assets" / "scenes" / "main.oscn", apply_template(kStarterSceneTemplate, variables) },
       };
       if (with_cs_project) {
         files.push_back({ project_dir / std::format("{}.csproj", csproj_name), apply_template(kCsprojTemplate, variables) });

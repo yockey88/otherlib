@@ -8,8 +8,9 @@
 
 #include <toml++/toml.hpp>
 
-#include "cli/process.hpp"
 #include "core/profiler.hpp"
+
+#include "cli/process.hpp"
 
 namespace other {
   namespace cli {
@@ -23,10 +24,16 @@ namespace other {
 
   options:
     -c, --config <config>   editor build config: Debug, Release, Profile, ProfileD
-                            (default: this binary's config, then any built config)
+                            (default: this binary's config, then any built config;
+                            an installed SDK resolves configs to its debug/release family)
         --wait              stay attached and forward the editor's exit code
         --dry-run           print the launch command instead of running it
         --env-root <path>   explicit Other Environment root to launch from)";
+
+      struct editor_location {
+        filepath executable = "";
+        std::string label = "";
+      };
 
       bool is_project_file(const filepath& file) {
         if (file.extension() != ".toml") {
@@ -38,6 +45,21 @@ namespace other {
         } catch (...) {
           return false;
         }
+      }
+
+      filepath editor_search_root(const environment_paths& env) {
+        if (env.in_source_tree) {
+          return env.root / "build" / "other-editor";
+        }
+        return env.root / "bin";
+      }
+
+      std::string editor_missing_hint(const environment_paths& env, const opt<std::string>& config) {
+        const std::string config_flag = config.has_value() ? std::format(" -c {}", config.value()) : "";
+        if (env.in_source_tree) {
+          return std::format("build it with: python cli.py -b{}", config_flag);
+        }
+        return std::format("reinstall the SDK from a source tree with: python cli.py install{}", config_flag);
       }
 
       tool_result resolve_project_file(const filepath& target, filepath& resolved) {
@@ -84,6 +106,35 @@ namespace other {
 
         resolved = candidates[0];
         return tool_result::ok();
+      }
+
+      tool_result resolve_editor(const environment_paths& env, const opt<std::string>& req_config, editor_location& out_location) {
+        PROFILE_SECTION("resolve_editor");
+        if (req_config.has_value()) {
+          const std::string& config = req_config.value();
+          if (!is_valid_build_config(config)) {
+            return tool_result::error(std::format("invalid build config '{}' (expected Debug, Release, Profile, or ProfileD)", config));
+          }
+
+          const filepath candidate = env.editor_executable(config);
+          if (!std::filesystem::exists(candidate)) {
+            return tool_result::error(std::format("no {} editor build at '{}' ({})", config, candidate.string(), editor_missing_hint(env, config)));
+          }
+
+          out_location = { .executable = candidate, .label = candidate.parent_path().filename().string() };
+          return tool_result::ok();
+        }
+
+        for (const std::string_view config : build_config_probe_order()) {
+          const filepath candidate = env.editor_executable(config);
+          if (std::filesystem::exists(candidate)) {
+            out_location = { .executable = candidate, .label = candidate.parent_path().filename().string() };
+            return tool_result::ok();
+          }
+        }
+
+        return tool_result::error(std::format("no editor build found under '{}' ({})",
+                                              editor_search_root(env).string(), editor_missing_hint(env, std::nullopt)));
       }
 
     }  // namespace
@@ -145,51 +196,24 @@ namespace other {
       if (tool_result resolved = resolve_project_file(search_target, project_file); !resolved.success()) {
         return resolved;
       }
-
       if (!ctx.env.found) {
-        return tool_result::error(
-          "no Other Environment found (set OTHER_ENVIRONMENT_ROOT, pass --env-root, or run from inside an environment tree)");
-      }
-      if (!ctx.env.in_source_tree) {
-        return tool_result::error(
-          std::format("the installed SDK at '{}' does not ship the editor yet; pass --env-root pointing at a source tree", ctx.env.root.string()));
+        return tool_result::error("no Other Environment found (set OTHER_ENVIRONMENT_ROOT, pass --env-root, or run from source tree)");
       }
 
-      filepath editor = "";
-      std::string editor_config_name = "";
-      if (requested_config.has_value()) {
-        if (!is_valid_build_config(requested_config.value())) {
-          return tool_result::error(std::format("invalid build config '{}' (expected Debug, Release, Profile, or ProfileD)", requested_config.value()));
-        }
-        editor = ctx.env.editor_executable(requested_config.value());
-        if (!std::filesystem::exists(editor)) {
-          return tool_result::error(std::format("no {} editor build at '{}' (build it with: python cli.py -b -c {})",
-            requested_config.value(), editor.string(), requested_config.value()));
-        }
-        editor_config_name = requested_config.value();
-      } else {
-        for (const std::string_view config : build_config_probe_order()) {
-          filepath candidate = ctx.env.editor_executable(config);
-          if (std::filesystem::exists(candidate)) {
-            editor = candidate;
-            editor_config_name = std::string{ config };
-            break;
-          }
-        }
-        if (editor.empty()) {
-          return tool_result::error(std::format("no editor build found under '{}' (build one with: python cli.py -b)",
-            (ctx.env.root / "build" / "other-editor").string()));
-        }
+      editor_location editor;
+      if (tool_result res = resolve_editor(ctx.env, requested_config, editor); !res.success()) {
+        return res;
       }
 
       if (!std::filesystem::exists(ctx.env.editor_config)) {
-        return tool_result::error(std::format("editor config '{}' does not exist", ctx.env.editor_config.string()));
+        return tool_result::error(std::format("editor config '{}' does not exist{}", ctx.env.editor_config.string(),
+                                              ctx.env.in_source_tree ? "" : " (reinstall the SDK; the editor and its config ship together)"));
       }
 
       /// the editor resolves engine resources relative to its working directory, so it
       ///  always launches from the environment root; the project rides along via -f
       const process_launch launch = {
-        .executable = editor,
+        .executable = editor.executable,
         .arguments = { ctx.env.editor_config.string(), "-f", project_file.string() },
         .working_directory = ctx.env.root,
         .wait_for_exit = wait_for_exit,
@@ -211,7 +235,7 @@ namespace other {
         return { .code = launched.exit_code,
                  .message = std::format("editor exited with code {}", launched.exit_code) };
       }
-      return tool_result::ok(std::format("launched other_editor [{}] with '{}'", editor_config_name, project_file.string()));
+      return tool_result::ok(std::format("launched other_editor [{}] with '{}'", editor.label, project_file.string()));
     }
 
   }  // namespace cli

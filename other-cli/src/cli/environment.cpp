@@ -78,13 +78,11 @@ namespace other {
         env.root = root;
         env.found = true;
         env.in_source_tree = is_source_tree_root(root);
+        env.editor_config = root / "resources" / "editor-config.toml";
 
         if (env.in_source_tree) {
-          env.editor_config = root / "resources" / "editor-config.toml";
           env.templates_dir = root / "templates";
         } else {
-          /// the installed sdk does not ship the editor (or its config) yet
-          env.editor_config = "";
           env.templates_dir = root / "project" / "templates";
         }
 
@@ -100,13 +98,25 @@ namespace other {
         return "Release";
       }
 
+      std::string_view install_family_for(std::string_view build_config) {
+        if (build_config == "Debug" || build_config == "ProfileD") {
+          return "debug";
+        }
+        return "release";
+      }
+
     }  // namespace
 
     filepath environment_paths::editor_executable(std::string_view build_config) const {
-      if (!found || !in_source_tree) {
+      if (!found) {
         return "";
       }
-      return root / "build" / "other-editor" / build_config / std::format("other_editor{}", kExecutableSuffix);
+
+      if (in_source_tree) {
+        return root / "build" / "other-editor" / build_config / std::format("other_editor{}", kExecutableSuffix);
+      }
+
+      return root / "bin" / install_family_for(build_config) / std::format("other_editor{}", kExecutableSuffix);
     }
 
     filepath environment_paths::othercs_assembly(std::string_view build_config) const {

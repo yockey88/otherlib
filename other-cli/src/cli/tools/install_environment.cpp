@@ -8,8 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "cli/tools/dev_common.hpp"
 #include "core/profiler.hpp"
+
+#include "cli/tools/dev_common.hpp"
+
 
 namespace other {
   namespace cli {
@@ -136,8 +138,7 @@ namespace other {
         sidestep_running_executable(ctx, install_prefix, "install", options.dry_run);
       }
 
-      const tool_result installed = run_attached(ctx,
-        { .executable = cmake.value(), .arguments = install_args, .working_directory = ctx.env.root }, options.dry_run);
+      const tool_result installed = run_attached(ctx, { .executable = cmake.value(), .arguments = install_args, .working_directory = ctx.env.root }, options.dry_run);
       if (options.dry_run) {
         return tool_result::ok("dry run only, nothing installed");
       }
@@ -145,7 +146,7 @@ namespace other {
         return { .code = installed.code, .message = std::format("install failed (exit {})", installed.code) };
       }
       return tool_result::ok(std::format("installed Other Environment [{}]{}", config,
-        prefix.has_value() ? std::format(" to '{}'", prefix.value()) : ""));
+                                         prefix.has_value() ? std::format(" to '{}'", prefix.value()) : ""));
     }
 
     std::string_view package_environment_tool::usage() const {
@@ -195,7 +196,7 @@ namespace other {
       const std::vector<std::string> package_args = { "-G", generators, "-C", config, "-B", packages_dir.string() };
 
       const tool_result packaged = run_attached(ctx,
-        { .executable = cpack.value(), .arguments = package_args, .working_directory = build_dir }, options.dry_run);
+                                                { .executable = cpack.value(), .arguments = package_args, .working_directory = build_dir }, options.dry_run);
       if (options.dry_run) {
         return tool_result::ok("dry run only, nothing packaged");
       }

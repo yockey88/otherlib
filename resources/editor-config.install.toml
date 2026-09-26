@@ -1,0 +1,39 @@
+[driver]
+boot-file = "resources/editor-assets/editor-boot.oasm"
+# vm-debug-mode = true
+plugins = []
+
+[application]
+name = "Other Editor"
+metadata = [ 
+  { key = "name", value = "Other Editor"}, 
+  { key = "description", value = "Other Environment Project Editor"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"} 
+]
+core-log-level = "info"
+core-log-file = "logs/editor.log"
+auto-play-loaded-scenes = false
+
+[filesystem]
+# poll project files for hot-reload (off = assets treated as static)
+watch-assets = true
+# watch-interval-ms = 250
+
+[rendering]
+# fullscreen = true
+# enable-debug = false
+ui-layout-ini = "resources/ui/editor-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+pipelines = [ "resources/editor-assets/default-pipeline.toml" ]
+
+[ui]
+enable-environment-menu-bar = true
+
+[scripting]
+init-lua = "resources/editor.lua"
+dotnet-runtime-config = "dotnet-assemblies/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "dotnet-assemblies/OtherCsBindings.dll"
+other-csharp = "dotnet-assemblies/OtherCs.dll"
+other-lua-directory = "lua"
+dotnet-modules = [ "dotnet-assemblies/OtherEditorCs.dll" ]
