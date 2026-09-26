@@ -264,8 +264,8 @@ namespace other {
     if (driver_kernel_ptr->has_core_system<project_system>()) {
       auto& projects = driver_kernel_ptr->get_core_system<project_system>();
       CORE_LOG_DEBUG("Project state on shutdown request: {}", projects.get_project().get_state());
-      if (projects.is_project_loading() || projects.is_project_unloading()) {
-        CORE_LOG_INFO("Project is currently loading or unloading, deferring shutdown request.");
+      if (projects.is_project_unloading()) {
+        CORE_LOG_INFO("Project is currently unloading, deferring shutdown request.");
         runtime_state.shutdown_requested = true;
         return;
       }
@@ -723,7 +723,13 @@ namespace other {
       CORE_LOG_DEBUG("Project state on shutdown request: {}", projects.get_project().get_state());
       if (projects.is_project_loaded()) {
         projects.unload_project(driver_kernel_ptr.get());
-      } else if (projects.is_project_empty()) {
+      } else if (!projects.is_project_unloading()) {
+        /// EMPTY, LOADING, LOAD_FAILED: nothing left that will emit project.unloaded
+        projects.abort_project_load();
+        shutdown_state.project_unloaded = true;
+      }
+      /// this may not be needed
+      else if (projects.is_project_empty()) {
         shutdown_state.project_unloaded = true;
       }
     } else {

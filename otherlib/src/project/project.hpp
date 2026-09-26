@@ -100,6 +100,7 @@ namespace other {
     inline bool load_failed() const { return current_state == LOAD_FAILED; }
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
+    inline bool expects_script_project() const { return has_script_project; }
     inline bool script_project_mounted() const {
       return project_assembly != nullptr;
     }
@@ -139,6 +140,8 @@ namespace other {
     bool all_scenes_loaded = false;
     bool all_scenes_unloaded = true;
 
+    // assume there is one since that is default during project creation
+    bool has_script_project = true;
     bool able_to_load_script_project = true;
     bool able_to_load_scene_graph = true;
 

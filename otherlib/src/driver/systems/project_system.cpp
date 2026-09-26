@@ -79,6 +79,13 @@ namespace other {
     events.add_listener("script-source.asset-unloaded", [this, kernel](const value& data) { handle_script_source_unloaded(kernel, data); });
     events.add_listener("script-file.asset-loaded", [this, kernel](const value& data) { handle_script_file_loaded(kernel, data); });
     events.add_listener("script-file.asset-unloaded", [this, kernel](const value& data) { handle_script_file_unloaded(kernel, data); });
+
+    // scene asset events
+    events.add_listener("scene.asset-load-failed", [this](const value&) {
+      if (loaded_project->is_loading()) {
+        loaded_project->error_building_scene_graph();
+      }
+    });
   }
 
   void project_system::tick(driver_kernel* kernel, double dt) {
@@ -92,15 +99,30 @@ namespace other {
 
     if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
         loaded_project->is_loading()) {
-      const bool csproj_built_and_attached = loaded_project->script_project_mounted();
+      const bool csproj_built_and_attached = !loaded_project->expects_script_project() || loaded_project->script_project_mounted();
+      // loaded_project->script_project_mounted();
       const bool scene_graph_loaded = loaded_project->scene_graph_loaded();
       const bool finished_loading = csproj_built_and_attached && scene_graph_loaded;
       if (finished_loading) {
         loaded_project->set_state(project::state::LOADED);
         get_driver().trigger_event("project.loaded");
-      } else if (scene_graph_loaded && loaded_project->did_script_project_error_occurred()) {
-        CORE_LOG_ERROR("Failed to load project due to script project load error. Unloading project.");
+      } else if (loaded_project->did_scene_graph_error_occurred() && loaded_project->did_script_project_error_occurred()) {
+        CORE_LOG_ERROR("Failed to load project due to scene graph or script project load error. Unloading project.");
         loaded_project->set_state(project::state::LOAD_FAILED);
+
+        auto& assets = kernel->get_core_system<asset_system>();
+        auto& scenes = kernel->get_core_system<scene_system>();
+        auto& project_scene_graph = scenes.get_scene_graph();
+
+        for (auto& data : loaded_project->get_scenes()) {
+          natural_t id = data.scene_id;
+
+          scene* s = project_scene_graph.find_scene(id);
+          OTHER_ASSERT(s != nullptr, "Scene with ID '{}' not found in project scene graph.", id);
+
+          assets.begin_asset_unload(s->asset_id);
+        }
+
         loaded_project->fail_load();
       }
     }
@@ -142,6 +164,16 @@ namespace other {
   bool project_system::project_unloading() const {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     return loaded_project->is_unloading();
+  }
+
+  void project_system::abort_project_load() {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    if (loaded_project->is_loading()) {
+      loaded_project->set_state(project::state::LOAD_FAILED);
+    }
+    if (loaded_project->load_failed()) {
+      loaded_project->fail_load();
+    }
   }
 
   void project_system::generate_project_at(driver_kernel* kernel, const filepath& directory) {
@@ -292,6 +324,8 @@ namespace other {
 
     CORE_LOG_DEBUG("Script project load failed. Project state: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
+      loaded_project->error_building_script_project();
+
       natural_t asset_id = data;
       opt<filepath> script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
       if (!script.has_value()) {
@@ -299,7 +333,6 @@ namespace other {
         return;
       }
 
-      loaded_project->error_building_script_project();
       CORE_LOG_ERROR("Failed to load script project asset with ID: {} at path '{}'", asset_id, script.value().string());
     } else {
       CORE_LOG_WARN("Unimplemented handling of script project asset load failed event in project for project state {}", loaded_project->get_state());

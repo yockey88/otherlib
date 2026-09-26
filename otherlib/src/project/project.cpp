@@ -11,10 +11,9 @@
 #include "core/job_system.hpp"
 #include "core/weak_ref.hpp"
 #include "file/filesystem.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "script/scripting_environment.hpp"
-
-#include "serialization/scene_serializer.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
@@ -112,6 +111,8 @@ namespace other {
       waiting_for_script_load = false;
       project_scripts.csproject_path.clear();
     }
+
+    has_script_project = !project_scripts.csproject_path.empty();
 
     waiting_for_scene_load = process_scene_sections(table);
 
