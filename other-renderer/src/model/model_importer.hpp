@@ -1,8 +1,8 @@
 /**
  * \file model/model_importer.hpp
  **/
-#ifndef OTHER_RENDERER_MODEL_IMPORTER_HPP
-#define OTHER_RENDERER_MODEL_IMPORTER_HPP
+#ifndef OTHER_RENDERER_MODEL_MODEL_IMPORTER_HPP
+#define OTHER_RENDERER_MODEL_MODEL_IMPORTER_HPP
 
 #include <cstdint>
 #include <stack>
@@ -30,4 +30,4 @@ namespace other {
   }  // namespace model_importer
 }  // namespace other
 
-#endif  // OTHER_RENDERER_MODEL_IMPORTER_HPP
+#endif  // OTHER_RENDERER_MODEL_MODEL_IMPORTER_HPP

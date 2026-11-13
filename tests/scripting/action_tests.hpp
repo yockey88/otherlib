@@ -1,8 +1,8 @@
 /**
  * \file tests/scripting/action_tests.hpp
  **/
-#ifndef OTHERLIB_TESTS_SCRIPTING_ACTION_TESTS_HPP
-#define OTHERLIB_TESTS_SCRIPTING_ACTION_TESTS_HPP
+#ifndef OTHER_TESTS_SCRIPTING_ACTION_TESTS_HPP
+#define OTHER_TESTS_SCRIPTING_ACTION_TESTS_HPP
 
 #include "other_test.hpp"
 
@@ -16,4 +16,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_TESTS_SCRIPTING_ACTION_TESTS_HPP
+#endif  // OTHER_TESTS_SCRIPTING_ACTION_TESTS_HPP

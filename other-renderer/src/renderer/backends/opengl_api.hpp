@@ -1,5 +1,5 @@
 /**
- * @file renderer/backends/opengl_api.hpp
+ * \file renderer/backends/opengl_api.hpp
  */
 #ifndef OTHER_RENDERER_RENDERER_BACKENDS_OPENGL_API_HPP
 #define OTHER_RENDERER_RENDERER_BACKENDS_OPENGL_API_HPP

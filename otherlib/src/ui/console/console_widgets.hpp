@@ -1,8 +1,8 @@
 /**
  * \file ui/console/console_widgets.hpp
  * */
-#ifndef OTHERLIB_UI_CONSOLE_WIDGETS_HPP
-#define OTHERLIB_UI_CONSOLE_WIDGETS_HPP
+#ifndef OTHERLIB_UI_CONSOLE_CONSOLE_WIDGETS_HPP
+#define OTHERLIB_UI_CONSOLE_CONSOLE_WIDGETS_HPP
 
 #include <cstdint>
 #include <string>
@@ -107,4 +107,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_CONSOLE_WIDGETS_HPP
+#endif  // OTHERLIB_UI_CONSOLE_CONSOLE_WIDGETS_HPP

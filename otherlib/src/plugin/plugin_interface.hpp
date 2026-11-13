@@ -1,8 +1,8 @@
 /**
  * \file plugin/plugin_interface.hpp
  **/
-#ifndef OTHER_PLUGIN_PLUGIN_INTERFACE_HPP
-#define OTHER_PLUGIN_PLUGIN_INTERFACE_HPP
+#ifndef OTHERLIB_PLUGIN_PLUGIN_INTERFACE_HPP
+#define OTHERLIB_PLUGIN_PLUGIN_INTERFACE_HPP
 
 #include "core/build_config.hpp"
 #include "core/command_line.hpp"
@@ -87,4 +87,4 @@ namespace other {
     return &manifest;                                                                                                                       \
   }
 
-#endif  // OTHER_PLUGIN_PLUGIN_INTERFACE_HPP
+#endif  // OTHERLIB_PLUGIN_PLUGIN_INTERFACE_HPP

@@ -1,8 +1,8 @@
 /**
  * \file ui/scene-hierarchy/hierarchy_widgets.hpp
  **/
-#ifndef OTHERLIB_UI_HIERARCHY_WIDGETS_HPP
-#define OTHERLIB_UI_HIERARCHY_WIDGETS_HPP
+#ifndef OTHER_EDITOR_UI_SCENE_HIERARCHY_HIERARCHY_WIDGETS_HPP
+#define OTHER_EDITOR_UI_SCENE_HIERARCHY_HIERARCHY_WIDGETS_HPP
 
 #include "core/defines.hpp"
 
@@ -47,4 +47,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_HIERARCHY_WIDGETS_HPP
+#endif  // OTHER_EDITOR_UI_SCENE_HIERARCHY_HIERARCHY_WIDGETS_HPP

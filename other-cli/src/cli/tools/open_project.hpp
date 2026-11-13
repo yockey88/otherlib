@@ -1,8 +1,8 @@
 /**
  * \file cli/tools/open_project.hpp
  **/
-#ifndef OTHER_CLI_TOOLS_OPEN_PROJECT_HPP
-#define OTHER_CLI_TOOLS_OPEN_PROJECT_HPP
+#ifndef OTHER_CLI_CLI_TOOLS_OPEN_PROJECT_HPP
+#define OTHER_CLI_CLI_TOOLS_OPEN_PROJECT_HPP
 
 #include "cli/tool.hpp"
 
@@ -26,4 +26,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOLS_OPEN_PROJECT_HPP
+#endif  // OTHER_CLI_CLI_TOOLS_OPEN_PROJECT_HPP

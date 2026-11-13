@@ -1,5 +1,5 @@
 /**
- * \file filesystem/directory.hpp
+ * \file file/directory.hpp
  **/
 #ifndef OTHER_CORE_FILE_DIRECTORY_HPP
 #define OTHER_CORE_FILE_DIRECTORY_HPP

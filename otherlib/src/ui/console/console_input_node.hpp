@@ -1,8 +1,8 @@
 /**
  * \file ui/console/console_input_node.hpp
  **/
-#ifndef OTHERLIB_UI_CONSOLE_INPUT_NODE_HPP
-#define OTHERLIB_UI_CONSOLE_INPUT_NODE_HPP
+#ifndef OTHERLIB_UI_CONSOLE_CONSOLE_INPUT_NODE_HPP
+#define OTHERLIB_UI_CONSOLE_CONSOLE_INPUT_NODE_HPP
 
 #include <functional>
 #include <string>
@@ -63,4 +63,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_CONSOLE_INPUT_NODE_HPP
+#endif  // OTHERLIB_UI_CONSOLE_CONSOLE_INPUT_NODE_HPP

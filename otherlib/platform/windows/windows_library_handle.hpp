@@ -1,8 +1,8 @@
 /**
- * \file windows/windows_library_handle.hpp
+ * \file platform/windows/windows_library_handle.hpp
  **/
-#ifndef OTHER_WINDOWS_LIBRARY_HANDLE_HPP
-#define OTHER_WINDOWS_LIBRARY_HANDLE_HPP
+#ifndef OTHERLIB_PLATFORM_WINDOWS_WINDOWS_LIBRARY_HANDLE_HPP
+#define OTHERLIB_PLATFORM_WINDOWS_WINDOWS_LIBRARY_HANDLE_HPP
 
 #include <windows.h>
 
@@ -29,4 +29,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_WINDOWS_LIBRARY_HANDLE_HPP
+#endif  // OTHERLIB_PLATFORM_WINDOWS_WINDOWS_LIBRARY_HANDLE_HPP

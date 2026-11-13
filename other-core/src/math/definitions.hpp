@@ -1,5 +1,5 @@
 /**
- * @file math/definitions.hpp
+ * \file math/definitions.hpp
  */
 #ifndef OTHER_CORE_MATH_DEFINITIONS_HPP
 #define OTHER_CORE_MATH_DEFINITIONS_HPP

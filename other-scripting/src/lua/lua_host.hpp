@@ -1,8 +1,8 @@
 /**
  * \file lua/lua_host.hpp
  **/
-#ifndef OTHER_SCRIPTING_LUA_HOST_HPP
-#define OTHER_SCRIPTING_LUA_HOST_HPP
+#ifndef OTHER_SCRIPTING_LUA_LUA_HOST_HPP
+#define OTHER_SCRIPTING_LUA_LUA_HOST_HPP
 
 #include <string_view>
 
@@ -52,4 +52,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SCRIPTING_LUA_HOST_HPP
+#endif  // OTHER_SCRIPTING_LUA_LUA_HOST_HPP

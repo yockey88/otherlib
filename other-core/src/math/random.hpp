@@ -1,5 +1,5 @@
 /**
- * @file math/random.hpp
+ * \file math/random.hpp
  */
 #ifndef OTHER_CORE_MATH_RANDOM_HPP
 #define OTHER_CORE_MATH_RANDOM_HPP

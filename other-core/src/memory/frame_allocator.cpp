@@ -1,5 +1,5 @@
 /**
- * \file core/frame_allocator.cpp
+ * \file memory/frame_allocator.cpp
  **/
 #include "memory/frame_allocator.hpp"
 

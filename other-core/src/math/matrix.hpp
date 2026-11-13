@@ -1,8 +1,8 @@
 /**
- * \file data-structures/matrix.hpp
+ * \file math/matrix.hpp
  **/
-#ifndef OTHER_CORE_DATA_STRUCTURES_MATRIX_HPP
-#define OTHER_CORE_DATA_STRUCTURES_MATRIX_HPP
+#ifndef OTHER_CORE_MATH_MATRIX_HPP
+#define OTHER_CORE_MATH_MATRIX_HPP
 
 #include "core/defines.hpp"
 #include "math/vector.hpp"
@@ -338,4 +338,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_DATA_STRUCTURES_MATRIX_HPP
+#endif  // OTHER_CORE_MATH_MATRIX_HPP

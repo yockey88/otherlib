@@ -1,5 +1,5 @@
 /**
- * \file test/other_test.hpp
+ * \file tests/other_test.hpp
  **/
 #include <gtest/gtest.h>
 

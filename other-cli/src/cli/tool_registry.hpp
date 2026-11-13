@@ -1,8 +1,8 @@
 /**
  * \file cli/tool_registry.hpp
  **/
-#ifndef OTHER_CLI_TOOL_REGISTRY_HPP
-#define OTHER_CLI_TOOL_REGISTRY_HPP
+#ifndef OTHER_CLI_CLI_TOOL_REGISTRY_HPP
+#define OTHER_CLI_CLI_TOOL_REGISTRY_HPP
 
 #include <memory>
 #include <vector>
@@ -60,4 +60,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOL_REGISTRY_HPP
+#endif  // OTHER_CLI_CLI_TOOL_REGISTRY_HPP

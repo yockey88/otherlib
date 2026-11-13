@@ -1,8 +1,8 @@
 /**
- * \file filesystem/file_system.hpp
+ * \file file/filesystem.hpp
  **/
-#ifndef OTHER_CORE_FILE_FILE_SYSTEM_HPP
-#define OTHER_CORE_FILE_FILE_SYSTEM_HPP
+#ifndef OTHER_CORE_FILE_FILESYSTEM_HPP
+#define OTHER_CORE_FILE_FILESYSTEM_HPP
 
 #include <map>
 #include <mutex>
@@ -138,4 +138,4 @@ OTHER_DEPENDENT_SUBSYSTEM(
   subsystem_profile::kArena,
   subsystem_profile::kLogger);
 
-#endif  // OTHER_CORE_FILE_FILE_SYSTEM_HPP
+#endif  // OTHER_CORE_FILE_FILESYSTEM_HPP

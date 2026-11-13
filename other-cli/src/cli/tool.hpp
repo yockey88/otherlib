@@ -1,8 +1,8 @@
 /**
  * \file cli/tool.hpp
  **/
-#ifndef OTHER_CLI_TOOL_HPP
-#define OTHER_CLI_TOOL_HPP
+#ifndef OTHER_CLI_CLI_TOOL_HPP
+#define OTHER_CLI_CLI_TOOL_HPP
 
 #include <format>
 #include <functional>
@@ -68,4 +68,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOL_HPP
+#endif  // OTHER_CLI_CLI_TOOL_HPP

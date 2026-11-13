@@ -1,8 +1,8 @@
 /**
- * \file core/value_type.hpp
+ * \file core/value_type_size.hpp
  **/
-#ifndef OTHER_CORE_CORE_VALUE_TYPE_HPP
-#define OTHER_CORE_CORE_VALUE_TYPE_HPP
+#ifndef OTHER_CORE_CORE_VALUE_TYPE_SIZE_HPP
+#define OTHER_CORE_CORE_VALUE_TYPE_SIZE_HPP
 
 #define GLM_ENABLE_EXPERIMENTAL
 // #define GLM_FORCE_QUAT_DATA_WXYZ
@@ -46,4 +46,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_CORE_VALUE_TYPE_HPP
+#endif  // OTHER_CORE_CORE_VALUE_TYPE_SIZE_HPP

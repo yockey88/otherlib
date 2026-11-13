@@ -1,8 +1,8 @@
 /**
  * \file vm/vm_tests.hpp
  **/
-#ifndef OTHER_TESTS_VM_TESTS_HPP
-#define OTHER_TESTS_VM_TESTS_HPP
+#ifndef OTHER_TESTS_VM_VM_TESTS_HPP
+#define OTHER_TESTS_VM_VM_TESTS_HPP
 
 #include <array>
 #include <cstdint>
@@ -132,4 +132,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_TESTS_VM_TESTS_HPP
+#endif  // OTHER_TESTS_VM_VM_TESTS_HPP

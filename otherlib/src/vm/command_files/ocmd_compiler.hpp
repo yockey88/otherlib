@@ -1,8 +1,8 @@
 /**
- * \file ocmd_compiler.hpp
+ * \file vm/command_files/ocmd_compiler.hpp
  */
-#ifndef OTHERLIB_SRC_VM_COMMAND_FILES_OCMD_COMPILER_HPP
-#define OTHERLIB_SRC_VM_COMMAND_FILES_OCMD_COMPILER_HPP
+#ifndef OTHERLIB_VM_COMMAND_FILES_OCMD_COMPILER_HPP
+#define OTHERLIB_VM_COMMAND_FILES_OCMD_COMPILER_HPP
 
 #include <string_view>
 #include <vector>
@@ -38,4 +38,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_SRC_VM_COMMAND_FILES_OCMD_COMPILER_HPP
+#endif  // OTHERLIB_VM_COMMAND_FILES_OCMD_COMPILER_HPP

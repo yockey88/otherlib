@@ -3,8 +3,8 @@
  *   Factory registry for asset editors, keyed by asset::type. Supports script overrides via
  *   register_script_editor() so Lua/C# can register custom editors at runtime.
  **/
-#ifndef OTHERLIB_UI_ASSET_EDITOR_REGISTRY_HPP
-#define OTHERLIB_UI_ASSET_EDITOR_REGISTRY_HPP
+#ifndef OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_REGISTRY_HPP
+#define OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_REGISTRY_HPP
 
 #include <functional>
 #include <unordered_map>
@@ -39,4 +39,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_ASSET_EDITOR_REGISTRY_HPP
+#endif  // OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_REGISTRY_HPP

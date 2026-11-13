@@ -43,4 +43,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SCENE_OBJECT_COMPONENT_REGISTRY_HPP
+#endif  // OTHER_SCENE_OBJECT_OBJECT_COMPONENT_REGISTRY_HPP

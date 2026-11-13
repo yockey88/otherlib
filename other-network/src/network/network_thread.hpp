@@ -86,4 +86,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_NETWORK_THREAD_HPP
+#endif  // OTHER_NETWORK_NETWORK_NETWORK_THREAD_HPP

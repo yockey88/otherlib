@@ -1,8 +1,8 @@
 /**
  * \file ui/node_editor_math.hpp
  **/
-#ifndef OTHER_UI_NODE_EDITOR_MATH_HPP
-#define OTHER_UI_NODE_EDITOR_MATH_HPP
+#ifndef OTHER_UI_UI_NODE_EDITOR_MATH_HPP
+#define OTHER_UI_UI_NODE_EDITOR_MATH_HPP
 
 #include <glm/glm.hpp>
 
@@ -41,4 +41,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_UI_NODE_EDITOR_MATH_HPP
+#endif  // OTHER_UI_UI_NODE_EDITOR_MATH_HPP

@@ -1,5 +1,5 @@
 /**
- * \file filesystem/remote_file.hpp
+ * \file file/remote_file.hpp
  **/
 #ifndef OTHER_CORE_FILE_REMOTE_FILE_HPP
 #define OTHER_CORE_FILE_REMOTE_FILE_HPP

@@ -1,5 +1,5 @@
 /**
- * \file camera_component.hpp
+ * \file object/camera_component.hpp
  **/
 #ifndef OTHER_SCENE_OBJECT_CAMERA_COMPONENT_HPP
 #define OTHER_SCENE_OBJECT_CAMERA_COMPONENT_HPP

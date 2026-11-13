@@ -1,8 +1,8 @@
 /**
  * \file cli/tools/test_runner.hpp
  **/
-#ifndef OTHER_CLI_TOOLS_TEST_RUNNER_HPP
-#define OTHER_CLI_TOOLS_TEST_RUNNER_HPP
+#ifndef OTHER_CLI_CLI_TOOLS_TEST_RUNNER_HPP
+#define OTHER_CLI_CLI_TOOLS_TEST_RUNNER_HPP
 
 #include "cli/tool.hpp"
 
@@ -26,4 +26,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOLS_TEST_RUNNER_HPP
+#endif  // OTHER_CLI_CLI_TOOLS_TEST_RUNNER_HPP

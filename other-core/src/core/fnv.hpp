@@ -1,8 +1,8 @@
 /**
- * \file fnv.hpp
+ * \file core/fnv.hpp
  **/
-#ifndef OTHER_CORE_FNV_HPP
-#define OTHER_CORE_FNV_HPP
+#ifndef OTHER_CORE_CORE_FNV_HPP
+#define OTHER_CORE_CORE_FNV_HPP
 
 #include <string_view>
 
@@ -27,4 +27,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_FNV_HPP
+#endif  // OTHER_CORE_CORE_FNV_HPP

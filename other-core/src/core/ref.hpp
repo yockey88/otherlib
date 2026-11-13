@@ -1,8 +1,8 @@
 /**
  * \file core/ref.hpp
  */
-#ifndef OTHER_CORE_REF_HPP
-#define OTHER_CORE_REF_HPP
+#ifndef OTHER_CORE_CORE_REF_HPP
+#define OTHER_CORE_CORE_REF_HPP
 
 #include <atomic>
 #include <concepts>
@@ -258,4 +258,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_REF_HPP
+#endif  // OTHER_CORE_CORE_REF_HPP

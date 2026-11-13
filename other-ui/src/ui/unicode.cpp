@@ -1,5 +1,5 @@
 /**
- * \file renderer/ui/unicode.cpp
+ * \file ui/unicode.cpp
  **/
 #include "unicode.hpp"
 

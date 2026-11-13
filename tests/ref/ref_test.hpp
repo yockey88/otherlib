@@ -1,8 +1,8 @@
 /**
  * \file tests/ref/ref_test.hpp
  **/
-#ifndef OTHER_REF_TEST_HPP
-#define OTHER_REF_TEST_HPP
+#ifndef OTHER_TESTS_REF_REF_TEST_HPP
+#define OTHER_TESTS_REF_REF_TEST_HPP
 
 #include <memory>
 
@@ -56,4 +56,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_REF_TEST_HPP
+#endif  // OTHER_TESTS_REF_REF_TEST_HPP

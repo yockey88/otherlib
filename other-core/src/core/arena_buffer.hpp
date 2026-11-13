@@ -1,8 +1,8 @@
 /**
  * \file core/arena_buffer.hpp
  **/
-#ifndef OTHER_CORE_ARENA_BUFFER_HPP
-#define OTHER_CORE_ARENA_BUFFER_HPP
+#ifndef OTHER_CORE_CORE_ARENA_BUFFER_HPP
+#define OTHER_CORE_CORE_ARENA_BUFFER_HPP
 
 #include <numeric>
 
@@ -168,4 +168,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_ARENA_BUFFER_HPP
+#endif  // OTHER_CORE_CORE_ARENA_BUFFER_HPP

@@ -1,8 +1,8 @@
 /**
  * \file ui/console/console.hpp
  **/
-#ifndef OTHERLIB_UI_CONSOLE_HPP
-#define OTHERLIB_UI_CONSOLE_HPP
+#ifndef OTHERLIB_UI_CONSOLE_CONSOLE_HPP
+#define OTHERLIB_UI_CONSOLE_CONSOLE_HPP
 
 #include "core/defines.hpp"
 
@@ -27,4 +27,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_CONSOLE_HPP
+#endif  // OTHERLIB_UI_CONSOLE_CONSOLE_HPP

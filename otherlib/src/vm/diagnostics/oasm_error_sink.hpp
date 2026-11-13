@@ -1,5 +1,5 @@
 /**
- * \file diangostics/oasm_error_sink.hpp
+ * \file vm/diagnostics/oasm_error_sink.hpp
  **/
 #ifndef OTHERLIB_VM_DIAGNOSTICS_OASM_ERROR_SINK_HPP
 #define OTHERLIB_VM_DIAGNOSTICS_OASM_ERROR_SINK_HPP

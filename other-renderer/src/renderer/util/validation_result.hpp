@@ -1,8 +1,8 @@
 /**
  * \file renderer/util/validation_result.hpp
  **/
-#ifndef RENDERER_UTIL_VALIDATION_RESULT_HPP
-#define RENDERER_UTIL_VALIDATION_RESULT_HPP
+#ifndef OTHER_RENDERER_RENDERER_UTIL_VALIDATION_RESULT_HPP
+#define OTHER_RENDERER_RENDERER_UTIL_VALIDATION_RESULT_HPP
 
 #include <string>
 
@@ -24,4 +24,4 @@ namespace other {
   }  // namespace detail
 }  // namespace other
 
-#endif  // RENDERER_UTIL_VALIDATION_RESULT_HPP
+#endif  // OTHER_RENDERER_RENDERER_UTIL_VALIDATION_RESULT_HPP

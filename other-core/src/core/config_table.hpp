@@ -1,8 +1,8 @@
 /**
  * \file core/config_table.hpp
  **/
-#ifndef OTHER_CORE_CONFIG_TABLE_HPP
-#define OTHER_CORE_CONFIG_TABLE_HPP
+#ifndef OTHER_CORE_CORE_CONFIG_TABLE_HPP
+#define OTHER_CORE_CORE_CONFIG_TABLE_HPP
 
 #include <cstdint>
 #include <memory>
@@ -158,4 +158,4 @@ namespace other {
   }  // namespace configuration
 }  // namespace other
 
-#endif  // OTHER_CORE_CONFIG_TABLE_HPP
+#endif  // OTHER_CORE_CORE_CONFIG_TABLE_HPP

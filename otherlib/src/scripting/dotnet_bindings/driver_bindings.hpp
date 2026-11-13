@@ -1,8 +1,8 @@
 /**
  * \file scripting/dotnet_bindings/driver_bindings.hpp
  **/
-#ifndef OTHER_ENVIRONMENT_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP
-#define OTHER_ENVIRONMENT_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP
+#ifndef OTHERLIB_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP
+#define OTHERLIB_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP
 
 #include "dotnet/native_string.hpp"
 #include "dotnet/types.hpp"
@@ -36,4 +36,4 @@ namespace other {
   }  // namespace bindings
 }  // namespace other
 
-#endif  // OTHER_ENVIRONMENT_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP
+#endif  // OTHERLIB_SCRIPTING_DOTNET_BINDINGS_DRIVER_BINDINGS_HPP

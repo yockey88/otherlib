@@ -1,8 +1,8 @@
 /**
  * \file core/ref_counted.hpp
  */
-#ifndef OTHER_CORE_REF_COUNTED_HPP
-#define OTHER_CORE_REF_COUNTED_HPP
+#ifndef OTHER_CORE_CORE_REF_COUNTED_HPP
+#define OTHER_CORE_CORE_REF_COUNTED_HPP
 
 #include <atomic>
 
@@ -40,4 +40,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_REF_COUNTED_HPP
+#endif  // OTHER_CORE_CORE_REF_COUNTED_HPP

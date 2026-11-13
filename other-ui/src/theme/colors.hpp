@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui/colors.hpp
+ * \file theme/colors.hpp
  **/
-#ifndef OTHER_RENDERER_RENDERER_UI_COLORS_HPP
-#define OTHER_RENDERER_RENDERER_UI_COLORS_HPP
+#ifndef OTHER_UI_THEME_COLORS_HPP
+#define OTHER_UI_THEME_COLORS_HPP
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
@@ -602,4 +602,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHER_RENDERER_RENDERER_UI_COLORS_HPP
+#endif  // OTHER_UI_THEME_COLORS_HPP

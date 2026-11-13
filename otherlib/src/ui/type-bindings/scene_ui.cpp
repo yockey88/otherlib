@@ -1,5 +1,5 @@
 /**
- * \file ui\type-bindings\scene_ui.cpp
+ * \file ui/type-bindings/scene_ui.cpp
  */
 #include "ui/type-bindings/scene_ui.hpp"
 

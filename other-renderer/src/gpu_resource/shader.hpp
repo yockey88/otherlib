@@ -1,5 +1,5 @@
 /**
- * @file gpu_resource/shader.hpp
+ * \file gpu_resource/shader.hpp
  */
 #ifndef OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP

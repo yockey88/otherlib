@@ -1,8 +1,8 @@
 /**
  * \file ui/object-editor/property_inspector_node.hpp
  **/
-#ifndef OTHERLIB_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP
-#define OTHERLIB_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP
+#ifndef OTHER_EDITOR_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP
+#define OTHER_EDITOR_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP
 
 #include <imgui/ImReflect.hpp>
 
@@ -46,4 +46,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP
+#endif  // OTHER_EDITOR_UI_OBJECT_EDITOR_PROPERTY_INSPECTOR_NODE_HPP

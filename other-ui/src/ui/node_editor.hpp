@@ -1,8 +1,8 @@
 /**
  * \file ui/node_editor.hpp
  **/
-#ifndef OTHER_UI_NODE_EDITOR_HPP
-#define OTHER_UI_NODE_EDITOR_HPP
+#ifndef OTHER_UI_UI_NODE_EDITOR_HPP
+#define OTHER_UI_UI_NODE_EDITOR_HPP
 
 #include <glm/glm.hpp>
 
@@ -212,4 +212,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_UI_NODE_EDITOR_HPP
+#endif  // OTHER_UI_UI_NODE_EDITOR_HPP

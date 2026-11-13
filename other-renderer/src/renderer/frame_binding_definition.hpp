@@ -1,8 +1,8 @@
 /**
  * \file renderer/frame_binding_definition.hpp
  **/
-#ifndef OTHER_RENDERER_FRAME_BINDING_DEFINITION_HPP
-#define OTHER_RENDERER_FRAME_BINDING_DEFINITION_HPP
+#ifndef OTHER_RENDERER_RENDERER_FRAME_BINDING_DEFINITION_HPP
+#define OTHER_RENDERER_RENDERER_FRAME_BINDING_DEFINITION_HPP
 
 #include "renderer/resource_tag.hpp"
 
@@ -43,4 +43,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERER_FRAME_BINDING_DEFINITION_HPP
+#endif  // OTHER_RENDERER_RENDERER_FRAME_BINDING_DEFINITION_HPP

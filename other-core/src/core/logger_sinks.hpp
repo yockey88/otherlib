@@ -1,8 +1,8 @@
 /**
  * \file core/logger_sinks.hpp
  **/
-#ifndef OTHER_CORE_LOGGER_SINKS_HPP
-#define OTHER_CORE_LOGGER_SINKS_HPP
+#ifndef OTHER_CORE_CORE_LOGGER_SINKS_HPP
+#define OTHER_CORE_CORE_LOGGER_SINKS_HPP
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -25,4 +25,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_LOGGER_SINKS_HPP
+#endif  // OTHER_CORE_CORE_LOGGER_SINKS_HPP

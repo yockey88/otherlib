@@ -1,5 +1,5 @@
 /**
- * \file core/formatting.hpp
+ * \file core/formatting.cpp
  **/
 #include "core/formatting.hpp"
 

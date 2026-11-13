@@ -1,5 +1,5 @@
 /**
- * @file math/interval.hpp
+ * \file math/interval.hpp
  */
 #ifndef OTHER_CORE_MATH_INTERVAL_HPP
 #define OTHER_CORE_MATH_INTERVAL_HPP

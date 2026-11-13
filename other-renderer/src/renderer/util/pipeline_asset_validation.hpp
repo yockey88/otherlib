@@ -1,8 +1,8 @@
 /**
  * \file renderer/util/pipeline_asset_validation.hpp
  **/
-#ifndef RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP
-#define RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP
+#ifndef OTHER_RENDERER_RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP
+#define OTHER_RENDERER_RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP
 
 #include <toml++/toml.hpp>
 
@@ -16,4 +16,4 @@ namespace other {
   }  // namespace detail
 }  // namespace other
 
-#endif  // RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP
+#endif  // OTHER_RENDERER_RENDERER_UTIL_PIPELINE_ASSET_VALIDATION_HPP

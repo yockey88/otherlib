@@ -1,8 +1,8 @@
 /**
  * \file cli/environment.hpp
  **/
-#ifndef OTHER_CLI_ENVIRONMENT_HPP
-#define OTHER_CLI_ENVIRONMENT_HPP
+#ifndef OTHER_CLI_CLI_ENVIRONMENT_HPP
+#define OTHER_CLI_CLI_ENVIRONMENT_HPP
 
 #include <array>
 #include <string_view>
@@ -46,4 +46,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_ENVIRONMENT_HPP
+#endif  // OTHER_CLI_CLI_ENVIRONMENT_HPP

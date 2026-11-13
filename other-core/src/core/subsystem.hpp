@@ -1,8 +1,8 @@
 /**
  * \file core/subsystem.hpp
  **/
-#ifndef OTHER_CORE_SUBSYSTEM_HPP
-#define OTHER_CORE_SUBSYSTEM_HPP
+#ifndef OTHER_CORE_CORE_SUBSYSTEM_HPP
+#define OTHER_CORE_CORE_SUBSYSTEM_HPP
 
 #include <atomic>
 #include <concepts>
@@ -238,4 +238,4 @@ namespace other {
     static constexpr std::string_view dependency_names[] = { __VA_ARGS__ };  \
   };
 
-#endif  // OTHER_CORE_SUBSYSTEM_HPP
+#endif  // OTHER_CORE_CORE_SUBSYSTEM_HPP

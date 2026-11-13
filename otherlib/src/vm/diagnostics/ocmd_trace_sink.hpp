@@ -1,8 +1,8 @@
 /**
  * \file vm/diagnostics/ocmd_trace_sink.hpp
  **/
-#ifndef OTHERLIB_SRC_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP
-#define OTHERLIB_SRC_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP
+#ifndef OTHERLIB_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP
+#define OTHERLIB_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP
 
 #include "vm/diagnostics/diagnostic_sink.hpp"
 
@@ -17,4 +17,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_SRC_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP
+#endif  // OTHERLIB_VM_DIAGNOSTICS_OCMD_TRACE_SINK_HPP

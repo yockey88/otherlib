@@ -1,8 +1,8 @@
 /**
  * \file core/memory_pool.hpp
  **/
-#ifndef OTHER_CORE_MEMORY_POOL_HPP
-#define OTHER_CORE_MEMORY_POOL_HPP
+#ifndef OTHER_CORE_CORE_MEMORY_POOL_HPP
+#define OTHER_CORE_CORE_MEMORY_POOL_HPP
 
 #include <cstddef>
 #include <cstring>
@@ -282,4 +282,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_MEMORY_POOL_HPP
+#endif  // OTHER_CORE_CORE_MEMORY_POOL_HPP

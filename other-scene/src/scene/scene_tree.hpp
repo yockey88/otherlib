@@ -1,5 +1,5 @@
 /**
- * @file scene/scene_tree.hpp
+ * \file scene/scene_tree.hpp
  */
 #ifndef OTHER_SCENE_SCENE_SCENE_TREE_HPP
 #define OTHER_SCENE_SCENE_SCENE_TREE_HPP

@@ -28,4 +28,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_CORE_DELTA_TIME_HPP
+#endif  // OTHER_CORE_CORE_DELTA_TIME_HPP

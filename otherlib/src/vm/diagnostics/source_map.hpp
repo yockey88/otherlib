@@ -1,8 +1,8 @@
 /**
  * \file vm/diagnostics/source_map.hpp
  **/
-#ifndef OTHER_VM_DIAGNOSTICS_SOURCE_MAP_HPP
-#define OTHER_VM_DIAGNOSTICS_SOURCE_MAP_HPP
+#ifndef OTHERLIB_VM_DIAGNOSTICS_SOURCE_MAP_HPP
+#define OTHERLIB_VM_DIAGNOSTICS_SOURCE_MAP_HPP
 
 
 namespace other {
@@ -28,4 +28,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_VM_DIAGNOSTICS_SOURCE_MAP_HPP
+#endif  // OTHERLIB_VM_DIAGNOSTICS_SOURCE_MAP_HPP

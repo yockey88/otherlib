@@ -1,5 +1,5 @@
 /**
- * @file math/constants.hpp
+ * \file math/constants.hpp
  */
 #ifndef OTHER_CORE_MATH_CONSTANTS_HPP
 #define OTHER_CORE_MATH_CONSTANTS_HPP

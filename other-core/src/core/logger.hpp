@@ -1,8 +1,8 @@
 /**
- * \file kernel/logger.hpp
+ * \file core/logger.hpp
  **/
-#ifndef OTHER_CORE_LOGGER_HPP
-#define OTHER_CORE_LOGGER_HPP
+#ifndef OTHER_CORE_CORE_LOGGER_HPP
+#define OTHER_CORE_CORE_LOGGER_HPP
 
 #include <array>
 #include <cstdint>
@@ -138,4 +138,4 @@ OTHER_SUBSYSTEM(other::logger);
   OTHER_ASSERT(false, "Calling unimplemented function: {} at {}", std::source_location::current().function_name(), std::source_location::current().line()); \
   return expr;
 
-#endif  // OTHER_CORE_LOGGER_HPP
+#endif  // OTHER_CORE_CORE_LOGGER_HPP

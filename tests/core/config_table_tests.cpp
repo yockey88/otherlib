@@ -1,5 +1,5 @@
 /**
- * \file core/config_table_test.cpp
+ * \file tests/core/config_table_tests.cpp
  **/
 #include "core/config_table_tests.hpp"
 

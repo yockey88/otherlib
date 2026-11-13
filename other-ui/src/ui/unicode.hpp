@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui/unicode.hpp
+ * \file ui/unicode.hpp
  **/
-#ifndef OTHER_RENDERER_RENDERER_UI_UNICODE_HPP
-#define OTHER_RENDERER_RENDERER_UI_UNICODE_HPP
+#ifndef OTHER_UI_UI_UNICODE_HPP
+#define OTHER_UI_UI_UNICODE_HPP
 
 #include <imgui/imgui.h>
 
@@ -26,4 +26,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHER_RENDERER_RENDERER_UI_UNICODE_HPP
+#endif  // OTHER_UI_UI_UNICODE_HPP

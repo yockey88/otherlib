@@ -1,8 +1,8 @@
 /**
  * \file cli/process.hpp
  **/
-#ifndef OTHER_CLI_PROCESS_HPP
-#define OTHER_CLI_PROCESS_HPP
+#ifndef OTHER_CLI_CLI_PROCESS_HPP
+#define OTHER_CLI_CLI_PROCESS_HPP
 
 #include <string>
 #include <vector>
@@ -40,4 +40,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_PROCESS_HPP
+#endif  // OTHER_CLI_CLI_PROCESS_HPP

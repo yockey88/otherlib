@@ -1,5 +1,5 @@
 /**
- * \file data-structures/std_containers.hpp
+ * \file data-structures/std_container.hpp
  **/
 #ifndef OTHER_CORE_DATA_STRUCTURES_STD_CONTAINER_HPP
 #define OTHER_CORE_DATA_STRUCTURES_STD_CONTAINER_HPP

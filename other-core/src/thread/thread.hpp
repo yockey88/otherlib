@@ -1,5 +1,5 @@
 /**
- * @file thread/thread.hpp
+ * \file thread/thread.hpp
  */
 #ifndef OTHER_CORE_THREAD_THREAD_HPP
 #define OTHER_CORE_THREAD_THREAD_HPP

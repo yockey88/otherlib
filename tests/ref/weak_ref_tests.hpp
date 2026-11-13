@@ -1,8 +1,8 @@
 /**
  * \file tests/ref/weak_ref_tests.hpp
  **/
-#ifndef OTHER_WEAK_REF_TESTS_HPP
-#define OTHER_WEAK_REF_TESTS_HPP
+#ifndef OTHER_TESTS_REF_WEAK_REF_TESTS_HPP
+#define OTHER_TESTS_REF_WEAK_REF_TESTS_HPP
 
 #include "core/weak_ref.hpp"
 
@@ -16,4 +16,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_WEAK_REF_TESTS_HPP
+#endif  // OTHER_TESTS_REF_WEAK_REF_TESTS_HPP

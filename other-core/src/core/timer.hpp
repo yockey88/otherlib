@@ -1,11 +1,11 @@
 /**
  * \file core/timer.hpp
  **/
-#ifndef OTHERLIB_CORE_TIMER_HPP
-#define OTHERLIB_CORE_TIMER_HPP
+#ifndef OTHER_CORE_CORE_TIMER_HPP
+#define OTHER_CORE_CORE_TIMER_HPP
 
 namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_CORE_TIMER_HPP
+#endif  // OTHER_CORE_CORE_TIMER_HPP

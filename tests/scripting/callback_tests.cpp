@@ -1,5 +1,5 @@
 /**
- * \file callback_tests.cpp
+ * \file tests/scripting/callback_tests.cpp
  **/
 #include "core/ref.hpp"
 

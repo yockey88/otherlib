@@ -1,8 +1,8 @@
 /**
  * \file ui/object-editor/object_editor.hpp
  **/
-#ifndef OTHERLIB_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP
-#define OTHERLIB_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP
+#ifndef OTHER_EDITOR_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP
+#define OTHER_EDITOR_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP
 
 #include "ui/ui_window.hpp"
 
@@ -29,4 +29,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP
+#endif  // OTHER_EDITOR_UI_OBJECT_EDITOR_OBJECT_EDITOR_HPP

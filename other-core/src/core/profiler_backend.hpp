@@ -1,8 +1,8 @@
 /**
  * \file core/profiler_backend.hpp
  **/
-#ifndef OTHER_CORE_PROFILER_BACKEND_HPP
-#define OTHER_CORE_PROFILER_BACKEND_HPP
+#ifndef OTHER_CORE_CORE_PROFILER_BACKEND_HPP
+#define OTHER_CORE_CORE_PROFILER_BACKEND_HPP
 
 #include <atomic>
 #include <cstddef>
@@ -172,4 +172,4 @@ namespace other {
   }  // namespace profiling
 }  // namespace other
 
-#endif  // OTHER_CORE_PROFILER_BACKEND_HPP
+#endif  // OTHER_CORE_CORE_PROFILER_BACKEND_HPP

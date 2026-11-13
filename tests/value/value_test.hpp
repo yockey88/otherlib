@@ -1,8 +1,8 @@
 /**
  * \file tests/value/value_test.hpp
  **/
-#ifndef OTHER_VALUE_TEST_HPP
-#define OTHER_VALUE_TEST_HPP
+#ifndef OTHER_TESTS_VALUE_VALUE_TEST_HPP
+#define OTHER_TESTS_VALUE_VALUE_TEST_HPP
 
 #include <cstdint>
 #include <string>
@@ -29,4 +29,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_VALUE_TEST_HPP
+#endif  // OTHER_TESTS_VALUE_VALUE_TEST_HPP

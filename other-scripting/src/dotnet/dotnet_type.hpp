@@ -1,8 +1,8 @@
 /**
  * \file dotnet/dotnet_type.hpp
  **/
-#ifndef OTHER_ENGINE_SCRIPTING_DOTNET_DOTNET_TYPE_HPP
-#define OTHER_ENGINE_SCRIPTING_DOTNET_DOTNET_TYPE_HPP
+#ifndef OTHER_SCRIPTING_DOTNET_DOTNET_TYPE_HPP
+#define OTHER_SCRIPTING_DOTNET_DOTNET_TYPE_HPP
 
 #include <cstdint>
 #include <string>
@@ -85,4 +85,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_ENGINE_SCRIPTING_DOTNET_DOTNET_TYPE_HPP
+#endif  // OTHER_SCRIPTING_DOTNET_DOTNET_TYPE_HPP

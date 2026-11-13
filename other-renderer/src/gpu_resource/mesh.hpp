@@ -1,5 +1,5 @@
 /**
- * \file renderer/mesh.hpp
+ * \file gpu_resource/mesh.hpp
  **/
 #ifndef OTHER_RENDERER_GPU_RESOURCE_MESH_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_MESH_HPP

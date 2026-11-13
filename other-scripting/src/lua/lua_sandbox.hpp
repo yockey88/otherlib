@@ -1,8 +1,8 @@
 /**
  * \file lua/lua_sandbox.hpp
  **/
-#ifndef OTHERLIB_SCRIPTING_LUA_LUA_SANDBOX_HPP
-#define OTHERLIB_SCRIPTING_LUA_LUA_SANDBOX_HPP
+#ifndef OTHER_SCRIPTING_LUA_LUA_SANDBOX_HPP
+#define OTHER_SCRIPTING_LUA_LUA_SANDBOX_HPP
 
 #include <sol/sol.hpp>
 
@@ -41,4 +41,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_SCRIPTING_LUA_LUA_SANDBOX_HPP
+#endif  // OTHER_SCRIPTING_LUA_LUA_SANDBOX_HPP

@@ -1,8 +1,8 @@
 /**
  * \file core/profiler.hpp
  **/
-#ifndef OTHER_CORE_PROFILER_HPP
-#define OTHER_CORE_PROFILER_HPP
+#ifndef OTHER_CORE_CORE_PROFILER_HPP
+#define OTHER_CORE_CORE_PROFILER_HPP
 
 #include "core/build_config.hpp"
 
@@ -77,4 +77,4 @@
     std::lock_guard<type> lck { value }
 
 #endif  // OTHER_PROFILE_BUILD
-#endif  // OTHER_CORE_PROFILER_HPP
+#endif  // OTHER_CORE_CORE_PROFILER_HPP

@@ -1,5 +1,5 @@
 /**
- * @file math/integrator.hpp
+ * \file math/integrator.hpp
  */
 #ifndef OTHER_CORE_MATH_INTEGRATOR_HPP
 #define OTHER_CORE_MATH_INTEGRATOR_HPP

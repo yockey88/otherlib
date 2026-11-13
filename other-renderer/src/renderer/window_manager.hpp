@@ -1,8 +1,8 @@
 /**
  * \file renderer/window_manager.hpp
  **/
-#ifndef OTHERLIB_RENDERER_WINDOW_MANAGER_HPP
-#define OTHERLIB_RENDERER_WINDOW_MANAGER_HPP
+#ifndef OTHER_RENDERER_RENDERER_WINDOW_MANAGER_HPP
+#define OTHER_RENDERER_RENDERER_WINDOW_MANAGER_HPP
 
 #include <map>
 
@@ -33,4 +33,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_RENDERER_WINDOW_MANAGER_HPP
+#endif  // OTHER_RENDERER_RENDERER_WINDOW_MANAGER_HPP

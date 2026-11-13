@@ -1,5 +1,5 @@
 /**
- * @file math/orthonormal_basis.hpp
+ * \file math/orthonormal_basis.hpp
  */
 #ifndef OTHER_CORE_MATH_ORTHONORMAL_BASIS_HPP
 #define OTHER_CORE_MATH_ORTHONORMAL_BASIS_HPP
