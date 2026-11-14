@@ -1,5 +1,5 @@
 /**
- * \file ui/script/script_field_ui.cpp
+ * \file ui/field_ui.cpp
  **/
 #include "ui/field_ui.hpp"
 

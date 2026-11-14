@@ -1,5 +1,5 @@
 /**
- * \file plugins/tcp_side_channel.hpp
+ * \file plugins/tcp_side_channel.cpp
  **/
 #include "core/profiler.hpp"
 #include "driver/driver.hpp"

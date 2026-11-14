@@ -1,8 +1,8 @@
 /**
  * \file renderer/render_graph.hpp
  **/
-#ifndef OTHER_RENDERER_RENDER_GRAPH_HPP
-#define OTHER_RENDERER_RENDER_GRAPH_HPP
+#ifndef OTHER_RENDERER_RENDERER_RENDER_GRAPH_HPP
+#define OTHER_RENDERER_RENDERER_RENDER_GRAPH_HPP
 
 #include <cstdint>
 #include <map>
@@ -123,4 +123,4 @@ OTHER_REFLECT(
 //   other::render_graph
 // )
 
-#endif  // OTHER_RENDERER_RENDER_GRAPH_HPP
+#endif  // OTHER_RENDERER_RENDERER_RENDER_GRAPH_HPP

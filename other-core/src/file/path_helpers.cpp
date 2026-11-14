@@ -10,7 +10,8 @@ namespace other {
   namespace {
 
     static filepath environment_install_prefix() {
-      return filepath{ get_tag_replacement("${other-directory}") };  /// "C:/OtherEnvironment"
+      /// not the ${other-directory} tag: that follows environment_root() and is the repo in dev builds
+      return get_other_environment_install_folder();
     }
 
     static filepath environment_build_root() {
@@ -26,7 +27,110 @@ namespace other {
       return {};
     }
 
+    static opt<filepath> resolve_mount_qualified(const std::string_view expanded) {
+      const size_t sep = expanded.find(file_system::kPathSeparator);
+      if (sep == std::string_view::npos) {
+        return std::nullopt;
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system unavailable");
+
+      const std::string_view mount_name = expanded.substr(0, sep);
+      const filepath rel{ std::string{ expanded.substr(sep + file_system::kPathSeparator.size()) } };
+
+      ref<directory> mount = fs->get_mount(mount_name);
+      if (mount != nullptr) {
+        return (mount->absolute_path() / rel).lexically_normal();
+      }
+
+      /// mounts come up with the asset system; earlier callers (renderer backend defaults)
+      ///  still need engine paths, and the engine mount is always environment_root()
+      if (mount_name == file_system::kEngineMount) {
+        return (environment_root() / rel).lexically_normal();
+      }
+      return std::nullopt;
+    }
+
+    static ostd::vector<filepath> search_roots(const filepath& referencing_file) {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system unavailable");
+
+      ostd::vector<filepath> roots = {};
+      if (!referencing_file.empty()) {
+        roots.push_back(dir_of(std::filesystem::absolute(referencing_file)));
+      }
+
+      /// \todo needs a small accessor on file_system: roots of every mount_scope::PROJECT mount
+      for (const filepath& root : fs->project_mount_roots()) {
+        roots.push_back(root);
+      }
+      roots.push_back(file_system::get_cwd());
+
+      if (ref<directory> engine = fs->get_mount(file_system::kEngineMount); engine != nullptr) {
+        roots.push_back(engine->absolute_path());
+      }
+      return roots;
+    }
+
   }  // namespace
+
+  std::string to_mount_qualified(const filepath& abs) {
+    /// virtualize yields "mount/rel/path.ext"; swap the first '/' for "://"
+    std::string vp = virtualize(abs);
+    const size_t slash = vp.find('/');
+    OTHER_ASSERT(slash != std::string::npos, "virtualize produced a path with no mount segment: '{}'", vp);
+    vp.replace(slash, 1, file_system::kPathSeparator);
+    return vp;
+  }
+
+  asset_path resolve_asset_path(const std::string_view raw, const filepath& referencing_file) {
+    PROFILE_SECTION("resolve_asset_path");
+    asset_path result = { .raw = std::string{ raw } };
+    if (raw.empty()) {
+      return result;
+    }
+
+    std::string expanded = perform_tag_replacement(raw);
+    std::ranges::replace(expanded, '\\', '/');
+
+    if (opt<filepath> mounted = resolve_mount_qualified(expanded); mounted.has_value()) {
+      if (std::filesystem::exists(*mounted)) {
+        result.resolved = *mounted;
+      } else {
+        CORE_LOG_ERROR("Asset path '{}' does not exist under its mount ({})", raw, mounted->string());
+      }
+      return result;
+    }
+
+    /// a mount-qualified path whose mount is missing is an error, not a relative path
+    if (const size_t sep = expanded.find(file_system::kPathSeparator); sep != std::string::npos) {
+      CORE_LOG_ERROR("Asset path '{}' names mount '{}', which is not mounted", raw, expanded.substr(0, sep));
+      return result;
+    }
+
+    const filepath candidate{ expanded };
+    if (candidate.is_absolute()) {
+      if (std::filesystem::exists(candidate)) {
+        result.resolved = candidate.lexically_normal();
+      } else {
+        CORE_LOG_ERROR("Asset path '{}' does not exist ({})", raw, candidate.string());
+      }
+      return result;
+    }
+
+    const ostd::vector<filepath> roots = search_roots(referencing_file);
+    for (const filepath& root : roots) {
+      const filepath attempt = (root / candidate).lexically_normal();
+      if (std::filesystem::exists(attempt)) {
+        result.resolved = attempt;
+        return result;
+      }
+    }
+
+    CORE_LOG_ERROR("Asset path '{}' not found; searched {} roots (first: {})", raw, roots.size(), roots.empty() ? "<none>" : roots.front().string());
+    return result;
+  }
 
   std::string normalize_lexical(const filepath& p) {
     std::string s = p.lexically_normal().generic_string();
@@ -119,6 +223,18 @@ namespace other {
       environment_install_prefix(),
     };
     return std::ranges::any_of(roots, [&](const filepath& r) { return !r.empty() && try_relative(abs, r).has_value(); });
+  }
+
+  filepath environment_root() {
+    const filepath r = environment_build_root();
+    if (!r.empty()) {
+      return r.parent_path();
+    }
+    return get_other_environment_install_folder();
+  }
+
+  bool is_installed_build() {
+    return environment_build_root().empty();
   }
 
 }  // namespace other

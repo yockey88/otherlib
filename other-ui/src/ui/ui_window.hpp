@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui/ui_window.hpp
+ * \file ui/ui_window.hpp
  **/
-#ifndef OTHER_RENDERER_UI_UI_WINDOW_HPP
-#define OTHER_RENDERER_UI_UI_WINDOW_HPP
+#ifndef OTHER_UI_UI_UI_WINDOW_HPP
+#define OTHER_UI_UI_UI_WINDOW_HPP
 
 #include "core/defines.hpp"
 #include "core/interfaces.hpp"
@@ -133,4 +133,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERER_UI_UI_WINDOW_HPP
+#endif  // OTHER_UI_UI_UI_WINDOW_HPP

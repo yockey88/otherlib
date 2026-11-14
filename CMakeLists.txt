@@ -42,7 +42,7 @@ endif()
 
 ## default SDK location; overridable with -DCMAKE_INSTALL_PREFIX=<path>
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+  set(CMAKE_INSTALL_PREFIX "C:\\OtherEnvironment" CACHE PATH "Installation directory" FORCE)
 endif()
 include(GNUInstallDirs)
 include(cmake/other_install.cmake)
@@ -82,8 +82,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(BUILD_CONFIG_MACRO "$<$<CONFIG:Debug>:OTHER_ENVIRONMENT_DEBUG>$<$<CONFIG:Release>:OTHER_ENVIRONMENT_RELEASE>$<$<CONFIG:Profile>:OTHER_ENVIRONMENT_PROFILE>$<$<CONFIG:ProfileD>:OTHER_ENVIRONMENT_PROFILED>")
-message(STATUS "Build configuration: ${BUILD_CONFIG_MACRO}")
+set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
+set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
 
+message(STATUS "Build configuration: ${BUILD_CONFIG_MACRO}")
 if (NOT CMAKE_BUILD_TYPE)
   message(FATAL_ERROR "CMAKE_BUILD_TYPE is not set. Please specify a build type (Debug, Release).")
 endif()
@@ -267,8 +269,6 @@ other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
 other_install_external_library("xxHash" "${OTHER_EXTERN_DIR}/xxHash/lib")
   
-set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
-set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
 install(
   FILES
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
@@ -307,6 +307,13 @@ install(
   DIRECTORY "${OTHERLIB_RESOURCES}/"
   DESTINATION "${OTHER_INSTALL_RESOURCES}"
   PATTERN "models" EXCLUDE
+  PATTERN "editor-config.toml" EXCLUDE
+  PATTERN "editor-config.install.toml" EXCLUDE
+)
+install(
+  FILES "${OTHERLIB_RESOURCES}/editor-config.install.toml"
+  DESTINATION "${OTHER_INSTALL_RESOURCES}"
+  RENAME "editor-config.toml"
 )
 
 ## the engine's lua runtime (bridge, console, interfaces); the dotnet/lua hosts default

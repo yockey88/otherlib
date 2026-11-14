@@ -1,5 +1,5 @@
 /**
- * \file src/editor_settings.hpp
+ * \file editor_settings.hpp
  **/
 #ifndef OTHER_EDITOR_EDITOR_SETTINGS_HPP
 #define OTHER_EDITOR_EDITOR_SETTINGS_HPP

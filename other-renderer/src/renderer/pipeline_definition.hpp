@@ -49,7 +49,8 @@ namespace other {
     uint32_t mip_levels = 1;
     bool generate_mips = false;
 
-    opt<filepath> seed_texture_path;
+    /// raw as written, resolved in render_pipeline
+    opt<std::string> seed_texture_path;
 
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
@@ -132,6 +133,9 @@ namespace other {
 
     /// if non-empty, assert these tags are present before marking valid
     ostd::vector<resource_tag> required_tags;
+
+    // source file of pipeline, empty if built in code
+    filepath source_path;
   };
 
   executor_type executor_type_from_string(const std::string_view str);

@@ -1,8 +1,8 @@
 /**
  * \file ui/asset-editor/asset_editor_node.hpp
  **/
-#ifndef OTHERLIB_UI_ASSET_EDITOR_NODE_HPP
-#define OTHERLIB_UI_ASSET_EDITOR_NODE_HPP
+#ifndef OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_NODE_HPP
+#define OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_NODE_HPP
 
 #include "ui/ui_node.hpp"
 
@@ -37,4 +37,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_ASSET_EDITOR_NODE_HPP
+#endif  // OTHER_EDITOR_UI_ASSET_EDITOR_ASSET_EDITOR_NODE_HPP

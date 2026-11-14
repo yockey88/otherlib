@@ -1,5 +1,5 @@
 /**
- * \file renderer/texture.hpp
+ * \file gpu_resource/texture.hpp
  **/
 #ifndef OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP

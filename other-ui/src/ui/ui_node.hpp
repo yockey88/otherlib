@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui/ui_node.hpp
+ * \file ui/ui_node.hpp
  **/
-#ifndef OTHER_RENDERER_UI_UI_NODE_HPP
-#define OTHER_RENDERER_UI_UI_NODE_HPP
+#ifndef OTHER_UI_UI_UI_NODE_HPP
+#define OTHER_UI_UI_UI_NODE_HPP
 
 #include <deque>
 #include <stack>
@@ -97,4 +97,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERER_UI_UI_NODE_HPP
+#endif  // OTHER_UI_UI_UI_NODE_HPP

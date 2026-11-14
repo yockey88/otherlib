@@ -1,5 +1,5 @@
 /**
- * @file memory/allocator.hpp
+ * \file memory/allocator.hpp
  */
 #ifndef OTHER_CORE_MEMORY_ALLOCATOR_HPP
 #define OTHER_CORE_MEMORY_ALLOCATOR_HPP

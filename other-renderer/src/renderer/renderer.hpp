@@ -1,5 +1,5 @@
 /**
- * @file renderer/renderer.hpp
+ * \file renderer/renderer.hpp
  */
 #ifndef OTHER_RENDERER_RENDERER_RENDERER_HPP
 #define OTHER_RENDERER_RENDERER_RENDERER_HPP

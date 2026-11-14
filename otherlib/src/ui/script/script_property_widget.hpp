@@ -1,8 +1,8 @@
 /**
  * \file ui/script/script_property_widget.hpp
  **/
-#ifndef OTHERLIB_UI_SCRIPT_PROPERTY_WIDGET_HPP
-#define OTHERLIB_UI_SCRIPT_PROPERTY_WIDGET_HPP
+#ifndef OTHERLIB_UI_SCRIPT_SCRIPT_PROPERTY_WIDGET_HPP
+#define OTHERLIB_UI_SCRIPT_SCRIPT_PROPERTY_WIDGET_HPP
 
 #include <string>
 
@@ -116,4 +116,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_SCRIPT_PROPERTY_WIDGET_HPP
+#endif  // OTHERLIB_UI_SCRIPT_SCRIPT_PROPERTY_WIDGET_HPP

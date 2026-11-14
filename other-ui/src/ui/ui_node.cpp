@@ -1,5 +1,5 @@
 /**
- * \file renderer/ui/ui_node.cpp
+ * \file ui/ui_node.cpp
  **/
 #include "ui/ui_node.hpp"
 

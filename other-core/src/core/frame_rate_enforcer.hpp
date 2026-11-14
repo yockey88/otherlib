@@ -1,8 +1,8 @@
 /**
  * \file core/frame_rate_enforcer.hpp
  **/
-#ifndef OTHERLIB_CORE_FRAME_RATE_ENFORCER_HPP
-#define OTHERLIB_CORE_FRAME_RATE_ENFORCER_HPP
+#ifndef OTHER_CORE_CORE_FRAME_RATE_ENFORCER_HPP
+#define OTHER_CORE_CORE_FRAME_RATE_ENFORCER_HPP
 
 #include <thread>
 
@@ -39,4 +39,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_CORE_FRAME_RATE_ENFORCER_HPP
+#endif  // OTHER_CORE_CORE_FRAME_RATE_ENFORCER_HPP

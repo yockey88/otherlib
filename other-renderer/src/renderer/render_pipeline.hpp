@@ -1,8 +1,8 @@
 /**
  * \file renderer/render_pipeline.hpp
  **/
-#ifndef OTHER_RENDERER_RENDER_PIPELINE_HPP
-#define OTHER_RENDERER_RENDER_PIPELINE_HPP
+#ifndef OTHER_RENDERER_RENDERER_RENDER_PIPELINE_HPP
+#define OTHER_RENDERER_RENDERER_RENDER_PIPELINE_HPP
 
 #include <string>
 #include <string_view>
@@ -176,4 +176,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERER_RENDER_PIPELINE_HPP
+#endif  // OTHER_RENDERER_RENDERER_RENDER_PIPELINE_HPP

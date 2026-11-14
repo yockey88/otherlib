@@ -1,5 +1,5 @@
 /**
- * \file scripting/intefaces/rendering_interfaces.cpp
+ * \file scripting/interfaces/rendering_interfaces.cpp
  **/
 #include "scripting/interfaces/rendering_interfaces.hpp"
 

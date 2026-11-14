@@ -1,8 +1,8 @@
 /**
  * \file lua/lua_script.hpp
  **/
-#ifndef OTHER_SCRIPTING_LUA_SCRIPT_HPP
-#define OTHER_SCRIPTING_LUA_SCRIPT_HPP
+#ifndef OTHER_SCRIPTING_LUA_LUA_SCRIPT_HPP
+#define OTHER_SCRIPTING_LUA_LUA_SCRIPT_HPP
 
 #include <type_traits>
 
@@ -135,4 +135,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SCRIPTING_LUA_SCRIPT_HPP
+#endif  // OTHER_SCRIPTING_LUA_LUA_SCRIPT_HPP

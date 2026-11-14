@@ -1,8 +1,8 @@
 /**
  * \file core/weak_ref.hpp
  **/
-#ifndef OTHER_CORE_WEAK_REF_HPP
-#define OTHER_CORE_WEAK_REF_HPP
+#ifndef OTHER_CORE_CORE_WEAK_REF_HPP
+#define OTHER_CORE_CORE_WEAK_REF_HPP
 
 #include "core/ref.hpp"
 
@@ -116,4 +116,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_WEAK_REF_HPP
+#endif  // OTHER_CORE_CORE_WEAK_REF_HPP

@@ -5,6 +5,7 @@
 
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "file/path_helpers.hpp"
 
 namespace other {
 
@@ -67,7 +68,7 @@ namespace other {
   /// OtherEnvironment install folder: windows PROGRAMFILES/OtherEnvironment, linux /usr/local/OtherEnvironment
   /// \todo mac
   #ifdef OTHER_ENVIRONMENT_WINDOWS
-    return filepath("C:/OtherEnvironment");
+    return filepath("C:\\OtherEnvironment");
   #elif defined(OTHER_ENVIRONMENT_UNIX)
     return filepath("/usr/local/OtherEnvironment");
   #else
@@ -119,7 +120,8 @@ namespace other {
 
     /// folders and stuff, most users won't care for these
     if (inner_tag == "other-directory") {
-      return "C:/OtherEnvironment";
+      /// repo root in dev builds, install prefix otherwise - matches the engine mount
+      return environment_root().generic_string();
     }
     if (inner_tag == "program-files") {
       return get_program_files_folder("OtherEnvironment").string();

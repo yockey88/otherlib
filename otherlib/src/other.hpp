@@ -1,5 +1,5 @@
 /**
- * @file other.hpp
+ * \file other.hpp
  */
 #ifndef OTHERLIB_OTHER_HPP
 #define OTHERLIB_OTHER_HPP

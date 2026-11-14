@@ -1,8 +1,8 @@
 /**
- * \file test/network/network_thread_tests.hpp
+ * \file tests/network/network_thread_tests.hpp
  **/
-#ifndef OTHER_NETWORK_NETWORK_THREAD_TESTS_HPP
-#define OTHER_NETWORK_NETWORK_THREAD_TESTS_HPP
+#ifndef OTHER_TESTS_NETWORK_NETWORK_THREAD_TESTS_HPP
+#define OTHER_TESTS_NETWORK_NETWORK_THREAD_TESTS_HPP
 
 #include "message/message_bus.hpp"
 #include "other_test.hpp"
@@ -17,4 +17,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_NETWORK_THREAD_TESTS_HPP
+#endif  // OTHER_TESTS_NETWORK_NETWORK_THREAD_TESTS_HPP

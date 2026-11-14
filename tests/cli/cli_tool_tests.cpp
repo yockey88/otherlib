@@ -38,8 +38,12 @@ namespace {
       std::filesystem::create_directories(sandbox);
 
       ctx.working_directory = sandbox;
-      ctx.out = [this](std::string_view message) { captured_out += std::format("{}\n", message); };
-      ctx.err = [this](std::string_view message) { captured_err += std::format("{}\n", message); };
+      ctx.out = [this](std::string_view message) {
+        captured_out += std::format("{}\n", message);
+      };
+      ctx.err = [this](std::string_view message) {
+        captured_err += std::format("{}\n", message);
+      };
     }
 
     void TearDown() override {
@@ -136,12 +140,11 @@ namespace {
     const filepath project_file = project_dir / "test-proj.toml";
     EXPECT_TRUE(std::filesystem::exists(project_file));
     EXPECT_TRUE(std::filesystem::exists(project_dir / "test-proj.lua"));
-    EXPECT_TRUE(std::filesystem::exists(project_dir / "assets" / "scenes" / "main.lua"));
     EXPECT_TRUE(std::filesystem::is_directory(project_dir / "src"));
 
     toml::table table;
     ASSERT_NO_THROW(table = toml::parse_file(project_file.string()));
-    EXPECT_EQ(table.at_path("scripting.projectrc-path").value_or<std::string>(""), "test-proj/test-proj.lua");
+    EXPECT_EQ(table.at_path("scripting.projectrc-path").value_or<std::string>(""), "test-proj.lua");
     EXPECT_EQ(table.at_path("scene-graph.starting-scene").value_or<std::string>(""), "main");
     /// no environment -> no C# project reference and no csproj on disk
     EXPECT_FALSE(table.at_path("scripting.cs_project"));
@@ -176,7 +179,7 @@ namespace {
 
     toml::table table;
     ASSERT_NO_THROW(table = toml::parse_file((project_dir / "space-game.toml").string()));
-    EXPECT_EQ(table.at_path("scripting.cs_project").value_or<std::string>(""), "space-game/SpaceGame.csproj");
+    EXPECT_EQ(table.at_path("scripting.cs_project").value_or<std::string>(""), "SpaceGame.csproj");
 
     std::ifstream file(csproj, std::ios::binary);
     const std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

@@ -1,5 +1,5 @@
 /**
- * \file tests/test_main.cpp
+ * \file tests/other_test_main.cpp
  **/
 #include <iostream>
 

@@ -80,4 +80,4 @@ namespace std {
 
 }  // namespace std
 
-#endif  // OTHER_RENDERER_RESOURCE_RENDERER_RESOURCE_HPP
+#endif  // OTHER_RENDERER_GPU_RESOURCE_RENDERER_RESOURCE_HPP

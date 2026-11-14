@@ -1,5 +1,5 @@
 /**
- * \file driver/system/scripting_system.cpp
+ * \file driver/systems/scripting_system.cpp
  **/
 #include "driver/systems/scripting_system.hpp"
 

@@ -1,5 +1,5 @@
 /**
- * @file renderer/camera.hpp
+ * \file renderer/camera.hpp
  */
 #ifndef OTHER_RENDERER_RENDERER_CAMERA_HPP
 #define OTHER_RENDERER_RENDERER_CAMERA_HPP

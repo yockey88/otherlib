@@ -3,8 +3,8 @@
  *   Shared plumbing for the dev-workflow tools (build/test/run/install/package): shared
  *   flags, source-tree guard, attached subprocess execution, built-executable lookup.
  **/
-#ifndef OTHER_CLI_TOOLS_DEV_COMMON_HPP
-#define OTHER_CLI_TOOLS_DEV_COMMON_HPP
+#ifndef OTHER_CLI_CLI_TOOLS_DEV_COMMON_HPP
+#define OTHER_CLI_CLI_TOOLS_DEV_COMMON_HPP
 
 #include <string>
 
@@ -44,4 +44,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOLS_DEV_COMMON_HPP
+#endif  // OTHER_CLI_CLI_TOOLS_DEV_COMMON_HPP

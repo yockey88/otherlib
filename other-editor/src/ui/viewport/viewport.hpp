@@ -1,8 +1,8 @@
 /**
- * \file ui/viewport.hpp
+ * \file ui/viewport/viewport.hpp
  **/
-#ifndef OTHERLIB_UI_VIEWPORT_VIEWPORT_HPP
-#define OTHERLIB_UI_VIEWPORT_VIEWPORT_HPP
+#ifndef OTHER_EDITOR_UI_VIEWPORT_VIEWPORT_HPP
+#define OTHER_EDITOR_UI_VIEWPORT_VIEWPORT_HPP
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer.hpp"
@@ -41,4 +41,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_VIEWPORT_VIEWPORT_HPP
+#endif  // OTHER_EDITOR_UI_VIEWPORT_VIEWPORT_HPP

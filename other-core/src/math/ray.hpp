@@ -1,5 +1,5 @@
 /**
- * @file math/ray.hpp
+ * \file math/ray.hpp
  */
 #ifndef OTHER_CORE_MATH_RAY_HPP
 #define OTHER_CORE_MATH_RAY_HPP

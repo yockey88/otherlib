@@ -1,8 +1,8 @@
 /**
  * \file core/scope.hpp
  **/
-#ifndef OTHER_CORE_SCOPE_HPP
-#define OTHER_CORE_SCOPE_HPP
+#ifndef OTHER_CORE_CORE_SCOPE_HPP
+#define OTHER_CORE_CORE_SCOPE_HPP
 
 #include <memory>
 
@@ -38,4 +38,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_SCOPE_HPP
+#endif  // OTHER_CORE_CORE_SCOPE_HPP

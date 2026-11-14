@@ -4,8 +4,8 @@
  * a minimal static driver that hosts exactly one harness scenario (config key
  * `harness.scenario`). the driver stays generic; all behavior lives in scenarios.
  **/
-#ifndef OTHER_TESTS_HARNESS_DRIVER_HPP
-#define OTHER_TESTS_HARNESS_DRIVER_HPP
+#ifndef OTHER_TESTS_HARNESS_HARNESS_DRIVER_HPP
+#define OTHER_TESTS_HARNESS_HARNESS_DRIVER_HPP
 
 #include "driver/driver.hpp"
 
@@ -33,4 +33,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_TESTS_HARNESS_DRIVER_HPP
+#endif  // OTHER_TESTS_HARNESS_HARNESS_DRIVER_HPP

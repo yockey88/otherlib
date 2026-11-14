@@ -1,8 +1,8 @@
 /**
  * \file core/formatting.hpp
  **/
-#ifndef OTHER_CORE_FORMATTING_HPP
-#define OTHER_CORE_FORMATTING_HPP
+#ifndef OTHER_CORE_CORE_FORMATTING_HPP
+#define OTHER_CORE_CORE_FORMATTING_HPP
 
 #include <format>
 #include <iostream>
@@ -147,4 +147,4 @@ namespace std {
 
 }  // namespace std
 
-#endif  // OTHER_CORE_FORMATTING_HPP
+#endif  // OTHER_CORE_CORE_FORMATTING_HPP

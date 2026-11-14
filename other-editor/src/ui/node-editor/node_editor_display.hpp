@@ -1,8 +1,8 @@
 /**
  * \file ui/node-editor/node_editor_display.hpp
  **/
-#ifndef OTHERLIB_UI_NODE_EDITOR_DISPLAY_HPP
-#define OTHERLIB_UI_NODE_EDITOR_DISPLAY_HPP
+#ifndef OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_DISPLAY_HPP
+#define OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_DISPLAY_HPP
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
@@ -63,4 +63,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_NODE_EDITOR_DISPLAY_HPP
+#endif  // OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_DISPLAY_HPP

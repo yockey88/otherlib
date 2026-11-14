@@ -1,8 +1,8 @@
 /**
  * \file cli/environment.hpp
  **/
-#ifndef OTHER_CLI_ENVIRONMENT_HPP
-#define OTHER_CLI_ENVIRONMENT_HPP
+#ifndef OTHER_CLI_CLI_ENVIRONMENT_HPP
+#define OTHER_CLI_CLI_ENVIRONMENT_HPP
 
 #include <array>
 #include <string_view>
@@ -35,6 +35,10 @@ namespace other {
 
     bool is_valid_build_config(std::string_view build_config);
 
+    /// returns the working directory based on args
+    /// if the tool being ran is open or run then it will be the relevant directory otherwise the cwd is used
+    filepath get_working_directory(const std::vector<std::string>& args);
+
     /// discovery order: explicit root -> OTHER_ENVIRONMENT_ROOT -> walk up from executable ->
     ///  walk up from cwd -> default install location; found==false if nothing matches (explicit root never walked)
     environment_paths locate_environment(const opt<filepath>& explicit_root = std::nullopt);
@@ -46,4 +50,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_ENVIRONMENT_HPP
+#endif  // OTHER_CLI_CLI_ENVIRONMENT_HPP

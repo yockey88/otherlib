@@ -1,8 +1,8 @@
 /**
- * \file driver/systems/driver_system.hpp
+ * \file driver/driver_system.hpp
  **/
-#ifndef OTHERLIB_DRIVER_SYSTEMS_DRIVER_SYSTEM_HPP
-#define OTHERLIB_DRIVER_SYSTEMS_DRIVER_SYSTEM_HPP
+#ifndef OTHERLIB_DRIVER_DRIVER_SYSTEM_HPP
+#define OTHERLIB_DRIVER_DRIVER_SYSTEM_HPP
 
 #include <cstdint>
 
@@ -85,4 +85,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_DRIVER_SYSTEMS_DRIVER_SYSTEM_HPP
+#endif  // OTHERLIB_DRIVER_DRIVER_SYSTEM_HPP

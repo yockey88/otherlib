@@ -1,8 +1,8 @@
 /**
  * \file dotnet/type_cache.hpp
  **/
-#ifndef OTHER_ENGINE_SCRIPTING_DOTNET_TYPE_CACHE_HPP
-#define OTHER_ENGINE_SCRIPTING_DOTNET_TYPE_CACHE_HPP
+#ifndef OTHER_SCRIPTING_DOTNET_TYPE_CACHE_HPP
+#define OTHER_SCRIPTING_DOTNET_TYPE_CACHE_HPP
 
 #include <cstdint>
 
@@ -49,4 +49,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_ENGINE_SCRIPTING_DOTNET_TYPE_CACHE_HPP
+#endif  // OTHER_SCRIPTING_DOTNET_TYPE_CACHE_HPP

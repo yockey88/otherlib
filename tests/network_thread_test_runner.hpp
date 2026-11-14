@@ -1,8 +1,8 @@
 /**
  * \file network_thread_test_runner.hpp
  **/
-#ifndef OTHER_NETWORK_NETWORK_THREAD_TEST_RUNNER_HPP
-#define OTHER_NETWORK_NETWORK_THREAD_TEST_RUNNER_HPP
+#ifndef OTHER_TESTS_NETWORK_THREAD_TEST_RUNNER_HPP
+#define OTHER_TESTS_NETWORK_THREAD_TEST_RUNNER_HPP
 
 #include <gtest/gtest.h>
 
@@ -40,4 +40,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_NETWORK_THREAD_TEST_RUNNER_HPP
+#endif  // OTHER_TESTS_NETWORK_THREAD_TEST_RUNNER_HPP

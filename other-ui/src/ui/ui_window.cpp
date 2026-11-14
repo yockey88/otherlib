@@ -1,5 +1,5 @@
 /**
- * \file renderer/ui/ui_window.cpp
+ * \file ui/ui_window.cpp
  **/
 #include "ui/ui_window.hpp"
 

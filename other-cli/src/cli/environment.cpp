@@ -18,11 +18,11 @@ namespace other {
   namespace cli {
     namespace {
 
-      constexpr std::string_view kDefaultInstallDir = "C:/OtherEnvironment";
-
 #ifdef OTHER_ENVIRONMENT_WINDOWS
+      constexpr std::string_view kDefaultInstallDir = "C:\\OtherEnvironment";
       constexpr std::string_view kExecutableSuffix = ".exe";
 #else
+      constexpr std::string_view kDefaultInstallDir = "/usr/local/OtherEnvironment";
       constexpr std::string_view kExecutableSuffix = "";
 #endif
 
@@ -78,13 +78,11 @@ namespace other {
         env.root = root;
         env.found = true;
         env.in_source_tree = is_source_tree_root(root);
+        env.editor_config = root / "resources" / "editor-config.toml";
 
         if (env.in_source_tree) {
-          env.editor_config = root / "resources" / "editor-config.toml";
           env.templates_dir = root / "templates";
         } else {
-          /// the installed sdk does not ship the editor (or its config) yet
-          env.editor_config = "";
           env.templates_dir = root / "project" / "templates";
         }
 
@@ -100,13 +98,25 @@ namespace other {
         return "Release";
       }
 
+      std::string_view install_family_for(std::string_view build_config) {
+        if (build_config == "Debug" || build_config == "ProfileD") {
+          return "debug";
+        }
+        return "release";
+      }
+
     }  // namespace
 
     filepath environment_paths::editor_executable(std::string_view build_config) const {
-      if (!found || !in_source_tree) {
+      if (!found) {
         return "";
       }
-      return root / "build" / "other-editor" / build_config / std::format("other_editor{}", kExecutableSuffix);
+
+      if (in_source_tree) {
+        return root / "build" / "other-editor" / build_config / std::format("other_editor{}", kExecutableSuffix);
+      }
+
+      return root / "bin" / install_family_for(build_config) / std::format("other_editor{}", kExecutableSuffix);
     }
 
     filepath environment_paths::othercs_assembly(std::string_view build_config) const {
@@ -121,6 +131,26 @@ namespace other {
 
     bool is_valid_build_config(std::string_view build_config) {
       return std::ranges::find(kBuildConfigs, build_config) != kBuildConfigs.end();
+    }
+
+    filepath get_working_directory(const std::vector<std::string>& args) {
+#if 0
+      auto open = std::ranges::find(args, "open");
+      if (open != args.end()) {
+        // if open, use current directory or the passed path
+        return open + 1 != args.end() ?
+          open[1] :
+          ".";
+      }
+
+      auto run = std::ranges::find(args, "run");
+      if (run != args.end()) {
+        return run + 1 != args.end() ?
+          run[1] :
+          ".";
+      }
+#endif
+      return std::filesystem::current_path();
     }
 
     environment_paths locate_environment(const opt<filepath>& explicit_root) {

@@ -4,8 +4,8 @@
  * runs exactly one scenario per process inside a real engine driver, selected by config key
  *  `harness.scenario`; today only "soak" exists - seam for future work (fuzzing, replay, stress)
  **/
-#ifndef OTHER_TESTS_HARNESS_SCENARIO_HPP
-#define OTHER_TESTS_HARNESS_SCENARIO_HPP
+#ifndef OTHER_TESTS_HARNESS_HARNESS_SCENARIO_HPP
+#define OTHER_TESTS_HARNESS_HARNESS_SCENARIO_HPP
 
 #include <string_view>
 
@@ -38,4 +38,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_TESTS_HARNESS_SCENARIO_HPP
+#endif  // OTHER_TESTS_HARNESS_HARNESS_SCENARIO_HPP

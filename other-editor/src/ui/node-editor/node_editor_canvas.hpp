@@ -1,8 +1,8 @@
 /**
  * \file ui/node-editor/node_editor_canvas.hpp
  **/
-#ifndef OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
-#define OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
+#ifndef OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_CANVAS_HPP
+#define OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_CANVAS_HPP
 
 #include <glm/glm.hpp>
 #include "data-structures/std_container.hpp"
@@ -146,4 +146,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
+#endif  // OTHER_EDITOR_UI_NODE_EDITOR_NODE_EDITOR_CANVAS_HPP

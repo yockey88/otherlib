@@ -1,8 +1,8 @@
 /**
  * \file core/command_line.hpp
  **/
-#ifndef OTHER_CORE_COMMAND_LINE_HPP
-#define OTHER_CORE_COMMAND_LINE_HPP
+#ifndef OTHER_CORE_CORE_COMMAND_LINE_HPP
+#define OTHER_CORE_CORE_COMMAND_LINE_HPP
 
 #include <string>
 #include <vector>
@@ -38,4 +38,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_COMMAND_LINE_HPP
+#endif  // OTHER_CORE_CORE_COMMAND_LINE_HPP

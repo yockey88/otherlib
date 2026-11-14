@@ -1,8 +1,8 @@
 /**
  * \file ui/scene-hierarchy/scene_hierarchy.hpp
  **/
-#ifndef OTHERLIB_UI_SCENE_HIERARCHY_HPP
-#define OTHERLIB_UI_SCENE_HIERARCHY_HPP
+#ifndef OTHER_EDITOR_UI_SCENE_HIERARCHY_SCENE_HIERARCHY_HPP
+#define OTHER_EDITOR_UI_SCENE_HIERARCHY_SCENE_HIERARCHY_HPP
 
 #include <unordered_set>
 
@@ -58,4 +58,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_SCENE_HIERARCHY_HPP
+#endif  // OTHER_EDITOR_UI_SCENE_HIERARCHY_SCENE_HIERARCHY_HPP

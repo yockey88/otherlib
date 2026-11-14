@@ -1,5 +1,5 @@
 /**
- * \file dotnet/host.cpp
+ * \file dotnet/dotnet_host.cpp
  **/
 #include "dotnet/dotnet_host.hpp"
 

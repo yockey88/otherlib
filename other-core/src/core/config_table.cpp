@@ -232,7 +232,7 @@ namespace other {
     std::println("using file log level: {}", file_log_level);
 
     if (log_file_node.is_string()) {
-      core_log_file = log_file_node.as_string()->get();
+      core_log_file = perform_tag_replacement(log_file_node.as_string()->get());
     }
 
     toml::node_view environment = config.table.get().at_path("environment");

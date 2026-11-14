@@ -1,8 +1,8 @@
 /**
  * \file renderer/draw_command.hpp
  **/
-#ifndef OTHER_RENDERER_RENDERER_RAW_COMMAND_HPP
-#define OTHER_RENDERER_RENDERER_RAW_COMMAND_HPP
+#ifndef OTHER_RENDERER_RENDERER_DRAW_COMMAND_HPP
+#define OTHER_RENDERER_RENDERER_DRAW_COMMAND_HPP
 
 #include <cstdint>
 
@@ -110,4 +110,4 @@ OTHER_REFLECT(
   field(index_count, other::attr::serializable()),
   field(line_thickness, other::attr::serializable()))
 
-#endif  // OTHER_RENDERER_RENDERER_RAW_COMMAND_HPP
+#endif  // OTHER_RENDERER_RENDERER_DRAW_COMMAND_HPP

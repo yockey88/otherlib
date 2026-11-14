@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui_helpers.hpp
+ * \file ui/ui_helpers.hpp
  **/
-#ifndef OTHERLIB_RENDERER_UI_HELPERS_HPP
-#define OTHERLIB_RENDERER_UI_HELPERS_HPP
+#ifndef OTHER_UI_UI_UI_HELPERS_HPP
+#define OTHER_UI_UI_UI_HELPERS_HPP
 
 #include <cstdint>
 #include <string>
@@ -98,4 +98,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_RENDERER_UI_HELPERS_HPP
+#endif  // OTHER_UI_UI_UI_HELPERS_HPP

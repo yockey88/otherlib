@@ -1,5 +1,5 @@
 /**
- * @file memory/arena_allocator.hpp
+ * \file memory/arena_allocator.hpp
  */
 #ifndef OTHER_CORE_MEMORY_ARENA_ALLOCATOR_HPP
 #define OTHER_CORE_MEMORY_ARENA_ALLOCATOR_HPP

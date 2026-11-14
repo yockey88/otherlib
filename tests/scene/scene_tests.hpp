@@ -1,5 +1,5 @@
 /**
- * \file test/scene/scene_test.hpp
+ * \file tests/scene/scene_tests.hpp
  **/
 #ifndef OTHER_TESTS_SCENE_SCENE_TESTS_HPP
 #define OTHER_TESTS_SCENE_SCENE_TESTS_HPP

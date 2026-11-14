@@ -4,6 +4,7 @@
 #include "driver/systems/asset_system.hpp"
 
 #include "file/filesystem.hpp"
+#include "file/path_helpers.hpp"
 #include "serialization/component_codec.hpp"
 
 #include "scene/scene.hpp"
@@ -11,8 +12,6 @@
 #include "driver/driver.hpp"
 #include "driver/driver_mounts.hpp"
 #include "driver/systems/job_driver_system.hpp"
-#include "driver/systems/network_system.hpp"
-
 
 namespace other {
 
@@ -32,16 +31,18 @@ namespace other {
         CORE_LOG_WARN("Scene serialization referenced unknown asset id {}; storing an empty path.", asset_id);
         return "";
       }
-      const filepath& path = !ass->load_path.empty() ? ass->load_path : ass->virtual_path;
-      return path.generic_string();
+
+      if (ass->absolute_path.empty()) {
+        return ass->virtual_path.generic_string();
+      }
+      return to_mount_qualified(ass->absolute_path);
     };
-    scene_codec_services.resolve_asset = [this](const std::string& path) -> natural_t {
-      filepath asset_path = path;
-      if (!std::filesystem::exists(asset_path) && !std::filesystem::exists(std::filesystem::absolute(asset_path))) {
-        CORE_LOG_ERROR("Scene document references asset '{}' which does not exist.", path);
+    scene_codec_services.resolve_asset = [this](const std::string& path, const filepath& document) -> natural_t {
+      const asset_path resolved = resolve_asset_path(path, document);
+      if (!resolved.found()) {
         return 0;
       }
-      return begin_asset_load(asset_path);
+      return begin_asset_load(resolved.resolved);
     };
 
     watch_assets = get_driver().get_config_value<bool>("filesystem.watch-assets", false);

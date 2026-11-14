@@ -1,8 +1,8 @@
 /**
  * \file core/build_config.hpp
  **/
-#ifndef OTHER_CORE_BUILD_CONFIG_HPP
-#define OTHER_CORE_BUILD_CONFIG_HPP
+#ifndef OTHER_CORE_CORE_BUILD_CONFIG_HPP
+#define OTHER_CORE_CORE_BUILD_CONFIG_HPP
 
 #if defined(__GNUC__) || defined(__clang__)
   #define OTHER_WEAK __attribute__((weak))
@@ -79,4 +79,4 @@
   #error "OTHER_ALIGN is not defined. Please define it for your platform."
 #endif  // !OTHER_ALIGN
 
-#endif  // OTHER_CORE_BUILD_CONFIG_HPP
+#endif  // OTHER_CORE_CORE_BUILD_CONFIG_HPP

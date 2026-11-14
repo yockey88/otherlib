@@ -1,8 +1,8 @@
 /**
  * \file vm/diagnostics/diagnostic_engine.hpp
  **/
-#ifndef OTHER_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP
-#define OTHER_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP
+#ifndef OTHERLIB_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP
+#define OTHERLIB_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP
 
 #include "vm/diagnostics/source_map.hpp"
 #include "vm/diagnostics/vm_diagnostic.hpp"
@@ -30,4 +30,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP
+#endif  // OTHERLIB_VM_DIAGNOSTICS_DIAGNOSTIC_ENGINE_HPP

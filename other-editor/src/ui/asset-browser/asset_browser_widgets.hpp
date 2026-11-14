@@ -1,8 +1,8 @@
 /**
  * \file ui/asset-browser/asset_browser_widgets.hpp
  **/
-#ifndef OTHERLIB_UI_ASSET_BROWSER_WIDGETS_HPP
-#define OTHERLIB_UI_ASSET_BROWSER_WIDGETS_HPP
+#ifndef OTHER_EDITOR_UI_ASSET_BROWSER_ASSET_BROWSER_WIDGETS_HPP
+#define OTHER_EDITOR_UI_ASSET_BROWSER_ASSET_BROWSER_WIDGETS_HPP
 
 #include <string>
 #include "data-structures/std_container.hpp"
@@ -116,4 +116,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_ASSET_BROWSER_WIDGETS_HPP
+#endif  // OTHER_EDITOR_UI_ASSET_BROWSER_ASSET_BROWSER_WIDGETS_HPP

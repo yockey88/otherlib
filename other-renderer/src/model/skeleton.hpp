@@ -14,7 +14,6 @@
 
 #include "model/animation_limits.hpp"
 
-
 namespace other {
 
   struct joint {
@@ -35,9 +34,10 @@ namespace other {
     /// palette pre-multiplier: inverse(rigged mesh node global) * accumulated non-joint
     ///  ancestors of the first root joint; bind pose gives root_transform*bind_chain*inverse_bind == identity
     glm::mat4 root_transform{ 1.f };
-    ostd::vector<joint> joints;                     // topologically ordered at import; capped kMaxBones with warning
+    ostd::vector<joint> joints;  // topologically ordered at import; capped kMaxBones with warning
+
+    inline bool empty() const { return joints.empty(); }
     int16_t find_joint(natural_t name_hash) const;  // linear scan; joint counts are small
-    bool empty() const { return joints.empty(); }
   };
 
 }  // namespace other

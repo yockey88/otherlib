@@ -1,5 +1,5 @@
 /**
- * \file ocmd_code.hpp
+ * \file vm/command_files/ocmd_code.hpp
  **/
 #ifndef OTHERLIB_VM_COMMAND_FILES_OCMD_CODE_HPP
 #define OTHERLIB_VM_COMMAND_FILES_OCMD_CODE_HPP

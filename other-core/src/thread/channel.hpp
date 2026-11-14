@@ -1,8 +1,8 @@
 /**
  * \file thread/channel.hpp
  **/
-#ifndef OTHERLIB_THREAD_CHANNEL_HPP
-#define OTHERLIB_THREAD_CHANNEL_HPP
+#ifndef OTHER_CORE_THREAD_CHANNEL_HPP
+#define OTHER_CORE_THREAD_CHANNEL_HPP
 
 #include <condition_variable>
 #include <mutex>
@@ -105,4 +105,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_THREAD_CHANNEL_HPP
+#endif  // OTHER_CORE_THREAD_CHANNEL_HPP

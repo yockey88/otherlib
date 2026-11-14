@@ -9,6 +9,7 @@
 
 #include <glm/glm.hpp>
 
+#include "file/path_helpers.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
@@ -758,11 +759,15 @@ namespace other {
       }
 
       if (tex_def.seed_texture_path.has_value()) {
-        ostd::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
-        if (!bytes.empty()) {
-          (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
-            .set_data(bytes.data(), bytes.size())
-            .finalize_texture();
+        /// unresolved seeds are logged by the resolver; the texture is left unseeded
+        const asset_path seed = resolve_asset_path(*tex_def.seed_texture_path, definition.source_path);
+        if (seed.found()) {
+          ostd::vector<uint8_t> bytes = read_seed_texture_file(seed.resolved);
+          if (!bytes.empty()) {
+            (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
+              .set_data(bytes.data(), bytes.size())
+              .finalize_texture();
+          }
         }
       }
 
@@ -775,15 +780,19 @@ namespace other {
       CORE_LOG_DEBUG("Created texture resource [{}] with handle {}.", tex_def.name, handle);
     }
 
+    auto resolver = [&](const std::string& raw) {
+      return resolve_asset_path(raw, definition.source_path).resolved.string();
+    };
+
     for (const auto& shader_def : definition.shaders) {
       PROFILE_SECTION("render_pipeline::create_resources_from_def--shader");
       resource_handle handle;
       if (shader_def.geometry_path.has_value()) {
-        handle = shader::create(get_pipeline_name(shader_def.name), shader_def.vertex_path, *shader_def.geometry_path, shader_def.fragment_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), resolver(shader_def.vertex_path), resolver(*shader_def.geometry_path), resolver(shader_def.fragment_path), shader_def.defines);
       } else if (shader_def.compute_path.has_value()) {
-        handle = shader::create(get_pipeline_name(shader_def.name), *shader_def.compute_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), resolver(*shader_def.compute_path), shader_def.defines);
       } else {
-        handle = shader::create(get_pipeline_name(shader_def.name), shader_def.vertex_path, shader_def.fragment_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), resolver(shader_def.vertex_path), resolver(shader_def.fragment_path), shader_def.defines);
       }
       shader_handles[FNV(shader_def.name)] = handle;
       CORE_LOG_DEBUG("Created shader resource [{}] with handle {}.", shader_def.name, handle);

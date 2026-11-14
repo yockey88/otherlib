@@ -1,8 +1,8 @@
 /**
  * \file cli/tools/run_driver.hpp
  **/
-#ifndef OTHER_CLI_TOOLS_RUN_DRIVER_HPP
-#define OTHER_CLI_TOOLS_RUN_DRIVER_HPP
+#ifndef OTHER_CLI_CLI_TOOLS_RUN_DRIVER_HPP
+#define OTHER_CLI_CLI_TOOLS_RUN_DRIVER_HPP
 
 #include "cli/tool.hpp"
 
@@ -26,4 +26,4 @@ namespace other {
   }  // namespace cli
 }  // namespace other
 
-#endif  // OTHER_CLI_TOOLS_RUN_DRIVER_HPP
+#endif  // OTHER_CLI_CLI_TOOLS_RUN_DRIVER_HPP

@@ -1,5 +1,5 @@
 /**
- * \file network_thread_tests.cpp
+ * \file tests/network/network_thread_tests.cpp
  **/
 #include "network_thread_tests.hpp"
 

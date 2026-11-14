@@ -1,8 +1,8 @@
 /**
  * \file core/value.hpp
  **/
-#ifndef OTHER_CORE_VALUE_HPP
-#define OTHER_CORE_VALUE_HPP
+#ifndef OTHER_CORE_CORE_VALUE_HPP
+#define OTHER_CORE_CORE_VALUE_HPP
 
 #include <mutex>
 #include <string>
@@ -197,4 +197,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_VALUE_HPP
+#endif  // OTHER_CORE_CORE_VALUE_HPP

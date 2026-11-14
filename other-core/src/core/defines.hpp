@@ -1,5 +1,5 @@
 /**
- * @file core/defines.hpp
+ * \file core/defines.hpp
  */
 #ifndef OTHER_CORE_CORE_DEFINES_HPP
 #define OTHER_CORE_CORE_DEFINES_HPP

@@ -1,8 +1,8 @@
 /**
- * \file execution_graph.hpp
+ * \file scripting/execution_graph.hpp
  **/
-#ifndef OTHER_EXECUTION_GRAPH_HPP
-#define OTHER_EXECUTION_GRAPH_HPP
+#ifndef OTHERLIB_SCRIPTING_EXECUTION_GRAPH_HPP
+#define OTHERLIB_SCRIPTING_EXECUTION_GRAPH_HPP
 
 #include <concepts>
 #include <set>
@@ -76,4 +76,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_EXECUTION_GRAPH_HPP
+#endif  // OTHERLIB_SCRIPTING_EXECUTION_GRAPH_HPP

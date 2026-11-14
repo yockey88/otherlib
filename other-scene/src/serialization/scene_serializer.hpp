@@ -1,8 +1,5 @@
 /**
  * \file serialization/scene_serializer.hpp
- *
- * scene <-> scene_document <-> (.oscn toml | .oscnb binary); the binary form doubles as the in-memory
- * snapshot wire format (capture/restore_snapshot) used by play/stop restore, undo/redo, and replication
  **/
 #ifndef OTHER_SCENE_SERIALIZATION_SCENE_SERIALIZER_HPP
 #define OTHER_SCENE_SERIALIZATION_SCENE_SERIALIZER_HPP
@@ -10,7 +7,6 @@
 #include "core/defines.hpp"
 #include "serialization/component_codec.hpp"
 #include "serialization/scene_document.hpp"
-
 
 namespace other {
 

@@ -29,4 +29,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_OTHERLIB_PROJECT_PROJECT_SERIALIZATION_HPP
+#endif  // OTHERLIB_PROJECT_PROJECT_SERIALIZATION_HPP

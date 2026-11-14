@@ -1,8 +1,8 @@
 /**
- * \file filesystem/file_system.hpp
+ * \file file/filesystem.hpp
  **/
-#ifndef OTHER_CORE_FILE_FILE_SYSTEM_HPP
-#define OTHER_CORE_FILE_FILE_SYSTEM_HPP
+#ifndef OTHER_CORE_FILE_FILESYSTEM_HPP
+#define OTHER_CORE_FILE_FILESYSTEM_HPP
 
 #include <map>
 #include <mutex>
@@ -41,6 +41,8 @@ namespace other {
       /// look for ~
       "/";
 #endif
+    static constexpr std::string_view kCwd = "cwd";
+    static constexpr std::string_view kEngineMount = "engine";
 
     static inline filepath get_cwd() {
       return std::filesystem::current_path().string();
@@ -68,6 +70,8 @@ namespace other {
     ref<file_handle> get_file(const std::string_view engine_path);
 
     ostd::vector<std::string> mounted_names() const;
+    ostd::vector<filepath> project_mount_roots() const;
+
     ref<directory> get_mount(const std::string_view mount_name) const;
     ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
     resolved_path deep_search_for_mount(const filepath& path) const;
@@ -138,4 +142,4 @@ OTHER_DEPENDENT_SUBSYSTEM(
   subsystem_profile::kArena,
   subsystem_profile::kLogger);
 
-#endif  // OTHER_CORE_FILE_FILE_SYSTEM_HPP
+#endif  // OTHER_CORE_FILE_FILESYSTEM_HPP

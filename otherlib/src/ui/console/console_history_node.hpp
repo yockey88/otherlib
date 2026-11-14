@@ -1,8 +1,8 @@
 /**
  * \file ui/console/console_history_node.hpp
  **/
-#ifndef OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
-#define OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
+#ifndef OTHERLIB_UI_CONSOLE_CONSOLE_HISTORY_NODE_HPP
+#define OTHERLIB_UI_CONSOLE_CONSOLE_HISTORY_NODE_HPP
 
 #include "tools/environment_console.hpp"
 #include "ui/console/console_widgets.hpp"
@@ -52,4 +52,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
+#endif  // OTHERLIB_UI_CONSOLE_CONSOLE_HISTORY_NODE_HPP

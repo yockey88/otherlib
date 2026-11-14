@@ -48,4 +48,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_DRIVER_DRIVER_STATE_MACHINE_HPP
+#endif  // OTHERLIB_DRIVER_DRIVER_STATE_MACHINE_HPP

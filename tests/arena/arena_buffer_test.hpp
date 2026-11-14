@@ -1,8 +1,8 @@
 /**
- * \file test/arena/arena_buffer_test.hpp
+ * \file tests/arena/arena_buffer_test.hpp
  **/
-#ifndef OTHER_TESTS_ARENA_BUFFER_TEST_HPP
-#define OTHER_TESTS_ARENA_BUFFER_TEST_HPP
+#ifndef OTHER_TESTS_ARENA_ARENA_BUFFER_TEST_HPP
+#define OTHER_TESTS_ARENA_ARENA_BUFFER_TEST_HPP
 
 #include <cstdint>
 #include <vector>
@@ -22,4 +22,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_TESTS_ARENA_BUFFER_TEST_HPP
+#endif  // OTHER_TESTS_ARENA_ARENA_BUFFER_TEST_HPP

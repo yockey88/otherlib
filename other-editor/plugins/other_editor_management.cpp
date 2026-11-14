@@ -1,5 +1,5 @@
 /**
- * \file other-editor-management.cpp
+ * \file plugins/other_editor_management.cpp
  **/
 #include "driver/driver_system.hpp"
 

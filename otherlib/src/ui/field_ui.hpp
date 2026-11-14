@@ -1,8 +1,8 @@
 /**
  * \file ui/field_ui.hpp
  **/
-#ifndef OTHERLIB_UI_SCRIPT_FIELD_UI_HPP
-#define OTHERLIB_UI_SCRIPT_FIELD_UI_HPP
+#ifndef OTHERLIB_UI_FIELD_UI_HPP
+#define OTHERLIB_UI_FIELD_UI_HPP
 
 #include <glm/vec2.hpp>
 
@@ -49,4 +49,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_SCRIPT_FIELD_UI_HPP
+#endif  // OTHERLIB_UI_FIELD_UI_HPP

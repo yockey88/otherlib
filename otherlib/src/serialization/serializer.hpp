@@ -377,4 +377,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_SERIALIZATION_WRITER_HPP
+#endif  // OTHERLIB_SERIALIZATION_SERIALIZER_HPP

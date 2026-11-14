@@ -1,8 +1,8 @@
 /**
- * \file renderer/ui/ui_interactable.hpp
+ * \file ui/ui_interactable.hpp
  **/
-#ifndef OTHERLIB_RENDERER_UI_UI_INTERACTABLE_HPP
-#define OTHERLIB_RENDERER_UI_UI_INTERACTABLE_HPP
+#ifndef OTHER_UI_UI_UI_INTERACTABLE_HPP
+#define OTHER_UI_UI_UI_INTERACTABLE_HPP
 
 namespace other {
 
@@ -16,4 +16,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_RENDERER_UI_UI_INTERACTABLE_HPP
+#endif  // OTHER_UI_UI_UI_INTERACTABLE_HPP

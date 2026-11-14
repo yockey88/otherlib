@@ -1,8 +1,8 @@
 /**
- * \file src/renderer/rendering_api.hpp
+ * \file renderer/rendering_api.hpp
  **/
-#ifndef OTHER_RENDERING_API_HPP
-#define OTHER_RENDERING_API_HPP
+#ifndef OTHER_RENDERER_RENDERER_RENDERING_API_HPP
+#define OTHER_RENDERER_RENDERER_RENDERING_API_HPP
 
 #include <map>
 #include <string>
@@ -255,4 +255,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERING_API_HPP
+#endif  // OTHER_RENDERER_RENDERER_RENDERING_API_HPP
