@@ -18,6 +18,7 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "file/path_helpers.hpp"
 
 #include "gpu_resource/texture.hpp"
 #include "renderer/backends/opengl_api.hpp"
@@ -93,8 +94,19 @@ namespace other {
     }
 
     std::string ui_ini_name = "engine://resources/ui/default_ui_layout.ini";
+    asset_path resolved_ui_ini_name = resolve_asset_path(ui_ini_name);
+    /// \todo should we assert here?
+    if (resolved_ui_ini_name.found()) {
+      ui_ini_name = resolved_ui_ini_name.resolved.string();
+    } else {
+      CORE_LOG_ERROR("UI ini not found");
+    }
+
     static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
-    static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf");
+    /// configured or default, the font goes through the resolver so relative and
+    ///  mount-qualified values both fall back to the engine mount
+    const std::string font_setting = config.get_value<std::string>("rendering.imgui-font", "engine://resources/fonts/BlexMonoNerdFont-Regular.ttf");
+    static std::string main_imgui_font = resolve_asset_path(font_setting).resolved.string();
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
       // ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
@@ -108,7 +120,7 @@ namespace other {
       io.ConfigWindowsMoveFromTitleBarOnly = true;
       io.IniFilename = real_ini_name.c_str();
       ImGui::StyleColorsDark();
-      OTHER_ASSERT(std::filesystem::exists(main_imgui_font), "Failed to find ImGui font: {}", main_imgui_font);
+      OTHER_ASSERT(!main_imgui_font.empty(), "Failed to find ImGui font: {}", font_setting);
 
       ImFontConfig config;
       ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, kUnicodeExtraRanges);

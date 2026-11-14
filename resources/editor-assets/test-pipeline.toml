@@ -24,11 +24,11 @@ textures = [
   { name = "shaded_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
 ]
 shaders = [
-  { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
-  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
-  { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
-  { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
-  { name = "screen_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-textured-quad.frag" },
+  { name = "geometry_pass_shader", vertex_path = "engine://resources/basic-instancing-gbuffer.vert", fragment_path = "engine://resources/basic-instancing-gbuffer.frag" },
+  { name = "shadow_map_shader", vertex_path = "engine://resources/basic-instancing-shadow-map.vert", fragment_path = "engine://resources/basic-instancing-shadow-map.frag" },
+  { name = "environment_map_pass", compute_path = "engine://resources/basic-environment-map.comp" },
+  { name = "shading_pass_shader", vertex_path = "engine://resources/basic-shading.vert", fragment_path = "engine://resources/basic-shading.frag" },
+  { name = "screen_shader", vertex_path = "engine://resources/basic-textured-quad.vert", fragment_path = "engine://resources/basic-textured-quad.frag" },
 ]
 
 [materials.layout]

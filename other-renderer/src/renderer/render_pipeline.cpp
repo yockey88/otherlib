@@ -759,11 +759,15 @@ namespace other {
       }
 
       if (tex_def.seed_texture_path.has_value()) {
-        ostd::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
-        if (!bytes.empty()) {
-          (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
-            .set_data(bytes.data(), bytes.size())
-            .finalize_texture();
+        /// unresolved seeds are logged by the resolver; the texture is left unseeded
+        const asset_path seed = resolve_asset_path(*tex_def.seed_texture_path, definition.source_path);
+        if (seed.found()) {
+          ostd::vector<uint8_t> bytes = read_seed_texture_file(seed.resolved);
+          if (!bytes.empty()) {
+            (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
+              .set_data(bytes.data(), bytes.size())
+              .finalize_texture();
+          }
         }
       }
 

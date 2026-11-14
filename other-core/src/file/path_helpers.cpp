@@ -10,7 +10,8 @@ namespace other {
   namespace {
 
     static filepath environment_install_prefix() {
-      return filepath{ get_tag_replacement("${other-directory}") };  /// "C:/OtherEnvironment"
+      /// not the ${other-directory} tag: that follows environment_root() and is the repo in dev builds
+      return get_other_environment_install_folder();
     }
 
     static filepath environment_build_root() {
@@ -35,13 +36,20 @@ namespace other {
       auto* fs = subsystem<file_system>::get();
       OTHER_ASSERT(fs != nullptr, "file_system unavailable");
 
-      ref<directory> mount = fs->get_mount(expanded.substr(0, sep));
-      if (mount == nullptr) {
-        return std::nullopt;
+      const std::string_view mount_name = expanded.substr(0, sep);
+      const filepath rel{ std::string{ expanded.substr(sep + file_system::kPathSeparator.size()) } };
+
+      ref<directory> mount = fs->get_mount(mount_name);
+      if (mount != nullptr) {
+        return (mount->absolute_path() / rel).lexically_normal();
       }
 
-      const std::string_view rel = expanded.substr(sep + file_system::kPathSeparator.size());
-      return (mount->absolute_path() / filepath{ std::string{ rel } }).lexically_normal();
+      /// mounts come up with the asset system; earlier callers (renderer backend defaults)
+      ///  still need engine paths, and the engine mount is always environment_root()
+      if (mount_name == file_system::kEngineMount) {
+        return (environment_root() / rel).lexically_normal();
+      }
+      return std::nullopt;
     }
 
     static ostd::vector<filepath> search_roots(const filepath& referencing_file) {
@@ -92,6 +100,12 @@ namespace other {
       } else {
         CORE_LOG_ERROR("Asset path '{}' does not exist under its mount ({})", raw, mounted->string());
       }
+      return result;
+    }
+
+    /// a mount-qualified path whose mount is missing is an error, not a relative path
+    if (const size_t sep = expanded.find(file_system::kPathSeparator); sep != std::string::npos) {
+      CORE_LOG_ERROR("Asset path '{}' names mount '{}', which is not mounted", raw, expanded.substr(0, sep));
       return result;
     }
 

@@ -344,6 +344,7 @@ namespace other {
     // since we validated it we should be free to assert almost everywhere
 
     pipeline_definition definition;
+    definition.source_path = std::filesystem::absolute(pl_def_path);
     auto name = pipeline_table.at_path("name");
     auto version = pipeline_table.at_path("version");
     if (!name || !version) {
