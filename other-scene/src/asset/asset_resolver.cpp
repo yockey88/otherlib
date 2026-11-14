@@ -17,7 +17,6 @@
 #include "dotnet/csproj_helpers.hpp"
 #include "gpu_resource/material.hpp"
 
-
 namespace other {
   namespace detail {
 
@@ -697,7 +696,12 @@ namespace other {
       /// component payload refs are load paths, resolved against the working directory -
       //  the same convention codec_services::resolve_asset applies at instantiation
       for (const serialization::component_asset_ref& ref : serialization::collect_scene_asset_refs(*parsed.document)) {
-        declare(std::filesystem::absolute(filepath{ ref.path }).lexically_normal(), ref.type);
+        const asset_path resolved = resolve_asset_path(ref.path, scene_path);
+        if (resolved.found()) {
+          declare(resolved.resolved, ref.type);
+        } else {
+          CORE_LOG_WARN("failed to resolve declared asset: {}", ref.path);
+        }
       }
       return out;
     }

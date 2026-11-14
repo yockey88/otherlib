@@ -193,8 +193,8 @@ namespace other {
                                                                         .path_hash = hash,
                                                                         .load_path = file_path,
                                                                         // clang-format off
-                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, 
-                                                                                asset::get_filesystem_directory(asset_type), name),
+                                                                        .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, 
+                                                                                                      asset::get_filesystem_directory(asset_type), name),
                                                                         // clang-format on
                                                                         .absolute_path = std::filesystem::absolute(absolute_path),
                                                                       },

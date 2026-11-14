@@ -67,7 +67,7 @@ namespace other {
   /// OtherEnvironment install folder: windows PROGRAMFILES/OtherEnvironment, linux /usr/local/OtherEnvironment
   /// \todo mac
   #ifdef OTHER_ENVIRONMENT_WINDOWS
-    return filepath("C:/OtherEnvironment");
+    return filepath("C:\\OtherEnvironment");
   #elif defined(OTHER_ENVIRONMENT_UNIX)
     return filepath("/usr/local/OtherEnvironment");
   #else

@@ -20,7 +20,6 @@
 
 #include "asset/asset.hpp"
 
-
 namespace other {
   namespace serialization {
 
@@ -28,7 +27,7 @@ namespace other {
       /// runtime asset id -> portable path (virtual path when the asset has one)
       std::function<std::string(natural_t asset_id)> asset_path_of = nullptr;
       /// portable path -> runtime asset id, queueing the load (0 = unresolved)
-      std::function<natural_t(const std::string& path)> resolve_asset = nullptr;
+      std::function<natural_t(const std::string& path, const filepath& document)> resolve_asset = nullptr;
     };
 
     /// a portable asset reference decoded out of a component payload, as stored -
@@ -367,7 +366,7 @@ namespace other {
               if constexpr (detail::is_asset_reference_member<member_descriptor_t>()) {
                 std::string path = "";
                 if (field_codec::decode_body(it->second.tag, it->second.body, path) && !path.empty() && services.resolve_asset != nullptr) {
-                  member(target) = services.resolve_asset(path);
+                  member(target) = services.resolve_asset(path, s.source_path.value_or(filepath{}));
                 }
               } else {
                 if (!field_codec::decode_body(it->second.tag, it->second.body, member(target))) {

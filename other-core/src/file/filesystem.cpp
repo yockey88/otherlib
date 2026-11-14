@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <ranges>
 
+#include "core/defines.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
@@ -71,8 +72,13 @@ namespace other {
 
     {
       PROFILE_SECTION("file_system::initialize_directory_structure - mount current working directory");
-      ref<directory> cwd = mount_directory("cwd", std::filesystem::current_path());
+      ref<directory> cwd = mount_directory(kCwd, std::filesystem::current_path());
       OTHER_ASSERT(cwd != nullptr, "Failed to mount current working directory");
+    }
+
+    if (const filepath root = environment_root();
+        std::filesystem::exists(root)) {
+      mount_directory(kEngineMount, root);
     }
   }
 
@@ -348,6 +354,18 @@ namespace other {
       names.push_back(dir->name());
     }
     return names;
+  }
+
+  ostd::vector<filepath> file_system::project_mount_roots() const {
+    PROFILE_SECTION("file_system::project_mount_roots");
+    std::lock_guard lock(fs_mutex);
+    ostd::vector<filepath> roots;
+    for (const auto& [hash, dir] : mounts) {
+      if (dir->get_scope() == mount_scope::PROJECT) {
+        roots.push_back(dir->absolute_path());
+      }
+    }
+    return roots;
   }
 
   bool file_system::path_exists(const std::string_view engine_path) const {

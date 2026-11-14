@@ -18,11 +18,11 @@ namespace other {
   namespace cli {
     namespace {
 
-      constexpr std::string_view kDefaultInstallDir = "C:/OtherEnvironment";
-
 #ifdef OTHER_ENVIRONMENT_WINDOWS
+      constexpr std::string_view kDefaultInstallDir = "C:\\OtherEnvironment";
       constexpr std::string_view kExecutableSuffix = ".exe";
 #else
+      constexpr std::string_view kDefaultInstallDir = "/usr/local/OtherEnvironment";
       constexpr std::string_view kExecutableSuffix = "";
 #endif
 

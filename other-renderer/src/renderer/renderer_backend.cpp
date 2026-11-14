@@ -92,7 +92,7 @@ namespace other {
       state_flags.backend_loaded = true;
     }
 
-    std::string ui_ini_name = "resources/ui/default_ui_layout.ini";
+    std::string ui_ini_name = "engine://resources/ui/default_ui_layout.ini";
     static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
     static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf");
     {

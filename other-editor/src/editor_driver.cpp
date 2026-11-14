@@ -432,9 +432,9 @@ namespace other {
     def.textures.push_back({ .name = "depth", .use_window_size = true, .format = texture::format::DEPTHF });
     def.textures.push_back({ .name = "debug_frame", .use_window_size = true, .format = texture::format::RGBA16F });
     def.buffers.push_back({ .name = "camera_buffer", .type = gpu_buffer::UNIFORM_BUFFER, .usage = gpu_buffer::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) });
-    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/debug-overlay-blit.frag" });
-    def.shaders.push_back({ .name = "debug_overlay", .vertex_path = "resources/debug-overlay.vert", .fragment_path = "resources/debug-overlay.frag" });
-    def.shaders.push_back({ .name = "debug_meshes", .vertex_path = "resources/debug-mesh.vert", .fragment_path = "resources/debug-overlay.frag" });
+    def.shaders.push_back({ .name = "blit", .vertex_path = "engine://resources/basic-textured-quad.vert", .fragment_path = "engine://resources/debug-overlay-blit.frag" });
+    def.shaders.push_back({ .name = "debug_overlay", .vertex_path = "engine://resources/debug-overlay.vert", .fragment_path = "engine://resources/debug-overlay.frag" });
+    def.shaders.push_back({ .name = "debug_meshes", .vertex_path = "engine://resources/debug-mesh.vert", .fragment_path = "engine://resources/debug-overlay.frag" });
 
     def.passes.emplace_back() = {
       .name = "overlay-blit",

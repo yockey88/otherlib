@@ -12,7 +12,6 @@
 
 #include "cli/tools/dev_common.hpp"
 
-
 namespace other {
   namespace cli {
     namespace {

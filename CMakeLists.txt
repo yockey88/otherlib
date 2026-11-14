@@ -42,7 +42,7 @@ endif()
 
 ## default SDK location; overridable with -DCMAKE_INSTALL_PREFIX=<path>
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+  set(CMAKE_INSTALL_PREFIX "C:\\OtherEnvironment" CACHE PATH "Installation directory" FORCE)
 endif()
 include(GNUInstallDirs)
 include(cmake/other_install.cmake)

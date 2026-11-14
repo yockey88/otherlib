@@ -528,13 +528,6 @@ namespace other {
         }
         if (seed_texture_path && seed_texture_path.is_string()) {
           tex.seed_texture_path = seed_texture_path.as_string()->get();
-          if (!std::filesystem::exists(tex.seed_texture_path.value())) {
-            tex.seed_texture_path = std::filesystem::absolute(tex.seed_texture_path.value());
-            if (!std::filesystem::exists(tex.seed_texture_path.value())) {
-              CORE_LOG_ERROR("Texture 'seed_texture_path' file does not exist: {}", tex.seed_texture_path.value().string());
-              tex.seed_texture_path = std::nullopt;
-            }
-          }
         }
 
         std::stringstream ss;
