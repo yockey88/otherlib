@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   other::cli::tool_context ctx;
-  ctx.working_directory = std::filesystem::current_path();
+  ctx.working_directory = other::cli::get_working_directory(args);
   ctx.env = other::cli::locate_environment();
   ctx.out = [](std::string_view message) {
     std::println("{}", message);

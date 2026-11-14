@@ -33,7 +33,7 @@ add_subdirectory(dotnet)
 
 install(TARGETS other_editor RUNTIME DESTINATION "${OTHER_INSTALL_BINDIR}/${OTHER_LIB_FAMILY}")
 install(
-  DIRECTORY "${CMAKE_BINARY_DIR}/other-editor/dotnet/${ASSEMBLY_CONFIG}"
+  DIRECTORY "${CMAKE_BINARY_DIR}/other-editor/dotnet/${ASSEMBLY_CONFIG}/"
   DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
   FILES_MATCHING PATTERN "OtherEditorCs.*"
 )

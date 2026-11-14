@@ -133,6 +133,26 @@ namespace other {
       return std::ranges::find(kBuildConfigs, build_config) != kBuildConfigs.end();
     }
 
+    filepath get_working_directory(const std::vector<std::string>& args) {
+#if 0
+      auto open = std::ranges::find(args, "open");
+      if (open != args.end()) {
+        // if open, use current directory or the passed path
+        return open + 1 != args.end() ?
+          open[1] :
+          ".";
+      }
+
+      auto run = std::ranges::find(args, "run");
+      if (run != args.end()) {
+        return run + 1 != args.end() ?
+          run[1] :
+          ".";
+      }
+#endif
+      return std::filesystem::current_path();
+    }
+
     environment_paths locate_environment(const opt<filepath>& explicit_root) {
       PROFILE_SECTION("locate_environment");
       /// an explicit root is taken at face value: no walking, no fallbacks

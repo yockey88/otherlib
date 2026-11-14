@@ -1,5 +1,5 @@
 [driver]
-boot-file = "resources/editor-assets/editor-boot.oasm"
+boot-file = "${other-directory}/resources/editor-assets/editor-boot.oasm"
 # vm-debug-mode = true
 plugins = []
 
@@ -12,7 +12,7 @@ metadata = [
   { key = "version", value = "0.1.0"} 
 ]
 core-log-level = "info"
-core-log-file = "logs/editor.log"
+core-log-file = "${other-directory}/logs/editor.log"
 auto-play-loaded-scenes = false
 
 [filesystem]
@@ -23,17 +23,17 @@ watch-assets = true
 [rendering]
 # fullscreen = true
 # enable-debug = false
-ui-layout-ini = "resources/ui/editor-layout.ini"
-imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
-pipelines = [ "resources/editor-assets/default-pipeline.toml" ]
+ui-layout-ini = "${other-directory}/resources/ui/editor-layout.ini"
+imgui-font = "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf"
+pipelines = [ "${other-directory}/resources/editor-assets/default-pipeline.toml" ]
 
 [ui]
 enable-environment-menu-bar = true
 
 [scripting]
-init-lua = "resources/editor.lua"
-dotnet-runtime-config = "dotnet-assemblies/OtherCsBindings.runtimeconfig.json"
-dotnet-bindings = "dotnet-assemblies/OtherCsBindings.dll"
-other-csharp = "dotnet-assemblies/OtherCs.dll"
-other-lua-directory = "lua"
-dotnet-modules = [ "dotnet-assemblies/OtherEditorCs.dll" ]
+init-lua = "${other-directory}/resources/editor.lua"
+dotnet-runtime-config = "${other-directory}/dotnet-assemblies/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "${other-directory}/dotnet-assemblies/OtherCsBindings.dll"
+other-csharp = "${other-directory}/dotnet-assemblies/OtherCs.dll"
+other-lua-directory = "${other-directory}/lua"
+dotnet-modules = [ "${other-directory}/dotnet-assemblies/OtherEditorCs.dll" ]

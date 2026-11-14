@@ -44,19 +44,19 @@ metadata = [
 working-directory = "${project-name}"
 
 [scripting]
-projectrc-path = "${project-name}/${project-name}.lua"
+projectrc-path = "${project-name}.lua"
 ${cs-project-line}
 [scene-graph]
 starting-scene = "main"
 scenes = [
-  { name = "main", path = "${project-name}/assets/scenes/main.oscn" }
+  { name = "main", path = "assets/scenes/main.oscn" }
 ]
 graph = [
   { name = "main", incoming = [], outgoing = [] }
 ]
 )__";
 
-      constexpr std::string_view kCsProjectLine = "cs_project = \"${project-name}/${csproj-name}.csproj\"\n";
+      constexpr std::string_view kCsProjectLine = "cs_project = \"${csproj-name}.csproj\"\n";
 
       constexpr std::string_view kProjectRcTemplate =
         R"__(--- ${project-name} runtime configuration; runs when the environment loads the project
@@ -65,6 +65,9 @@ print("[${project-name}] project loaded")
 
       constexpr std::string_view kStarterSceneTemplate =
         R"__(## default scene for ${project-name}
+[scene]
+name = "${project-name}"
+
 [[objects]]
 id = 1
 name = "Camera"

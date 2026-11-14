@@ -215,7 +215,7 @@ namespace other {
       const process_launch launch = {
         .executable = editor.executable,
         .arguments = { ctx.env.editor_config.string(), "-f", project_file.string() },
-        .working_directory = ctx.env.root,
+        .working_directory = ctx.working_directory,
         .wait_for_exit = wait_for_exit,
         .new_console = !wait_for_exit,
       };
