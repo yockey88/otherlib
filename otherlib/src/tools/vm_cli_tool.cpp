@@ -369,6 +369,10 @@ namespace other {
 
     }  // namespace
 
+    const command_bus& tool_command_bus(command_bus& local_bus) {
+      return tool_bus(local_bus);
+    }
+
     std::string_view vm_tool::usage() const {
       return kUsage;
     }

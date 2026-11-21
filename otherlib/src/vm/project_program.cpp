@@ -11,6 +11,7 @@
 
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "file/path_helpers.hpp"
 
 #include "vm/command_files/ocmd_toolchain.hpp"
 #include "vm/command_language/command_lowering.hpp"
@@ -81,7 +82,9 @@ namespace other {
     const filepath folder = project_file.parent_path();
     project_vm_settings settings = { .project_file = project_file, .sources_folder = folder / kSourcesFolder };
     if (const opt<std::string> boot_file = table.at_path(kBootFileKey).value<std::string>(); boot_file.has_value() && !boot_file->empty()) {
-      settings.boot_file = folder / *boot_file;
+      /// left under the project's folder when it is not found, so the error says where it was looked for
+      const asset_path found = resolve_asset_path(*boot_file, project_file);
+      settings.boot_file = found.found() ? found.resolved : folder / *boot_file;
     }
     return settings;
   }

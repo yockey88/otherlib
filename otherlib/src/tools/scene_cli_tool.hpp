@@ -28,8 +28,9 @@ namespace other {
     ///  itself; idempotent so any frontend can call it unconditionally
     void register_environment_tools(tool_registry& registry);
 
-    /// engine-level tools need the arena+logger live; if no host booted them (bare oecli)
-    ///  this activates them console-warn-only. no-op inside a running environment
+    /// engine-level tools need the arena, the logger and the file system live; if no host
+    ///  booted them (bare oecli) this activates them, the logger console-warn-only. no-op
+    ///  inside a running environment
     void ensure_cli_runtime();
 
   }  // namespace cli

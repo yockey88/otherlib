@@ -42,6 +42,7 @@ target_sources(otherlib
     src/project/project.cpp
     src/project/script_assembly.cpp
     src/project/pipeline_collector.cpp
+    src/project/project_compiler.cpp
 
     src/render/default_pass_executor_resolver.cpp
 
@@ -122,12 +123,12 @@ target_sources(otherlib
     src/vm/project_program.cpp
     src/vm/vm.cpp
 
-    src/tools/build_tool.cpp
     src/tools/environment_console.cpp
     src/tools/scene_cli_tool.cpp
     src/tools/model_cli_tool.cpp
     src/tools/material_cli_tool.cpp
     src/tools/vm_cli_tool.cpp
+    src/tools/compile_cli_tool.cpp
 
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp

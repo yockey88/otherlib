@@ -8,7 +8,15 @@
 #include "cli/tool.hpp"
 
 namespace other {
+
+  class command_bus;
+
   namespace cli {
+
+    /// the bus a tool links a program against: the live one inside a running environment,
+    ///  which also holds the devices its plugins added, and otherwise local_bus with the
+    ///  builtin devices put on it
+    const command_bus& tool_command_bus(command_bus& local_bus);
 
     class vm_tool final : public tool {
      public:

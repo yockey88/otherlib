@@ -24,7 +24,8 @@ namespace other {
   /// what a project file says about its VM sources
   struct project_vm_settings {
     filepath project_file;
-    /// [vm] boot-file, against the project's folder; empty when the project has no such key
+    /// [vm] boot-file, found the way any asset path is (the project's folder first); empty
+    ///  when the project has no such key
     opt<filepath> boot_file;
     /// <project folder>/assets/vm, whether or not it exists
     filepath sources_folder;

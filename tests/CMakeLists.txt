@@ -97,6 +97,7 @@ target_sources(other_tests
 
     ${CMAKE_CURRENT_SOURCE_DIR}/project/script_assembly_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/project/pipeline_collector_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project/project_compiler_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scratch_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
